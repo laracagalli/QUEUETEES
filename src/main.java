@@ -1,12 +1,9 @@
 import gui.LoginFrame;
-
 import model.AccountStatus;
 import model.User;
 import model.UserRole;
-
 import repository.InMemoryUserRepository;
 import repository.UserRepository;
-
 import service.AuthService;
 import service.PasswordUtil;
 
@@ -23,8 +20,8 @@ public class main {
             AuthService authService = new AuthService(userRepository);
 
             // Open Login GUI and give it access to AuthService
-            LoginFrame frame = new LoginFrame(authService);
-            frame.setVisible(true);
+            LoginFrame loginframe = new LoginFrame(authService);
+            loginframe.setVisible(true);
         });
     }
 
@@ -34,9 +31,7 @@ public class main {
                 new InMemoryUserRepository();
 
         // 1. VERIFIED CUSTOMER
-        repository.save(new User(
-                1,
-                "verifiedcustomer",
+        repository.save(new User(1,"verifiedcustomer",
                 "verified@queuetees.local",
                 PasswordUtil.hashPassword("Customer123!"),
                 UserRole.CUSTOMER,
@@ -78,5 +73,5 @@ public class main {
         ));
 
         return repository;
-    }
+}
 }

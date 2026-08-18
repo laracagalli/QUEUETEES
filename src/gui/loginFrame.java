@@ -1,9 +1,9 @@
 package gui;
-import service.AuthService;
-import service.LoginResult;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
+import service.AuthService;
+import service.LoginResult;
 
 
 public class LoginFrame extends JFrame implements ActionListener {
