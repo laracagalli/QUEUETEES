@@ -25,7 +25,7 @@ public class LoginFrame extends JFrame implements ActionListener {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
-                ImageIcon img = new ImageIcon(getClass().getResource("/Gui_Images/landingpage1.png"));
+                ImageIcon img = new ImageIcon(getClass().getResource("/Gui_Images/landingpage2.png"));
                 g.drawImage(img.getImage(), 0, 0, getWidth(), getHeight(), this);
             }
         };
