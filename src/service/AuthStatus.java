@@ -1,0 +1,12 @@
+package service;
+
+public enum AuthStatus {
+    SUCCESS,
+    EMPTY_FIELDS,
+    INVALID_CREDENTIALS,
+    EMAIL_NOT_VERIFIED,
+    STAFF_NOT_APPROVED,
+    ACCOUNT_SUSPENDED,
+    ACCOUNT_BANNED,
+    ACCOUNT_REJECTED
+}
