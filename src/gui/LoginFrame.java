@@ -10,13 +10,14 @@ public class LoginFrame extends JFrame implements ActionListener {
     RoundedButton logButton, signButton;
     JTextField username;
     JPasswordField pass;
+    JCheckBox showPass;
 
 
 
     public LoginFrame() {
         setTitle("login and sign up");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setSize(1100, 730);
+        setSize(1100, 733);
         setLocationRelativeTo(null);
         setResizable(false);
 
@@ -25,16 +26,17 @@ public class LoginFrame extends JFrame implements ActionListener {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
-                ImageIcon img = new ImageIcon(getClass().getResource("/Gui_Images/landingpage2.png"));
+                ImageIcon img = new ImageIcon(getClass().getResource("/Gui_Images/landpage5.png"));
                 g.drawImage(img.getImage(), 0, 0, getWidth(), getHeight(), this);
             }
         };
         backgroundPanel.setLayout(null);
         setContentPane(backgroundPanel);
 
-        logButton = new RoundedButton("Log In", new Color(30, 30, 30), Color.WHITE);
+        logButton = new RoundedButton("Log In", Color.WHITE, Color.BLACK);
         logButton.setBounds(334, 490, 390, 40);
         logButton.setFont(new Font("Fira Code", Font.BOLD, 18));
+        logButton.setBackground(Color.WHITE);
         backgroundPanel.add(logButton);
 
         signButton = new RoundedButton("Sign Up",new Color(30, 30, 30), Color.WHITE);
@@ -60,6 +62,21 @@ public class LoginFrame extends JFrame implements ActionListener {
         pass.setForeground(Color.BLACK);
         pass.setBorder(BorderFactory.createEmptyBorder());
         backgroundPanel.add(pass);
+
+        showPass = new JCheckBox("Show Password");
+        showPass.setBounds(342, 410, 150, 20);
+        showPass.setOpaque(false);
+        showPass.setForeground(Color.BLACK);
+        showPass.setFont(new Font("Fira Code", Font.PLAIN, 12));
+        showPass.setFocusPainted(false);
+        showPass.addActionListener(e -> {
+            if (showPass.isSelected()) {
+                pass.setEchoChar((char) 0);
+            } else {
+                pass.setEchoChar('•');
+            }
+        });
+        backgroundPanel.add(showPass);
 
     }
 
