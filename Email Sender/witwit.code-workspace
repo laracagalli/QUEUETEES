@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"name": "QUEUETEES",
+			"path": ".."
+		}
+	],
+	"settings": {
+		"java.project.referencedLibraries": [
+			"lib/**/*.jar",
+			"angus-mail-2.0.4.jar",
+			"jakarta.mail-api-2.1.3.jar"
+		]
+	}
+}

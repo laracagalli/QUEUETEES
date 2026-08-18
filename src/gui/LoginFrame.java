@@ -11,15 +11,15 @@ public class LoginFrame extends JFrame implements ActionListener {
     RoundedButton logButton, signButton;
     JTextField username;
     JPasswordField pass;
+    JCheckBox showPass;
 
-    private final AuthService authService;
+private final AuthService authService;
 
     public LoginFrame(AuthService authService) {
         this.authService = authService;
-
         setTitle("login and sign up");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setSize(1100, 730);
+        setSize(1100, 733);
         setLocationRelativeTo(null);
         setResizable(false);
 
@@ -28,17 +28,18 @@ public class LoginFrame extends JFrame implements ActionListener {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
-                ImageIcon img = new ImageIcon(getClass().getResource("/Gui_Images/landingpage2.png"));
+                ImageIcon img = new ImageIcon(getClass().getResource("/Gui_Images/landpage5.png"));
                 g.drawImage(img.getImage(), 0, 0, getWidth(), getHeight(), this);
             }
         };
         backgroundPanel.setLayout(null);
         setContentPane(backgroundPanel);
 
-        logButton = new RoundedButton("Log In", new Color(30, 30, 30), Color.WHITE);
-        logButton.addActionListener(this);
+        logButton = new RoundedButton("Log In", Color.WHITE, Color.BLACK);
         logButton.setBounds(334, 490, 390, 40);
         logButton.setFont(new Font("Fira Code", Font.BOLD, 18));
+        logButton.setBackground(Color.WHITE);
+        logButton.addActionListener(this);
         backgroundPanel.add(logButton);
 
         signButton = new RoundedButton("Sign Up",new Color(30, 30, 30), Color.WHITE);
@@ -46,6 +47,27 @@ public class LoginFrame extends JFrame implements ActionListener {
         signButton.setBounds(334, 540, 390, 40);
         signButton.setFont(new Font("Fira Code", Font.BOLD, 18));
         backgroundPanel.add(signButton);
+
+        JLabel forgotPass = new JLabel("<html><u>Forgot Password?</u></html>");
+        forgotPass.setBounds(478, 590, 150, 20);
+        forgotPass.setForeground(Color.WHITE);
+        forgotPass.setFont(new Font("Fira Code", Font.PLAIN, 12));
+        forgotPass.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        forgotPass.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                // handle forgot password here
+                System.out.println("Forgot password clicked");
+            }
+
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                forgotPass.setForeground(Color.LIGHT_GRAY);
+            }
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                forgotPass.setForeground(Color.WHITE);
+            }
+        });
+        backgroundPanel.add(forgotPass);
 
 
         username = new JTextField();
@@ -66,60 +88,77 @@ public class LoginFrame extends JFrame implements ActionListener {
         pass.setBorder(BorderFactory.createEmptyBorder());
         backgroundPanel.add(pass);
 
+        
+
+        showPass = new JCheckBox("Show Password");
+        showPass.setBounds(342, 410, 150, 20);
+        showPass.setOpaque(false);
+        showPass.setForeground(Color.BLACK);
+        showPass.setFont(new Font("Fira Code", Font.PLAIN, 12));
+        showPass.setFocusPainted(false);
+        showPass.addActionListener(e -> {
+            if (showPass.isSelected()) {
+                pass.setEchoChar((char) 0);
+            } else {
+                pass.setEchoChar('•');
+            }
+        });
+        backgroundPanel.add(showPass);
+
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+        public void actionPerformed(ActionEvent e) {
 
             if (e.getSource() == logButton) {
-            handleLogin();
+                handleLogin();
+            }
+
+            else if (e.getSource() == signButton) {
+                openRegistrationForm();
+            }
         }
 
-        else if (e.getSource() == signButton) {
-            openRegistrationForm();
-        }
-    }
+        private void handleLogin() {
 
-    private void handleLogin() {
-
-        LoginResult result = authService.login(
-                username.getText(),
-                pass.getPassword()
-        );
-
-        if (!result.isSuccess()) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    result.getMessage(),
-                    "Login",
-                    JOptionPane.WARNING_MESSAGE
+            LoginResult result = authService.login(
+                    username.getText(),
+                    pass.getPassword()
             );
 
-            pass.setText("");
-            return;
+            if (!result.isSuccess()) {
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        result.getMessage(),
+                        "Login",
+                        JOptionPane.WARNING_MESSAGE
+                );
+
+                pass.setText("");
+                return;
+            }
+
+            openDashboard();
         }
 
-        openDashboard();
-    }
+        private void openDashboard() {
 
-    private void openDashboard() {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Login successful!\nDashboard is not created yet.",
+                    "QueueTees",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+        }
 
-        JOptionPane.showMessageDialog(
-                this,
-                "Login successful!\nDashboard is not created yet.",
-                "QueueTees",
-                JOptionPane.INFORMATION_MESSAGE
-        );
-    }
+        private void openRegistrationForm() {
 
-    private void openRegistrationForm() {
-
-        JOptionPane.showMessageDialog(
-                this,
-                "Registration form is not created yet.",
-                "QueueTees",
-                JOptionPane.INFORMATION_MESSAGE
-        );
-    }
-
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Registration form is not created yet.",
+                        "QueueTees",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+        }
 }
