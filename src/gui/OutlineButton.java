@@ -4,18 +4,18 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 
-public class RoundedButton extends JButton {
+public class OutlineButton extends JButton {
 
-    private Color bgColor;
+    private Color borderColor;
     private Color textColor;
-    private Color hoverColor;
+    private Color bgColor;
     private boolean hovered = false;
 
-    public RoundedButton(String text, Color bgColor, Color textColor) {
+    public OutlineButton(String text, Color borderColor, Color textColor) {
         super(text);
-        this.bgColor = bgColor;
+        this.borderColor = borderColor;
         this.textColor = textColor;
-        this.hoverColor = bgColor.darker(); // default hover is slightly darker
+        this.bgColor = null; // null = transparent
         setOpaque(false);
         setContentAreaFilled(false);
         setBorderPainted(false);
@@ -37,8 +37,8 @@ public class RoundedButton extends JButton {
         });
     }
 
-    public void setBgColor(Color bgColor) {
-        this.bgColor = bgColor;
+    public void setBorderColor(Color borderColor) {
+        this.borderColor = borderColor;
         repaint();
     }
 
@@ -47,24 +47,28 @@ public class RoundedButton extends JButton {
         repaint();
     }
 
-    // Set a custom hover color
-    public void setHoverColor(Color hoverColor) {
-        this.hoverColor = hoverColor;
+    // Set the hover fill color (optional, defaults to semi-transparent white)
+    public void setBgColor(Color bgColor) {
+        this.bgColor = bgColor;
         repaint();
     }
-
-    public Color getBgColor() { return bgColor; }
-    public Color getTextColor() { return textColor; }
-    public Color getHoverColor() { return hoverColor; }
 
     @Override
     protected void paintComponent(Graphics g) {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Use hover color when hovered, normal bg otherwise
-        g2.setColor(hovered ? hoverColor : bgColor);
-        g2.fillRoundRect(0, 0, getWidth(), getHeight(), getHeight(), getHeight());
+        // Fill on hover
+        if (hovered) {
+            Color fill = (bgColor != null) ? bgColor : new Color(255, 255, 255, 40);
+            g2.setColor(fill);
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), getHeight(), getHeight());
+        }
+
+        // Draw border
+        g2.setColor(borderColor);
+        g2.setStroke(new BasicStroke(2));
+        g2.drawRoundRect(1, 1, getWidth() - 2, getHeight() - 2, getHeight(), getHeight());
 
         // Draw text
         g2.setColor(textColor);

@@ -1,4 +1,4 @@
-import gui.LoginFrame;
+import gui.SignupFrame;
 import model.AccountStatus;
 import model.User;
 import model.UserRole;
@@ -9,23 +9,29 @@ import service.PasswordUtil;
 
 public class main {
 
-    public static void main(String[] args) {
+        public static void main(String[] args) {
 
         javax.swing.SwingUtilities.invokeLater(() -> {
 
             // Temporary repository
-            UserRepository userRepository = createTestUsers();
+        UserRepository userRepository = createTestUsers();
 
             // Connect repository to authentication service
-            AuthService authService = new AuthService(userRepository);
+        AuthService authService = new AuthService(userRepository);
 
             // Open Login GUI and give it access to AuthService
-            LoginFrame loginframe = new LoginFrame(authService);
-            loginframe.setVisible(true);
-        });
-    }
+       // LoginFrame loginframe = new LoginFrame(authService);
+       // loginframe.setVisible(true);
 
-    private static UserRepository createTestUsers() {
+                SignupFrame signupFrame = new SignupFrame(new AuthService(createTestUsers()));
+        signupFrame.setVisible(true);
+        });
+
+
+
+}
+
+private static UserRepository createTestUsers() {
 
         InMemoryUserRepository repository =
                 new InMemoryUserRepository();
