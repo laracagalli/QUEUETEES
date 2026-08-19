@@ -1,4 +1,4 @@
-import gui.SignupFrame;
+import gui.LoginFrame;
 import model.AccountStatus;
 import model.User;
 import model.UserRole;
@@ -20,11 +20,12 @@ public class main {
         AuthService authService = new AuthService(userRepository);
 
             // Open Login GUI and give it access to AuthService
-       // LoginFrame loginframe = new LoginFrame(authService);
-       // loginframe.setVisible(true);
+        LoginFrame loginframe = new LoginFrame(authService);
+        loginframe.setVisible(true);
 
-                SignupFrame signupFrame = new SignupFrame(new AuthService(createTestUsers()));
-        signupFrame.setVisible(true);
+        //         SignupFrame signupFrame = new SignupFrame(new AuthService(createTestUsers()));
+        // signupFrame.setVisible(true);
+        
         });
 
 

@@ -73,8 +73,6 @@ public class SignupFrame extends JFrame implements ActionListener {
         signupbtn.addActionListener(this);
         backgroundPanel.add(signupbtn);
 
-        
-
         cancelbtn = new OutlineButton("Cancel", Color.BLACK, Color.BLACK);
         cancelbtn.setBounds(19, 640, 420, 40);
         cancelbtn.setFont(new Font("Fira Code", Font.BOLD, 18));
@@ -176,9 +174,6 @@ public class SignupFrame extends JFrame implements ActionListener {
 
         
 
-
-
-
     }
 
     @Override
@@ -190,5 +185,5 @@ public class SignupFrame extends JFrame implements ActionListener {
 
     
 
-}
+    }
 }

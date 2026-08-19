@@ -1,8 +1,8 @@
 package gui;
 
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import javax.swing.*;
 
 public class OutlineButton extends JButton {
 
@@ -15,7 +15,7 @@ public class OutlineButton extends JButton {
         super(text);
         this.borderColor = borderColor;
         this.textColor = textColor;
-        this.bgColor = null; // null = transparent
+        this.bgColor = null; // null = transparent pwedeng oo pwede hindi pwdi piro dpndi
         setOpaque(false);
         setContentAreaFilled(false);
         setBorderPainted(false);
@@ -47,7 +47,7 @@ public class OutlineButton extends JButton {
         repaint();
     }
 
-    // Set the hover fill color (optional, defaults to semi-transparent white)
+    //PANG MANUAL TO DEFAULT NITO SEMI TRANSPARENT WHITE
     public void setBgColor(Color bgColor) {
         this.bgColor = bgColor;
         repaint();
@@ -58,19 +58,16 @@ public class OutlineButton extends JButton {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Fill on hover
         if (hovered) {
             Color fill = (bgColor != null) ? bgColor : new Color(255, 255, 255, 40);
             g2.setColor(fill);
             g2.fillRoundRect(0, 0, getWidth(), getHeight(), getHeight(), getHeight());
         }
 
-        // Draw border
         g2.setColor(borderColor);
         g2.setStroke(new BasicStroke(2));
         g2.drawRoundRect(1, 1, getWidth() - 2, getHeight() - 2, getHeight(), getHeight());
 
-        // Draw text
         g2.setColor(textColor);
         g2.setFont(getFont());
         FontMetrics fm = g2.getFontMetrics();

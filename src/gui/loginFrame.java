@@ -24,7 +24,7 @@ private final AuthService authService;
         setLocationRelativeTo(null);
         setResizable(false);
 
-        // Background image panel
+        // bg
         JPanel backgroundPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -58,7 +58,7 @@ private final AuthService authService;
         forgotPass.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
-                // handle forgot password here
+                
                 System.out.println("Forgot password clicked");
             }
 

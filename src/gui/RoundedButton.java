@@ -1,8 +1,8 @@
 package gui;
 
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import javax.swing.*;
 
 public class RoundedButton extends JButton {
 
@@ -15,7 +15,7 @@ public class RoundedButton extends JButton {
         super(text);
         this.bgColor = bgColor;
         this.textColor = textColor;
-        this.hoverColor = bgColor.darker(); // default hover is slightly darker
+        this.hoverColor = bgColor.darker();
         setOpaque(false);
         setContentAreaFilled(false);
         setBorderPainted(false);
@@ -47,7 +47,7 @@ public class RoundedButton extends JButton {
         repaint();
     }
 
-    // Set a custom hover color
+    //PANG MANUAL TO LALAGAY NIYO ANO KULAY DYAN SA HOVERCOLOR
     public void setHoverColor(Color hoverColor) {
         this.hoverColor = hoverColor;
         repaint();
@@ -62,11 +62,9 @@ public class RoundedButton extends JButton {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Use hover color when hovered, normal bg otherwise
         g2.setColor(hovered ? hoverColor : bgColor);
         g2.fillRoundRect(0, 0, getWidth(), getHeight(), getHeight(), getHeight());
 
-        // Draw text
         g2.setColor(textColor);
         g2.setFont(getFont());
         FontMetrics fm = g2.getFontMetrics();
