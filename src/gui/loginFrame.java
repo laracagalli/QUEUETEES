@@ -29,7 +29,7 @@ private final AuthService authService;
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
-                ImageIcon img = new ImageIcon(getClass().getResource("/Gui_Images/landpage5.png"));
+                ImageIcon img = new ImageIcon(getClass().getResource("/Gui_Images/landpage6.png"));
                 g.drawImage(img.getImage(), 0, 0, getWidth(), getHeight(), this);
             }
         };
