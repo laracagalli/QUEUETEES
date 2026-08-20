@@ -1,27 +1,21 @@
 package gui;
-
 import java.awt.*;
+import java.awt.event.*;
 import javax.swing.*;
 import service.AuthService;
-
-public class AdminFrame extends JFrame {
-
-    public AdminFrame(AuthService authService) {
-        setTitle("Admin Dashboard");
+import service.LoginResult;
+import javax.swing.text.PlainDocument;
+public class AdminFrame extends JFrame implements ActionListener {
+    
+    AdminFrame (authService authService) {
+        setTitle("Admin Panel");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(1100, 733);
         setLocationRelativeTo(null);
         setResizable(false);
 
-        JPanel panel = dashboardPanel("ADMIN DASHBOARD");
-        setContentPane(panel);
-
-        JButton logout = logoutButton(authService);
-        panel.add(logout);
-    }
-
-    private JPanel dashboardPanel(String title) {
-        JPanel panel = new JPanel(null) {
+        // bg
+        JPanel backgroundPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
@@ -29,21 +23,15 @@ public class AdminFrame extends JFrame {
                 g.drawImage(img.getImage(), 0, 0, getWidth(), getHeight(), this);
             }
         };
-        JLabel label = new JLabel(title, SwingConstants.CENTER);
-        label.setBounds(300, 250, 500, 60);
-        label.setFont(new Font("Fira Code", Font.BOLD, 30));
-        panel.add(label);
-        return panel;
+        backgroundPanel.setLayout(null);
+        setContentPane(backgroundPanel);
+
+
+
     }
 
-    private JButton logoutButton(AuthService authService) {
-        RoundedButton button = new RoundedButton("Log Out", Color.BLACK, Color.WHITE);
-        button.setBounds(400, 350, 300, 42);
-        button.setHoverColor(Color.DARK_GRAY);
-        button.addActionListener(e -> {
-            dispose();
-            new LoginFrame(authService).setVisible(true);
-        });
-        return button;
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        
     }
 }
