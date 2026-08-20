@@ -21,19 +21,16 @@ public class LoginResult {
         return new LoginResult(status, message, null);
     }
 
-    public AuthStatus getStatus() {
-        return status;
+    public static LoginResult emailVerificationRequired(User user) {
+        return new LoginResult(
+                AuthStatus.EMAIL_NOT_VERIFIED,
+                "Please verify your email to continue.",
+                user
+        );
     }
 
-    public String getMessage() {
-        return message;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public boolean isSuccess() {
-        return status == AuthStatus.SUCCESS;
-    }
+    public AuthStatus getStatus() { return status; }
+    public String getMessage() { return message; }
+    public User getUser() { return user; }
+    public boolean isSuccess() { return status == AuthStatus.SUCCESS; }
 }
