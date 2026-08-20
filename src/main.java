@@ -1,5 +1,4 @@
 import gui.LoginFrame;
-import javax.swing.SwingUtilities;
 import model.AccountStatus;
 import model.User;
 import model.UserRole;
@@ -10,20 +9,36 @@ import service.PasswordUtil;
 
 public class main {
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            UserRepository userRepository = createTestUsers();
-            AuthService authService = new AuthService(userRepository);
-            new LoginFrame(authService).setVisible(true);
+        public static void main(String[] args) {
+
+        javax.swing.SwingUtilities.invokeLater(() -> {
+
+            // Temporary repository
+        UserRepository userRepository = createTestUsers();
+
+            // Connect repository to authentication service
+        AuthService authService = new AuthService(userRepository);
+
+            // Open Login GUI and give it access to AuthService
+        LoginFrame loginframe = new LoginFrame(authService);
+        loginframe.setVisible(true);
+
+        //         SignupFrame signupFrame = new SignupFrame(new AuthService(createTestUsers()));
+        // signupFrame.setVisible(true);
+        
         });
-    }
 
-    private static UserRepository createTestUsers() {
-        InMemoryUserRepository repository = new InMemoryUserRepository();
 
-        repository.save(new User(
-                1,
-                "verifiedcustomer",
+
+}
+
+private static UserRepository createTestUsers() {
+
+        InMemoryUserRepository repository =
+                new InMemoryUserRepository();
+
+        // 1. VERIFIED CUSTOMER
+        repository.save(new User(1,"verifiedcustomer",
                 "verified@queuetees.local",
                 PasswordUtil.hashPassword("Customer123!"),
                 UserRole.CUSTOMER,
@@ -31,6 +46,7 @@ public class main {
                 AccountStatus.ACTIVE
         ));
 
+        // 2. UNVERIFIED CUSTOMER
         repository.save(new User(
                 2,
                 "unverifiedcustomer",
@@ -41,6 +57,7 @@ public class main {
                 AccountStatus.ACTIVE
         ));
 
+        // 3. STAFF WAITING FOR ADMIN APPROVAL
         repository.save(new User(
                 3,
                 "pendingstaff",
@@ -51,18 +68,9 @@ public class main {
                 AccountStatus.PENDING_APPROVAL
         ));
 
+        // 4. ADMIN
         repository.save(new User(
                 4,
-                "staff",
-                "staff@queuetees.local",
-                PasswordUtil.hashPassword("Staff123!"),
-                UserRole.STAFF,
-                true,
-                AccountStatus.ACTIVE
-        ));
-
-        repository.save(new User(
-                5,
                 "admin",
                 "admin@queuetees.local",
                 PasswordUtil.hashPassword("Admin123!"),
@@ -72,5 +80,5 @@ public class main {
         ));
 
         return repository;
-    }
+}
 }
