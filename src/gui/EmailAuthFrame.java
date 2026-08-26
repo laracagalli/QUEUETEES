@@ -87,7 +87,7 @@ public class EmailAuthFrame extends JFrame {
         JLabel resendCode = new JLabel("<html><u>Resend Code</u></html>", SwingConstants.CENTER);
         resendCode.setBounds(390, 430, 310, 30);
         resendCode.setForeground(Color.BLACK);
-        resendCode.setFont(new Font("Fira Code", Font.PLAIN, 18));
+        resendCode.setFont(new Font("Fira Code", Font.PLAIN, 15));
         resendCode.setCursor(new Cursor(Cursor.HAND_CURSOR));
         resendCode.addMouseListener(new MouseAdapter() {
             @Override
