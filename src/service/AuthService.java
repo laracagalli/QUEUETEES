@@ -23,12 +23,11 @@ public class AuthService {
             if (cleanIdentifier.isEmpty() || password.isEmpty()) {
                 return LoginResult.failure(
                         AuthStatus.EMPTY_FIELDS,
-                        "Please enter your email/username and password."
-                );
+                        "Please enter your email/username and password.");
             }
 
             Optional<User> optionalUser = userRepository.findByEmailOrUsername(cleanIdentifier);
-            if (optionalUser == null || optionalUser.isEmpty()) {
+            if (optionalUser == null || !optionalUser.isPresent()) {
                 return invalidCredentials();
             }
 
@@ -50,28 +49,26 @@ public class AuthService {
                 return LoginResult.failure(AuthStatus.ACCOUNT_REJECTED, "This account registration was rejected.");
             }
 
-            // QueueTees requirement: customers must verify their email before customer access.
+            // QueueTees requirement: customers must verify their email before customer
+            // access.
             if (user.getRole() == UserRole.CUSTOMER && !user.isEmailVerified()) {
                 return LoginResult.failure(
                         AuthStatus.EMAIL_NOT_VERIFIED,
                         "Please verify your email before logging in.",
-                        user
-                );
+                        user);
             }
 
             // QueueTees requirement: staff must be approved by an administrator first.
             if (user.getRole() == UserRole.STAFF && user.getStatus() != AccountStatus.ACTIVE) {
                 return LoginResult.failure(
                         AuthStatus.STAFF_NOT_APPROVED,
-                        "Your staff account is still waiting for administrator approval."
-                );
+                        "Your staff account is still waiting for administrator approval.");
             }
 
             if (user.getStatus() != AccountStatus.ACTIVE) {
                 return LoginResult.failure(
                         AuthStatus.INVALID_CREDENTIALS,
-                        "This account cannot log in right now."
-                );
+                        "This account cannot log in right now.");
             }
 
             return LoginResult.success(user);
@@ -85,8 +82,7 @@ public class AuthService {
     private LoginResult invalidCredentials() {
         return LoginResult.failure(
                 AuthStatus.INVALID_CREDENTIALS,
-                "Invalid email/username or password."
-        );
+                "Invalid email/username or password.");
     }
 
     public void verifyEmail(User user) {
@@ -103,10 +99,10 @@ public class AuthService {
             String gender,
             LocalDate birthday) {
 
-        String cleanEmail    = email    == null ? "" : email.trim();
+        String cleanEmail = email == null ? "" : email.trim();
         String cleanUsername = username == null ? "" : username.trim();
         String cleanFullname = fullname == null ? "" : fullname.trim();
-        String password      = passwordChars == null ? "" : new String(passwordChars);
+        String password = passwordChars == null ? "" : new String(passwordChars);
 
         try {
             // Empty fields check
@@ -114,48 +110,42 @@ public class AuthService {
                     || cleanFullname.isEmpty() || password.isEmpty()) {
                 return RegistrationResult.failure(
                         AuthStatus.EMPTY_FIELDS,
-                        "Please fill in all required fields."
-                );
+                        "Please fill in all required fields.");
             }
 
             // Basic email format check
             if (!cleanEmail.contains("@") || !cleanEmail.contains(".")) {
                 return RegistrationResult.failure(
                         AuthStatus.INVALID_EMAIL,
-                        "Please enter a valid email address."
-                );
+                        "Please enter a valid email address.");
             }
 
             // Duplicate email check
             if (userRepository.findByEmailOrUsername(cleanEmail).isPresent()) {
                 return RegistrationResult.failure(
                         AuthStatus.DUPLICATE_EMAIL,
-                        "That email is already registered."
-                );
+                        "That email is already registered.");
             }
 
             // Duplicate username check
             if (userRepository.findByEmailOrUsername(cleanUsername).isPresent()) {
                 return RegistrationResult.failure(
                         AuthStatus.DUPLICATE_USERNAME,
-                        "That username is already taken."
-                );
+                        "That username is already taken.");
             }
 
             // Gender check
             if (gender == null || gender.isEmpty()) {
                 return RegistrationResult.failure(
                         AuthStatus.EMPTY_FIELDS,
-                        "Please select a gender."
-                );
+                        "Please select a gender.");
             }
 
             // Birthday check
             if (birthday == null) {
                 return RegistrationResult.failure(
                         AuthStatus.EMPTY_FIELDS,
-                        "Please enter your birthday."
-                );
+                        "Please enter your birthday.");
             }
 
             // Age check — must be at least 18
@@ -163,8 +153,7 @@ public class AuthService {
             if (age < 18) {
                 return RegistrationResult.failure(
                         AuthStatus.EMPTY_FIELDS,
-                        "You must be at least 18 years old to register."
-                );
+                        "You must be at least 18 years old to register.");
             }
 
             // Create and save user
@@ -176,8 +165,7 @@ public class AuthService {
                     PasswordUtil.hashPassword(password),
                     UserRole.CUSTOMER,
                     false,
-                    AccountStatus.ACTIVE
-            );
+                    AccountStatus.ACTIVE);
 
             userRepository.save(newUser);
 

@@ -1,5 +1,6 @@
 package gui;
 
+import backend.EmailService;
 import java.awt.*;
 import java.awt.event.*;
 import java.security.SecureRandom;
@@ -17,6 +18,11 @@ public class EmailAuthFrame extends JFrame {
     private final JTextField[] codeFields = new JTextField[6];
     private final SecureRandom random = new SecureRandom();
     private String currentOtp;
+
+    // Timer variables
+    private JLabel timerLabel;
+    private Timer countdownTimer;
+    private int timeLeft = 300; // 5 minutes in seconds
 
     public EmailAuthFrame(AuthService authService, User user) {
         this.authService = authService;
@@ -45,8 +51,8 @@ public class EmailAuthFrame extends JFrame {
         int fieldWidth = 52;
         int fieldHeight = 55;
         int gap = 6;
-        int totalWidth = 6 * fieldWidth + 5 * gap; // 312 + 30 = 342
-        int startX = (1100 - totalWidth) / 2 - 5; // centered in card
+        int totalWidth = 6 * fieldWidth + 5 * gap;
+        int startX = (1100 - totalWidth) / 2 - 5;
         int y = 320;
 
         for (int i = 0; i < codeFields.length; i++) {
@@ -77,13 +83,16 @@ public class EmailAuthFrame extends JFrame {
             backgroundPanel.add(field);
         }
 
-        // JLabel emailLabel = new JLabel("Verification for: " + user.getEmail(), SwingConstants.CENTER);
-        // emailLabel.setBounds(330, 430, 440, 25);
-        // emailLabel.setForeground(Color.WHITE);
-        // emailLabel.setFont(new Font("Fira Code", Font.PLAIN, 13));
-        // backgroundPanel.add(emailLabel);
+        // =========================
+        // TIMER LABEL
+        // =========================
+        timerLabel = new JLabel("Time remaining: 05:00", SwingConstants.CENTER);
+        // Moved up to y=280 to sit above the text fields
+        timerLabel.setBounds(390, 280, 310, 20);
+        timerLabel.setForeground(Color.BLACK);
+        timerLabel.setFont(new Font("Fira Code", Font.PLAIN, 14));
+        backgroundPanel.add(timerLabel);
 
-        // Temporary clickable HTML link. No email backend is used yet.
         JLabel resendCode = new JLabel("<html><u>Resend Code</u></html>", SwingConstants.CENTER);
         resendCode.setBounds(390, 430, 310, 30);
         resendCode.setForeground(Color.BLACK);
@@ -121,6 +130,8 @@ public class EmailAuthFrame extends JFrame {
         backButton.setFont(new Font("Fira Code", Font.BOLD, 17));
         backButton.setBgColor(new Color(0, 0, 0, 40));
         backButton.addActionListener(e -> {
+            if (countdownTimer != null)
+                countdownTimer.stop();
             dispose();
             new LoginFrame(authService).setVisible(true);
         });
@@ -134,28 +145,81 @@ public class EmailAuthFrame extends JFrame {
         });
     }
 
+    // =========================
+    // TIMER METHODS
+    // =========================
+    private void startCountdown() {
+        if (countdownTimer != null && countdownTimer.isRunning()) {
+            countdownTimer.stop();
+        }
+
+        timeLeft = 300;
+        updateTimerLabel();
+
+        countdownTimer = new Timer(1000, e -> {
+            timeLeft--;
+            if (timeLeft <= 0) {
+                countdownTimer.stop();
+                timerLabel.setText("OTP Expired. Please resend.");
+                timerLabel.setForeground(Color.RED);
+                currentOtp = null; // Erase OTP so they can't force it through
+            } else {
+                updateTimerLabel();
+            }
+        });
+
+        countdownTimer.start();
+    }
+
+    private void updateTimerLabel() {
+        int minutes = timeLeft / 60;
+        int seconds = timeLeft % 60;
+        timerLabel.setText(String.format("Time remaining: %02d:%02d", minutes, seconds));
+        timerLabel.setForeground(Color.BLACK);
+    }
+
     private void generateTemporaryCode() {
         currentOtp = String.valueOf(100000 + random.nextInt(900000));
 
         JOptionPane.showMessageDialog(
                 this,
-                "TEMPORARY TEST PIN: " + currentOtp
-                        + "\n\nEmail sending is not connected yet.",
-                "QueueTees Test Mode",
-                JOptionPane.INFORMATION_MESSAGE
-        );
+                "Sending verification code to " + user.getEmail() + "...\nThis may take a few seconds.",
+                "Email Verification",
+                JOptionPane.INFORMATION_MESSAGE);
+
+        new Thread(() -> {
+            EmailService.sendOtpEmail(user.getEmail(), currentOtp);
+
+            SwingUtilities.invokeLater(() -> {
+                startCountdown(); // Start timer exactly when the email is sent
+                JOptionPane.showMessageDialog(
+                        this,
+                        "OTP sent successfully! Please check your inbox.",
+                        "Email Verification",
+                        JOptionPane.INFORMATION_MESSAGE);
+            });
+        }).start();
     }
 
     private void verifyCode() {
         String enteredCode = getEnteredCode();
+
+        if (currentOtp == null) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Your OTP has expired. Please click 'Resend Code'.",
+                    "Verification",
+                    JOptionPane.WARNING_MESSAGE);
+            clearCodeFields();
+            return;
+        }
 
         if (enteredCode.length() != 6) {
             JOptionPane.showMessageDialog(
                     this,
                     "Please enter all six digits.",
                     "Verification",
-                    JOptionPane.WARNING_MESSAGE
-            );
+                    JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -164,22 +228,23 @@ public class EmailAuthFrame extends JFrame {
                     this,
                     "Incorrect verification code.",
                     "Verification",
-                    JOptionPane.ERROR_MESSAGE
-            );
+                    JOptionPane.ERROR_MESSAGE);
             clearCodeFields();
             codeFields[0].requestFocusInWindow();
             return;
         }
 
-        // Temporary in-memory update. This is lost when the program closes.
+        // Stop timer on success
+        if (countdownTimer != null)
+            countdownTimer.stop();
+
         authService.verifyEmail(user);
 
         JOptionPane.showMessageDialog(
                 this,
                 "Email verified successfully!",
                 "QueueTees",
-                JOptionPane.INFORMATION_MESSAGE
-        );
+                JOptionPane.INFORMATION_MESSAGE);
 
         dispose();
         new CustomerFrame(authService).setVisible(true);
