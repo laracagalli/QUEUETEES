@@ -28,7 +28,7 @@ public class AuthService {
             }
 
             Optional<User> optionalUser = userRepository.findByEmailOrUsername(cleanIdentifier);
-            if (optionalUser.isEmpty()) {
+            if (optionalUser == null || optionalUser.isEmpty()) {
                 return invalidCredentials();
             }
 
