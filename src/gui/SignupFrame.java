@@ -4,9 +4,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
-
 import javax.swing.*;
-
 import service.AuthService;
 import service.RegistrationResult;
 
@@ -57,7 +55,7 @@ public class SignupFrame extends JFrame implements ActionListener {
                 super.paintComponent(g);
 
                 ImageIcon img = new ImageIcon(
-                        getClass().getResource("/Gui_Images/signup2.png")
+                        getClass().getResource("/Gui_Images/signup4.png")
                 );
 
                 g.drawImage(
@@ -82,7 +80,7 @@ public class SignupFrame extends JFrame implements ActionListener {
 
         email = new JTextField();
 
-        email.setBounds(33, 129, 390, 30);
+        email.setBounds(33, 123, 390, 30);
         email.setFont(new Font("Fira Code", Font.PLAIN, 14));
         email.setOpaque(false);
         email.setBackground(new Color(0, 0, 0, 0));
@@ -107,7 +105,7 @@ public class SignupFrame extends JFrame implements ActionListener {
 
         fullname = new JTextField();
 
-        fullname.setBounds(33, 195, 390, 30);
+        fullname.setBounds(33, 184, 390, 30);
         fullname.setFont(new Font("Fira Code", Font.PLAIN, 14));
         fullname.setOpaque(false);
         fullname.setBackground(new Color(0, 0, 0, 0));
@@ -132,7 +130,7 @@ public class SignupFrame extends JFrame implements ActionListener {
 
         username = new JTextField();
 
-        username.setBounds(33, 261, 390, 30);
+        username.setBounds(33, 245, 390, 30);
         username.setFont(new Font("Fira Code", Font.PLAIN, 14));
         username.setOpaque(false);
         username.setBackground(new Color(0, 0, 0, 0));
@@ -157,7 +155,7 @@ public class SignupFrame extends JFrame implements ActionListener {
 
         pass = new JPasswordField();
 
-        pass.setBounds(33, 327, 390, 30);
+        pass.setBounds(33, 305, 390, 30);
         pass.setFont(new Font("Fira Code", Font.PLAIN, 14));
         pass.setOpaque(false);
         pass.setBackground(new Color(0, 0, 0, 0));
@@ -181,7 +179,7 @@ public class SignupFrame extends JFrame implements ActionListener {
 
         showpass = new JCheckBox("Show Password");
 
-        showpass.setBounds(33, 360, 150, 20);
+        showpass.setBounds(33, 340, 150, 20);
         showpass.setOpaque(false);
         showpass.setForeground(Color.BLACK);
         showpass.setFocusPainted(false);
@@ -211,7 +209,7 @@ public class SignupFrame extends JFrame implements ActionListener {
 
         address = new JTextField();
 
-        address.setBounds(33, 415, 390, 30);
+        address.setBounds(33, 385, 390, 30);
         address.setFont(new Font("Fira Code", Font.PLAIN, 14));
         address.setOpaque(false);
         address.setBackground(new Color(0, 0, 0, 0));
@@ -237,7 +235,7 @@ public class SignupFrame extends JFrame implements ActionListener {
 
         contactnum = new JTextField();
 
-        contactnum.setBounds(33, 486, 390, 30);
+        contactnum.setBounds(33, 452, 390, 30);
         contactnum.setFont(new Font("Fira Code", Font.PLAIN, 14));
         contactnum.setOpaque(false);
         contactnum.setBackground(new Color(0, 0, 0, 0));
@@ -264,7 +262,7 @@ public class SignupFrame extends JFrame implements ActionListener {
         gender.add(other);
 
 
-        female.setBounds(33, 535, 90, 25);
+        female.setBounds(33, 550, 90, 25);
         female.setOpaque(false);
         female.setForeground(Color.BLACK);
         female.setFocusPainted(false);
@@ -273,7 +271,7 @@ public class SignupFrame extends JFrame implements ActionListener {
         );
 
 
-        male.setBounds(130, 535, 70, 25);
+        male.setBounds(130, 550, 70, 25);
         male.setOpaque(false);
         male.setForeground(Color.BLACK);
         male.setFocusPainted(false);
@@ -282,7 +280,7 @@ public class SignupFrame extends JFrame implements ActionListener {
         );
 
 
-        other.setBounds(210, 535, 80, 25);
+        other.setBounds(210, 550, 80, 25);
         other.setOpaque(false);
         other.setForeground(Color.BLACK);
         other.setFocusPainted(false);
@@ -316,7 +314,7 @@ public class SignupFrame extends JFrame implements ActionListener {
 
         birthday = new JTextField();
 
-        birthday.setBounds(670, 215, 300, 36);
+        birthday.setBounds(33, 510, 300, 30);
         birthday.setFont(
                 new Font("Fira Code", Font.PLAIN, 14)
         );
@@ -333,6 +331,13 @@ public class SignupFrame extends JFrame implements ActionListener {
                         10
                 )
         );
+
+birthday.setOpaque(false);
+
+        birthday.setBackground(
+                new Color(0, 0, 0, 0)
+        );
+
 
         birthday.setDocument(
                 new LimitedDocument(
@@ -359,7 +364,7 @@ public class SignupFrame extends JFrame implements ActionListener {
 
         signupbtn.setBounds(
                 19,
-                590,
+                595,
                 420,
                 40
         );
@@ -418,39 +423,38 @@ public class SignupFrame extends JFrame implements ActionListener {
 
         // Press Enter = Sign Up
         getRootPane().setDefaultButton(signupbtn);
-    }
+}
 
 
     // =========================
     // BUTTON EVENTS
     // =========================
 
-    @Override
-    public void actionPerformed(ActionEvent e) {
+        @Override
+        public void actionPerformed(ActionEvent e) {
 
         if (e.getSource() == cancelbtn) {
 
-            dispose();
+        dispose();
 
-            new LoginFrame(authService)
-                    .setVisible(true);
+                new LoginFrame(authService)
+        .setVisible(true);
 
-            return;
+        return;
         }
 
 
         if (e.getSource() == signupbtn) {
-
-            handleRegistration();
+                handleRegistration();
         }
-    }
+        }
 
 
     // =========================
     // REGISTRATION
     // =========================
 
-    private void handleRegistration() {
+        private void handleRegistration() {
 
         LocalDate parsedBirthday = null;
 
@@ -461,28 +465,28 @@ public class SignupFrame extends JFrame implements ActionListener {
         // Birthday field empty
         if (birthdayText.isEmpty()) {
 
-            showWarning(
-                    "Please enter your birthday."
-            );
+        showWarning(
+                "Please enter your birthday."
+        );
 
-            return;
+        return;
         }
 
 
         // Birthday format validation
         try {
 
-            parsedBirthday =
-                    LocalDate.parse(birthdayText);
+        parsedBirthday =
+                LocalDate.parse(birthdayText);
 
         } catch (DateTimeParseException ex) {
 
-            showWarning(
-                    "Birthday must use YYYY-MM-DD.\n"
-                            + "Example: 2005-08-20."
-            );
+        showWarning(
+                "Birthday must use YYYY-MM-DD.\n"
+                        + "Example: 2005-08-20."
+        );
 
-            return;
+        return;
         }
 
 
@@ -539,7 +543,7 @@ public class SignupFrame extends JFrame implements ActionListener {
                 authService,
                 result.getUser()
         ).setVisible(true);
-    }
+}
 
 
     // =========================

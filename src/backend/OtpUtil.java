@@ -1,3 +1,5 @@
+package backend;
+
 import java.security.SecureRandom;
 
 public class OtpUtil {

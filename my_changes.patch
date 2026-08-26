@@ -1,0 +1,521 @@
+diff --git a/src/Gui_Images/signup.png b/src/Gui_Images/signup.png
+deleted file mode 100644
+index e054ac2..0000000
+Binary files a/src/Gui_Images/signup.png and /dev/null differ
+diff --git a/src/Gui_Images/signup1.png b/src/Gui_Images/signup1.png
+deleted file mode 100644
+index 9d62767..0000000
+Binary files a/src/Gui_Images/signup1.png and /dev/null differ
+diff --git a/src/Gui_Images/signup2.png b/src/Gui_Images/signup2.png
+deleted file mode 100644
+index 45b4ee3..0000000
+Binary files a/src/Gui_Images/signup2.png and /dev/null differ
+diff --git a/src/gui/AdminFrame.java b/src/gui/AdminFrame.java
+index 0c5a1c2..0827c91 100644
+--- a/src/gui/AdminFrame.java
++++ b/src/gui/AdminFrame.java
+@@ -46,4 +46,4 @@ public class AdminFrame extends JFrame {
+         });
+         return button;
+     }
+-}
++}
+\ No newline at end of file
+diff --git a/src/gui/CustomerFrame.java b/src/gui/CustomerFrame.java
+index f47c8cf..c949a9b 100644
+--- a/src/gui/CustomerFrame.java
++++ b/src/gui/CustomerFrame.java
+@@ -37,4 +37,4 @@ public class CustomerFrame extends JFrame {
+         });
+         panel.add(logout);
+     }
+-}
++}
+\ No newline at end of file
+diff --git a/src/gui/EmailAuthFrame.java b/src/gui/EmailAuthFrame.java
+index f5f2015..334f559 100644
+--- a/src/gui/EmailAuthFrame.java
++++ b/src/gui/EmailAuthFrame.java
+@@ -208,4 +208,4 @@ public class EmailAuthFrame extends JFrame {
+             super.insertString(offset, text, attributes);
+         }
+     }
+-}
++}
+\ No newline at end of file
+diff --git a/src/gui/LoginFrame.java b/src/gui/LoginFrame.java
+index 66120a2..8446f25 100644
+--- a/src/gui/LoginFrame.java
++++ b/src/gui/LoginFrame.java
+@@ -2,9 +2,7 @@ package gui;
+ 
+ import java.awt.*;
+ import java.awt.event.*;
+-
+ import javax.swing.*;
+-
+ import model.User;
+ import service.AuthService;
+ import service.AuthStatus;
+diff --git a/src/gui/SignupFrame.java b/src/gui/SignupFrame.java
+index 2ddf02b..8f19168 100644
+--- a/src/gui/SignupFrame.java
++++ b/src/gui/SignupFrame.java
+@@ -4,33 +4,14 @@ import java.awt.*;
+ import java.awt.event.*;
+ import java.time.LocalDate;
+ import java.time.format.DateTimeParseException;
+-
+ import javax.swing.*;
+-<<<<<<< HEAD
+-import javax.swing.text.Document;
+-import javax.swing.text.PlainDocument;
+-=======
+-
+->>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
+ import service.AuthService;
+ import service.RegistrationResult;
+ 
+ public class SignupFrame extends JFrame implements ActionListener {
+ 
+-<<<<<<< HEAD
+-    RoundedButton signupbtn;
+-    OutlineButton cancelbtn;
+-    JTextField username, email, fullname, address, contactnum,birthday;
+-    JPasswordField pass;
+-    JCheckBox showpass;
+-    
+-    JRadioButton female = new JRadioButton("Female");
+-    JRadioButton male = new JRadioButton("Male");
+-    JRadioButton other = new JRadioButton("Other");
+-=======
+     private final RoundedButton signupbtn;
+     private final OutlineButton cancelbtn;
+->>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
+ 
+     private final JTextField email;
+     private final JTextField fullname;
+@@ -72,13 +53,9 @@ public class SignupFrame extends JFrame implements ActionListener {
+             protected void paintComponent(Graphics g) {
+ 
+                 super.paintComponent(g);
+-<<<<<<< HEAD
+-                ImageIcon img = new ImageIcon(getClass().getResource("/Gui_Images/signup3.png"));
+-                g.drawImage(img.getImage(), 0, 0, getWidth(), getHeight(), this);
+-=======
+ 
+                 ImageIcon img = new ImageIcon(
+-                        getClass().getResource("/Gui_Images/signup2.png")
++                        getClass().getResource("/Gui_Images/signup4.png")
+                 );
+ 
+                 g.drawImage(
+@@ -89,52 +66,12 @@ public class SignupFrame extends JFrame implements ActionListener {
+                         getHeight(),
+                         this
+                 );
+->>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
+             }
+         };
+ 
+         backgroundPanel.setLayout(null);
+         setContentPane(backgroundPanel);
+ 
+-<<<<<<< HEAD
+-        female.setBounds(33, 550, 90, 25);
+-        female.setOpaque(false);
+-        female.setForeground(Color.BLACK);
+-        female.setFocusPainted(false);
+-        female.setFont(new Font("Fira Code", Font.PLAIN, 15));
+-        backgroundPanel.add(female);
+-
+-        male.setBounds(130, 550, 70, 25);
+-        male.setOpaque(false);
+-        male.setForeground(Color.BLACK);
+-        male.setFocusPainted(false);
+-        male.setFont(new Font("Fira Code", Font.PLAIN, 15));
+-        backgroundPanel.add(male);
+-
+-        other.setBounds(210, 550, 80, 25);
+-        other.setOpaque(false);
+-        other.setForeground(Color.BLACK);
+-        other.setFocusPainted(false);
+-        other.setFont(new Font("Fira Code", Font.PLAIN, 15));
+-        backgroundPanel.add(other);
+-        
+-        signupbtn = new RoundedButton("Sign Up", Color.BLACK, Color.WHITE);
+-        signupbtn.setBounds(19, 595, 420, 40);
+-        signupbtn.setFont(new Font("Fira Code", Font.BOLD, 18));
+-        signupbtn.setHoverColor(Color.DARK_GRAY);
+-        signupbtn.addActionListener(this);
+-        backgroundPanel.add(signupbtn);
+-
+-        cancelbtn = new OutlineButton("Cancel", Color.BLACK, Color.BLACK);
+-        cancelbtn.setBounds(19, 640, 420, 40);
+-        cancelbtn.setFont(new Font("Fira Code", Font.BOLD, 18));
+-        cancelbtn.setBgColor(new Color(0, 0, 0, 60));
+-        cancelbtn.addActionListener(this);
+-        backgroundPanel.add(cancelbtn);
+-
+-        email = new JTextField();
+-        email.setBounds(33, 123, 390, 30);
+-=======
+ 
+         // =========================
+         // EMAIL
+@@ -143,8 +80,7 @@ public class SignupFrame extends JFrame implements ActionListener {
+ 
+         email = new JTextField();
+ 
+-        email.setBounds(33, 129, 390, 30);
+->>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
++        email.setBounds(33, 124, 390, 30);
+         email.setFont(new Font("Fira Code", Font.PLAIN, 14));
+         email.setOpaque(false);
+         email.setBackground(new Color(0, 0, 0, 0));
+@@ -168,12 +104,8 @@ public class SignupFrame extends JFrame implements ActionListener {
+         // =========================
+ 
+         fullname = new JTextField();
+-<<<<<<< HEAD
+-        fullname.setBounds(33, 184, 390, 30);
+-=======
+ 
+-        fullname.setBounds(33, 195, 390, 30);
+->>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
++        fullname.setBounds(33, 184, 390, 30);
+         fullname.setFont(new Font("Fira Code", Font.PLAIN, 14));
+         fullname.setOpaque(false);
+         fullname.setBackground(new Color(0, 0, 0, 0));
+@@ -197,12 +129,8 @@ public class SignupFrame extends JFrame implements ActionListener {
+         // =========================
+ 
+         username = new JTextField();
+-<<<<<<< HEAD
+-        username.setBounds(33, 245, 390, 30);
+-=======
+ 
+-        username.setBounds(33, 261, 390, 30);
+->>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
++        username.setBounds(33, 244, 390, 30);
+         username.setFont(new Font("Fira Code", Font.PLAIN, 14));
+         username.setOpaque(false);
+         username.setBackground(new Color(0, 0, 0, 0));
+@@ -220,18 +148,14 @@ public class SignupFrame extends JFrame implements ActionListener {
+         backgroundPanel.add(username);
+ 
+ 
+-        // =========================
++        
+         // PASSWORD
+         // Maximum: 16 characters
+-        // =========================
++        
+ 
+         pass = new JPasswordField();
+-<<<<<<< HEAD
+-        pass.setBounds(33, 305, 390, 30);
+-=======
+ 
+-        pass.setBounds(33, 327, 390, 30);
+->>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
++        pass.setBounds(33, 306, 390, 30);
+         pass.setFont(new Font("Fira Code", Font.PLAIN, 14));
+         pass.setOpaque(false);
+         pass.setBackground(new Color(0, 0, 0, 0));
+@@ -248,19 +172,11 @@ public class SignupFrame extends JFrame implements ActionListener {
+ 
+         backgroundPanel.add(pass);
+ 
+-<<<<<<< HEAD
+-        showpass = new JCheckBox ("Show Password");
+-        showpass.setBounds(33, 340, 150, 20);
+-=======
+ 
+-        // =========================
+-        // SHOW PASSWORD
+-        // =========================
+ 
+         showpass = new JCheckBox("Show Password");
+ 
+-        showpass.setBounds(33, 360, 150, 20);
+->>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
++        showpass.setBounds(33, 340, 150, 20);
+         showpass.setOpaque(false);
+         showpass.setForeground(Color.BLACK);
+         showpass.setFocusPainted(false);
+@@ -283,18 +199,14 @@ public class SignupFrame extends JFrame implements ActionListener {
+         backgroundPanel.add(showpass);
+ 
+ 
+-        // =========================
++       
+         // ADDRESS
+         // Maximum: 36 characters
+-        // =========================
++        
+ 
+         address = new JTextField();
+-<<<<<<< HEAD
+-        address.setBounds(33, 385, 390, 30);
+-=======
+ 
+-        address.setBounds(33, 415, 390, 30);
+->>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
++        address.setBounds(33, 385, 390, 30);
+         address.setFont(new Font("Fira Code", Font.PLAIN, 14));
+         address.setOpaque(false);
+         address.setBackground(new Color(0, 0, 0, 0));
+@@ -312,19 +224,15 @@ public class SignupFrame extends JFrame implements ActionListener {
+         backgroundPanel.add(address);
+ 
+ 
+-        // =========================
++        
+         // CONTACT NUMBER
+         // Exactly up to 11 digits
+         // Digits only
+-        // =========================
++        
+ 
+         contactnum = new JTextField();
+-<<<<<<< HEAD
+-        contactnum.setBounds(33, 452, 390, 30);
+-=======
+ 
+-        contactnum.setBounds(33, 486, 390, 30);
+->>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
++        contactnum.setBounds(33, 450, 390, 30);
+         contactnum.setFont(new Font("Fira Code", Font.PLAIN, 14));
+         contactnum.setOpaque(false);
+         contactnum.setBackground(new Color(0, 0, 0, 0));
+@@ -341,57 +249,23 @@ public class SignupFrame extends JFrame implements ActionListener {
+ 
+         backgroundPanel.add(contactnum);
+ 
+-<<<<<<< HEAD
+-        // =========================
+-        // BIRTHDAY
+-        // YYYY-MM-DD
+-        // Maximum: 10 characters
+-        // =========================
+-
+-        //uncomment mo na lang 'to then set the bounds then u
+-        //should be good to leave everything else as is.
+-        //here
+-            birthday = new JTextField();
+-
+-            birthday.setBounds(33, 510, 390, 30);
+-
+-            birthday.setFont(
+-                    new Font("Fira Code", Font.PLAIN, 14)
+-            );
+-
+-            birthday.setOpaque(false);
+-
+-            birthday.setBackground(
+-                    new Color(0, 0, 0, 0)
+-            );
+-
+-            birthday.setBorder(
+-                    BorderFactory.createEmptyBorder()
+-            );
+-
+-            birthday.setDocument(
+-                    new Document(
+-                            10,
+-                            false,
+-                            "Birthday",
+-                            this::clearPassword
+-                    )
+-            );
+-
+-            backgroundPanel.add(birthday);
+-=======
+->>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
++        birthday = new JTextField();
++        birthday.setBounds(25, 510, 390, 30);
++        birthday.setFont(new Font("Fira Code", Font.PLAIN, 14));
++        birthday.setBackground(new Color(245, 245, 245));
++        birthday.setOpaque(false);
++        birthday.setBackground(new Color(0, 0, 0, 0));
++        birthday.setBorder(BorderFactory.createEmptyBorder(5,10,5,10));
++        birthday.setDocument(new LimitedDocument(10,false,"Birthday",this::clearPassword));
++        backgroundPanel.add(birthday);
+ 
+-        // =========================
+-        // GENDER
+-        // =========================
+ 
+         gender.add(female);
+         gender.add(male);
+         gender.add(other);
+ 
+ 
+-        female.setBounds(33, 535, 90, 25);
++        female.setBounds(33, 550, 90, 25);
+         female.setOpaque(false);
+         female.setForeground(Color.BLACK);
+         female.setFocusPainted(false);
+@@ -400,7 +274,7 @@ public class SignupFrame extends JFrame implements ActionListener {
+         );
+ 
+ 
+-        male.setBounds(130, 535, 70, 25);
++        male.setBounds(130, 550, 70, 25);
+         male.setOpaque(false);
+         male.setForeground(Color.BLACK);
+         male.setFocusPainted(false);
+@@ -409,7 +283,7 @@ public class SignupFrame extends JFrame implements ActionListener {
+         );
+ 
+ 
+-        other.setBounds(210, 535, 80, 25);
++        other.setBounds(210, 550, 80, 25);
+         other.setOpaque(false);
+         other.setForeground(Color.BLACK);
+         other.setFocusPainted(false);
+@@ -429,48 +303,17 @@ public class SignupFrame extends JFrame implements ActionListener {
+         // Maximum: 10 characters
+         // =========================
+ 
+-        JLabel birthdayLabel =
+-                new JLabel("Birthday (YYYY-MM-DD):");
+-
+-        birthdayLabel.setBounds(670, 185, 250, 25);
+-        birthdayLabel.setForeground(Color.WHITE);
+-        birthdayLabel.setFont(
+-                new Font("Fira Code", Font.BOLD, 15)
+-        );
+-
+-        backgroundPanel.add(birthdayLabel);
+-
+-
+-        birthday = new JTextField();
+-
+-        birthday.setBounds(670, 215, 300, 36);
+-        birthday.setFont(
+-                new Font("Fira Code", Font.PLAIN, 14)
+-        );
++        // JLabel birthdayLabel =
++        //         new JLabel("Birthday (YYYY-MM-DD):");
+ 
+-        birthday.setBackground(
+-                new Color(245, 245, 245)
+-        );
++        // birthdayLabel.setBounds(670, 185, 250, 25);
++        // birthdayLabel.setForeground(Color.WHITE);
++        // birthdayLabel.setFont(
++        //         new Font("Fira Code", Font.BOLD, 15)
++        // );
+ 
+-        birthday.setBorder(
+-                BorderFactory.createEmptyBorder(
+-                        5,
+-                        10,
+-                        5,
+-                        10
+-                )
+-        );
++        // backgroundPanel.add(birthdayLabel);
+ 
+-        birthday.setDocument(
+-                new LimitedDocument(
+-                        10,
+-                        false,
+-                        "Birthday",
+-                        this::clearPassword
+-                )
+-        );
+-
+-        backgroundPanel.add(birthday);
+ 
+ 
+         // =========================
+@@ -486,7 +329,7 @@ public class SignupFrame extends JFrame implements ActionListener {
+ 
+         signupbtn.setBounds(
+                 19,
+-                590,
++                595,
+                 420,
+                 40
+         );
+diff --git a/src/gui/StaffFrame.java b/src/gui/StaffFrame.java
+index 8e0dba6..6ee2061 100644
+--- a/src/gui/StaffFrame.java
++++ b/src/gui/StaffFrame.java
+@@ -37,4 +37,4 @@ public class StaffFrame extends JFrame {
+         });
+         panel.add(logout);
+     }
+-}
++}
+\ No newline at end of file
+diff --git a/src/gui/loginFrame.java b/src/gui/loginFrame.java
+index 3068cde..8446f25 100644
+--- a/src/gui/loginFrame.java
++++ b/src/gui/loginFrame.java
+@@ -3,7 +3,6 @@ package gui;
+ import java.awt.*;
+ import java.awt.event.*;
+ import javax.swing.*;
+-
+ import model.User;
+ import service.AuthService;
+ import service.AuthStatus;
+@@ -31,6 +30,7 @@ public class LoginFrame extends JFrame implements ActionListener {
+         setLocationRelativeTo(null);
+         setResizable(false);
+ 
++
+         // =========================
+         // BACKGROUND
+         // =========================
+@@ -41,6 +41,7 @@ public class LoginFrame extends JFrame implements ActionListener {
+             protected void paintComponent(Graphics g) {
+ 
+                 super.paintComponent(g);
++
+                 ImageIcon img = new ImageIcon(
+                         getClass().getResource(
+                                 "/Gui_Images/landpage6.png"
+@@ -61,6 +62,7 @@ public class LoginFrame extends JFrame implements ActionListener {
+         backgroundPanel.setLayout(null);
+         setContentPane(backgroundPanel);
+ 
++
+         // =========================
+         // USERNAME / EMAIL
+         // Maximum: 36 characters
+@@ -156,6 +158,7 @@ public class LoginFrame extends JFrame implements ActionListener {
+ 
+         backgroundPanel.add(pass);
+ 
++
+         // =========================
+         // SHOW PASSWORD
+         // =========================
+@@ -199,6 +202,7 @@ public class LoginFrame extends JFrame implements ActionListener {
+                 pass.setEchoChar('•');
+             }
+         });
++
+         backgroundPanel.add(showpass);
+ 
+ 
+@@ -365,6 +369,7 @@ public class LoginFrame extends JFrame implements ActionListener {
+ 
+     @Override
+     public void actionPerformed(ActionEvent e) {
++
+         if (e.getSource() == logbtn) {
+ 
+             handleLogin();
+@@ -538,4 +543,4 @@ public class LoginFrame extends JFrame implements ActionListener {
+ 
+         pass.setEchoChar('•');
+     }
+-}
++}
+\ No newline at end of file

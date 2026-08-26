@@ -1,0 +1,2959 @@
+diff --git a/src/Gui_Images/emailauth.png b/src/Gui_Images/emailauth.png
+new file mode 100644
+index 0000000..caaf441
+Binary files /dev/null and b/src/Gui_Images/emailauth.png differ
+diff --git a/src/gui/AdminFrame.java b/src/gui/AdminFrame.java
+index cdf32ea..0c5a1c2 100644
+--- a/src/gui/AdminFrame.java
++++ b/src/gui/AdminFrame.java
+@@ -1,21 +1,27 @@
+ package gui;
++
+ import java.awt.*;
+-import java.awt.event.*;
+ import javax.swing.*;
+ import service.AuthService;
+-import service.LoginResult;
+-import javax.swing.text.PlainDocument;
+-public class AdminFrame extends JFrame implements ActionListener {
+-    
+-    AdminFrame (authService authService) {
+-        setTitle("Admin Panel");
++
++public class AdminFrame extends JFrame {
++
++    public AdminFrame(AuthService authService) {
++        setTitle("Admin Dashboard");
+         setDefaultCloseOperation(EXIT_ON_CLOSE);
+         setSize(1100, 733);
+         setLocationRelativeTo(null);
+         setResizable(false);
+ 
+-        // bg
+-        JPanel backgroundPanel = new JPanel() {
++        JPanel panel = dashboardPanel("ADMIN DASHBOARD");
++        setContentPane(panel);
++
++        JButton logout = logoutButton(authService);
++        panel.add(logout);
++    }
++
++    private JPanel dashboardPanel(String title) {
++        JPanel panel = new JPanel(null) {
+             @Override
+             protected void paintComponent(Graphics g) {
+                 super.paintComponent(g);
+@@ -23,15 +29,21 @@ public class AdminFrame extends JFrame implements ActionListener {
+                 g.drawImage(img.getImage(), 0, 0, getWidth(), getHeight(), this);
+             }
+         };
+-        backgroundPanel.setLayout(null);
+-        setContentPane(backgroundPanel);
+-
+-
+-
++        JLabel label = new JLabel(title, SwingConstants.CENTER);
++        label.setBounds(300, 250, 500, 60);
++        label.setFont(new Font("Fira Code", Font.BOLD, 30));
++        panel.add(label);
++        return panel;
+     }
+ 
+-    @Override
+-    public void actionPerformed(ActionEvent e) {
+-        
++    private JButton logoutButton(AuthService authService) {
++        RoundedButton button = new RoundedButton("Log Out", Color.BLACK, Color.WHITE);
++        button.setBounds(400, 350, 300, 42);
++        button.setHoverColor(Color.DARK_GRAY);
++        button.addActionListener(e -> {
++            dispose();
++            new LoginFrame(authService).setVisible(true);
++        });
++        return button;
+     }
+ }
+diff --git a/src/gui/CustomerFrame.java b/src/gui/CustomerFrame.java
+index 9f910b0..f47c8cf 100644
+--- a/src/gui/CustomerFrame.java
++++ b/src/gui/CustomerFrame.java
+@@ -1,22 +1,19 @@
+ package gui;
+ 
+ import java.awt.*;
+-import java.awt.event.*;
+ import javax.swing.*;
+ import service.AuthService;
+-import service.LoginResult;
+-import javax.swing.text.PlainDocument;
+-public class CustomerFrame extends JFrame implements ActionListener {
+-    
+-    CustomerFrame (authService authService) {
+-        setTitle("Customer Panel");
++
++public class CustomerFrame extends JFrame {
++
++    public CustomerFrame(AuthService authService) {
++        setTitle("Customer Dashboard");
+         setDefaultCloseOperation(EXIT_ON_CLOSE);
+         setSize(1100, 733);
+         setLocationRelativeTo(null);
+         setResizable(false);
+ 
+-        // bg
+-        JPanel backgroundPanel = new JPanel() {
++        JPanel panel = new JPanel(null) {
+             @Override
+             protected void paintComponent(Graphics g) {
+                 super.paintComponent(g);
+@@ -24,15 +21,20 @@ public class CustomerFrame extends JFrame implements ActionListener {
+                 g.drawImage(img.getImage(), 0, 0, getWidth(), getHeight(), this);
+             }
+         };
+-        backgroundPanel.setLayout(null);
+-        setContentPane(backgroundPanel);
+-
++        setContentPane(panel);
+ 
++        JLabel label = new JLabel("CUSTOMER DASHBOARD", SwingConstants.CENTER);
++        label.setBounds(300, 250, 500, 60);
++        label.setFont(new Font("Fira Code", Font.BOLD, 30));
++        panel.add(label);
+ 
++        RoundedButton logout = new RoundedButton("Log Out", Color.BLACK, Color.WHITE);
++        logout.setBounds(400, 350, 300, 42);
++        logout.setHoverColor(Color.DARK_GRAY);
++        logout.addActionListener(e -> {
++            dispose();
++            new LoginFrame(authService).setVisible(true);
++        });
++        panel.add(logout);
+     }
+-
+-    @Override
+-    public void actionPerformed(ActionEvent e) {
+-        
+-    }
+-}
+\ No newline at end of file
++}
+diff --git a/src/gui/EmailAuthFrame.java b/src/gui/EmailAuthFrame.java
+new file mode 100644
+index 0000000..f5f2015
+--- /dev/null
++++ b/src/gui/EmailAuthFrame.java
+@@ -0,0 +1,211 @@
++package gui;
++
++import java.awt.*;
++import java.awt.event.*;
++import java.security.SecureRandom;
++import javax.swing.*;
++import javax.swing.text.AttributeSet;
++import javax.swing.text.BadLocationException;
++import javax.swing.text.PlainDocument;
++import model.User;
++import service.AuthService;
++
++public class EmailAuthFrame extends JFrame {
++
++    private final AuthService authService;
++    private final User user;
++    private final JTextField[] codeFields = new JTextField[6];
++    private final SecureRandom random = new SecureRandom();
++    private String currentOtp;
++
++    public EmailAuthFrame(AuthService authService, User user) {
++        this.authService = authService;
++        this.user = user;
++
++        setTitle("Email Authentication");
++        setDefaultCloseOperation(EXIT_ON_CLOSE);
++        setSize(1100, 733);
++        setLocationRelativeTo(null);
++        setResizable(false);
++
++        JPanel backgroundPanel = new JPanel() {
++            @Override
++            protected void paintComponent(Graphics g) {
++                super.paintComponent(g);
++                java.net.URL imageUrl = getClass().getResource("/Gui_Images/emailauth.png");
++                if (imageUrl != null) {
++                    ImageIcon image = new ImageIcon(imageUrl);
++                    g.drawImage(image.getImage(), 0, 0, getWidth(), getHeight(), this);
++                }
++            }
++        };
++        backgroundPanel.setLayout(null);
++        setContentPane(backgroundPanel);
++
++        int startX = 340;
++        int y = 315;
++        int fieldWidth = 54;
++        int fieldHeight = 55;
++        int gap = 10;
++
++        for (int i = 0; i < codeFields.length; i++) {
++            final int index = i;
++            JTextField field = new JTextField();
++            field.setBounds(startX + i * (fieldWidth + gap), y, fieldWidth, fieldHeight);
++            field.setFont(new Font("Fira Code", Font.BOLD, 26));
++            field.setHorizontalAlignment(JTextField.CENTER);
++            field.setBackground(Color.WHITE);
++            field.setForeground(Color.BLACK);
++            field.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2, true));
++            field.setDocument(new OneDigitDocument());
++
++            field.addKeyListener(new KeyAdapter() {
++                @Override
++                public void keyReleased(KeyEvent e) {
++                    if (!field.getText().isEmpty() && index < codeFields.length - 1) {
++                        codeFields[index + 1].requestFocusInWindow();
++                    } else if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE
++                            && field.getText().isEmpty() && index > 0) {
++                        codeFields[index - 1].requestFocusInWindow();
++                    }
++                }
++            });
++
++            codeFields[i] = field;
++            backgroundPanel.add(field);
++        }
++
++        // JLabel emailLabel = new JLabel("Verification for: " + user.getEmail(), SwingConstants.CENTER);
++        // emailLabel.setBounds(330, 430, 440, 25);
++        // emailLabel.setForeground(Color.WHITE);
++        // emailLabel.setFont(new Font("Fira Code", Font.PLAIN, 13));
++        // backgroundPanel.add(emailLabel);
++
++        // Temporary clickable HTML link. No email backend is used yet.
++        JLabel resendCode = new JLabel("<html><u>Resend Code</u></html>", SwingConstants.CENTER);
++        resendCode.setBounds(370, 445, 320, 30);
++        resendCode.setForeground(Color.WHITE);
++        resendCode.setFont(new Font("Fira Code", Font.PLAIN, 13));
++        resendCode.setCursor(new Cursor(Cursor.HAND_CURSOR));
++        resendCode.addMouseListener(new MouseAdapter() {
++            @Override
++            public void mouseClicked(MouseEvent e) {
++                generateTemporaryCode();
++                clearCodeFields();
++                codeFields[0].requestFocusInWindow();
++            }
++
++            @Override
++            public void mouseEntered(MouseEvent e) {
++                resendCode.setForeground(Color.LIGHT_GRAY);
++            }
++
++            @Override
++            public void mouseExited(MouseEvent e) {
++                resendCode.setForeground(Color.WHITE);
++            }
++        });
++        backgroundPanel.add(resendCode);
++
++        RoundedButton enterButton = new RoundedButton("Enter", Color.WHITE, Color.BLACK);
++        enterButton.setBounds(370, 500, 320, 45);
++        enterButton.setFont(new Font("Fira Code", Font.BOLD, 17));
++        enterButton.setHoverColor(new Color(210, 210, 210));
++        enterButton.addActionListener(e -> verifyCode());
++        backgroundPanel.add(enterButton);
++
++        OutlineButton backButton = new OutlineButton("Back", Color.WHITE, Color.WHITE);
++        backButton.setBounds(370, 555, 320, 42);
++        backButton.setFont(new Font("Fira Code", Font.BOLD, 17));
++        backButton.setBgColor(new Color(255, 255, 255, 35));
++        backButton.addActionListener(e -> {
++            dispose();
++            new LoginFrame(authService).setVisible(true);
++        });
++        backgroundPanel.add(backButton);
++
++        getRootPane().setDefaultButton(enterButton);
++
++        SwingUtilities.invokeLater(() -> {
++            generateTemporaryCode();
++            codeFields[0].requestFocusInWindow();
++        });
++    }
++
++    private void generateTemporaryCode() {
++        currentOtp = String.valueOf(100000 + random.nextInt(900000));
++
++        JOptionPane.showMessageDialog(
++                this,
++                "TEMPORARY TEST PIN: " + currentOtp
++                        + "\n\nEmail sending is not connected yet.",
++                "QueueTees Test Mode",
++                JOptionPane.INFORMATION_MESSAGE
++        );
++    }
++
++    private void verifyCode() {
++        String enteredCode = getEnteredCode();
++
++        if (enteredCode.length() != 6) {
++            JOptionPane.showMessageDialog(
++                    this,
++                    "Please enter all six digits.",
++                    "Verification",
++                    JOptionPane.WARNING_MESSAGE
++            );
++            return;
++        }
++
++        if (!enteredCode.equals(currentOtp)) {
++            JOptionPane.showMessageDialog(
++                    this,
++                    "Incorrect verification code.",
++                    "Verification",
++                    JOptionPane.ERROR_MESSAGE
++            );
++            clearCodeFields();
++            codeFields[0].requestFocusInWindow();
++            return;
++        }
++
++        // Temporary in-memory update. This is lost when the program closes.
++        authService.verifyEmail(user);
++
++        JOptionPane.showMessageDialog(
++                this,
++                "Email verified successfully!",
++                "QueueTees",
++                JOptionPane.INFORMATION_MESSAGE
++        );
++
++        dispose();
++        new CustomerFrame(authService).setVisible(true);
++    }
++
++    private String getEnteredCode() {
++        StringBuilder builder = new StringBuilder();
++        for (JTextField field : codeFields) {
++            builder.append(field.getText().trim());
++        }
++        return builder.toString();
++    }
++
++    private void clearCodeFields() {
++        for (JTextField field : codeFields) {
++            field.setText("");
++        }
++    }
++
++    private static class OneDigitDocument extends PlainDocument {
++        @Override
++        public void insertString(int offset, String text, AttributeSet attributes)
++                throws BadLocationException {
++            if (text == null || !text.matches("\\d") || getLength() >= 1) {
++                Toolkit.getDefaultToolkit().beep();
++                return;
++            }
++            super.insertString(offset, text, attributes);
++        }
++    }
++}
+diff --git a/src/gui/LimitedDocument.java b/src/gui/LimitedDocument.java
+new file mode 100644
+index 0000000..f2f4cba
+--- /dev/null
++++ b/src/gui/LimitedDocument.java
+@@ -0,0 +1,90 @@
++package gui;
++
++import java.awt.Toolkit;
++import javax.swing.JOptionPane;
++import javax.swing.SwingUtilities;
++import javax.swing.text.AttributeSet;
++import javax.swing.text.BadLocationException;
++import javax.swing.text.PlainDocument;
++
++public class LimitedDocument extends PlainDocument {
++
++    private final int maxLength;
++    private final boolean digitsOnly;
++    private final String fieldName;
++    private final Runnable afterWarning;
++
++    public LimitedDocument(
++            int maxLength,
++            boolean digitsOnly,
++            String fieldName,
++            Runnable afterWarning) {
++
++        this.maxLength = maxLength;
++        this.digitsOnly = digitsOnly;
++        this.fieldName = fieldName;
++        this.afterWarning = afterWarning;
++    }
++
++    @Override
++    public void insertString(
++            int offset,
++            String text,
++            AttributeSet attributes)
++            throws BadLocationException {
++
++        if (text == null) {
++            return;
++        }
++
++        // Numbers only
++        if (digitsOnly && !text.matches("\\d+")) {
++
++            warning(
++                    "Only numbers are allowed in "
++                    + fieldName + "."
++            );
++
++            return;
++        }
++
++        // Character limit
++        if (getLength() + text.length() > maxLength) {
++
++            String unit;
++
++            if (digitsOnly) {
++                unit = " digits.";
++            } else {
++                unit = " characters.";
++            }
++
++            warning(
++                    fieldName
++                    + " can only contain up to "
++                    + maxLength
++                    + unit
++            );
++
++            return;
++        }
++
++        super.insertString(offset, text, attributes);
++    }
++
++    private void warning(String message) {
++
++        Toolkit.getDefaultToolkit().beep();
++
++        JOptionPane.showMessageDialog(
++                null,
++                message,
++                "Input Warning",
++                JOptionPane.WARNING_MESSAGE
++        );
++
++        if (afterWarning != null) {
++            SwingUtilities.invokeLater(afterWarning);
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/src/gui/LoginFrame.java b/src/gui/LoginFrame.java
+index 12ad100..66120a2 100644
+--- a/src/gui/LoginFrame.java
++++ b/src/gui/LoginFrame.java
+@@ -2,86 +2,547 @@ package gui;
+ 
+ import java.awt.*;
+ import java.awt.event.*;
++
+ import javax.swing.*;
+ 
++import model.User;
++import service.AuthService;
++import service.AuthStatus;
++import service.LoginResult;
+ 
+ public class LoginFrame extends JFrame implements ActionListener {
+ 
+-    RoundedButton logButton, signButton;
+-    JTextField username;
+-    JPasswordField pass;
+-    JCheckBox showPass;
++    private final RoundedButton logbtn;
++    private final OutlineButton signbtn;
++
++    private final JTextField username;
++    private final JPasswordField pass;
++    private final JCheckBox showpass;
++
++    private final AuthService authService;
+ 
+ 
++    public LoginFrame(AuthService authService) {
+ 
+-    public LoginFrame() {
+-        setTitle("login and sign up");
++        this.authService = authService;
++
++        setTitle("Log In");
+         setDefaultCloseOperation(EXIT_ON_CLOSE);
+         setSize(1100, 733);
+         setLocationRelativeTo(null);
+         setResizable(false);
+ 
+-        // Background image panel
++
++        // =========================
++        // BACKGROUND
++        // =========================
++
+         JPanel backgroundPanel = new JPanel() {
++
+             @Override
+             protected void paintComponent(Graphics g) {
++
+                 super.paintComponent(g);
+-                ImageIcon img = new ImageIcon(getClass().getResource("/Gui_Images/landpage5.png"));
+-                g.drawImage(img.getImage(), 0, 0, getWidth(), getHeight(), this);
++
++                ImageIcon img = new ImageIcon(
++                        getClass().getResource(
++                                "/Gui_Images/landpage6.png"
++                        )
++                );
++
++                g.drawImage(
++                        img.getImage(),
++                        0,
++                        0,
++                        getWidth(),
++                        getHeight(),
++                        this
++                );
+             }
+         };
++
+         backgroundPanel.setLayout(null);
+         setContentPane(backgroundPanel);
+ 
+-        logButton = new RoundedButton("Log In", Color.WHITE, Color.BLACK);
+-        logButton.setBounds(334, 490, 390, 40);
+-        logButton.setFont(new Font("Fira Code", Font.BOLD, 18));
+-        logButton.setBackground(Color.WHITE);
+-        backgroundPanel.add(logButton);
+-
+-        signButton = new RoundedButton("Sign Up",new Color(30, 30, 30), Color.WHITE);
+-        signButton.setBounds(334, 540, 390, 40);
+-        signButton.setFont(new Font("Fira Code", Font.BOLD, 18));
+-        backgroundPanel.add(signButton);
+ 
++        // =========================
++        // USERNAME / EMAIL
++        // Maximum: 36 characters
++        // =========================
+ 
+         username = new JTextField();
+-        username.setBounds(342, 291, 370, 30);
+-        username.setFont(new Font("Fira Code", Font.PLAIN, 15));
++
++        username.setBounds(
++                342,
++                291,
++                370,
++                30
++        );
++
++        username.setFont(
++                new Font(
++                        "Fira Code",
++                        Font.PLAIN,
++                        15
++                )
++        );
++
+         username.setOpaque(false);
+-        username.setBackground(new Color(0, 0, 0, 0));
++
++        username.setBackground(
++                new Color(0, 0, 0, 0)
++        );
++
+         username.setForeground(Color.BLACK);
+-        username.setBorder(BorderFactory.createEmptyBorder());
++
++        username.setBorder(
++                BorderFactory.createEmptyBorder()
++        );
++
++
++        // Character limit
++        username.setDocument(
++                new LimitedDocument(
++                        36,
++                        false,
++                        "Username or email",
++                        this::clearPassword
++                )
++        );
++
+         backgroundPanel.add(username);
+ 
++
++        // =========================
++        // PASSWORD
++        // Maximum: 16 characters
++        // =========================
++
+         pass = new JPasswordField();
+-        pass.setBounds(342, 368, 370, 30);
+-        pass.setFont(new Font("Fira Code", Font.PLAIN, 15));
++
++        pass.setBounds(
++                342,
++                368,
++                370,
++                30
++        );
++
++        pass.setFont(
++                new Font(
++                        "Fira Code",
++                        Font.PLAIN,
++                        15
++                )
++        );
++
+         pass.setOpaque(false);
+-        pass.setBackground(new Color(0, 0, 0, 0));
++
++        pass.setBackground(
++                new Color(0, 0, 0, 0)
++        );
++
+         pass.setForeground(Color.BLACK);
+-        pass.setBorder(BorderFactory.createEmptyBorder());
++
++        pass.setBorder(
++                BorderFactory.createEmptyBorder()
++        );
++
++
++        // Character limit
++        pass.setDocument(
++                new LimitedDocument(
++                        16,
++                        false,
++                        "Password",
++                        this::clearPassword
++                )
++        );
++
+         backgroundPanel.add(pass);
+ 
+-        showPass = new JCheckBox("Show Password");
+-        showPass.setBounds(342, 410, 150, 20);
+-        showPass.setOpaque(false);
+-        showPass.setForeground(Color.BLACK);
+-        showPass.setFont(new Font("Fira Code", Font.PLAIN, 12));
+-        showPass.setFocusPainted(false);
+-        showPass.addActionListener(e -> {
+-            if (showPass.isSelected()) {
+-                pass.setEchoChar((char) 0);
++
++        // =========================
++        // SHOW PASSWORD
++        // =========================
++
++        showpass =
++                new JCheckBox(
++                        "Show Password"
++                );
++
++        showpass.setBounds(
++                342,
++                410,
++                150,
++                20
++        );
++
++        showpass.setOpaque(false);
++        showpass.setForeground(Color.BLACK);
++
++        showpass.setFont(
++                new Font(
++                        "Fira Code",
++                        Font.PLAIN,
++                        12
++                )
++        );
++
++        showpass.setFocusPainted(false);
++
++
++        showpass.addActionListener(e -> {
++
++            if (showpass.isSelected()) {
++
++                pass.setEchoChar(
++                        (char) 0
++                );
++
+             } else {
++
+                 pass.setEchoChar('•');
+             }
+         });
+-        backgroundPanel.add(showPass);
+ 
++        backgroundPanel.add(showpass);
++
++
++        // =========================
++        // LOG IN BUTTON
++        // =========================
++
++        logbtn =
++                new RoundedButton(
++                        "Log In",
++                        Color.WHITE,
++                        Color.BLACK
++                );
++
++        logbtn.setBounds(
++                334,
++                490,
++                390,
++                40
++        );
++
++        logbtn.setFont(
++                new Font(
++                        "Fira Code",
++                        Font.BOLD,
++                        18
++                )
++        );
++
++        logbtn.setBackground(Color.WHITE);
++
++        logbtn.setHoverColor(
++                new Color(
++                        220,
++                        220,
++                        220
++                )
++        );
++
++        logbtn.addActionListener(this);
++
++        backgroundPanel.add(logbtn);
++
++
++        // =========================
++        // SIGN UP BUTTON
++        // =========================
++
++        signbtn =
++                new OutlineButton(
++                        "Sign Up",
++                        Color.WHITE,
++                        Color.WHITE
++                );
++
++        signbtn.setBounds(
++                334,
++                540,
++                390,
++                40
++        );
++
++        signbtn.setFont(
++                new Font(
++                        "Fira Code",
++                        Font.BOLD,
++                        18
++                )
++        );
++
++        signbtn.setBgColor(
++                Color.DARK_GRAY
++        );
++
++        signbtn.addActionListener(this);
++
++        backgroundPanel.add(signbtn);
++
++
++        // =========================
++        // FORGOT PASSWORD
++        // Temporary only
++        // =========================
++
++        JLabel forgotPass =
++                new JLabel(
++                        "<html><u>Forgot Password?</u></html>"
++                );
++
++        forgotPass.setBounds(
++                478,
++                590,
++                150,
++                20
++        );
++
++        forgotPass.setForeground(
++                Color.WHITE
++        );
++
++        forgotPass.setFont(
++                new Font(
++                        "Fira Code",
++                        Font.PLAIN,
++                        12
++                )
++        );
++
++        forgotPass.setCursor(
++                new Cursor(
++                        Cursor.HAND_CURSOR
++                )
++        );
++
++
++        forgotPass.addMouseListener(
++                new MouseAdapter() {
++
++                    @Override
++                    public void mouseClicked(
++                            MouseEvent e) {
++
++                        JOptionPane.showMessageDialog(
++                                LoginFrame.this,
++                                "Password reset is not available yet.",
++                                "QueueTees",
++                                JOptionPane.INFORMATION_MESSAGE
++                        );
++                    }
++
++
++                    @Override
++                    public void mouseEntered(
++                            MouseEvent e) {
++
++                        forgotPass.setForeground(
++                                Color.LIGHT_GRAY
++                        );
++                    }
++
++
++                    @Override
++                    public void mouseExited(
++                            MouseEvent e) {
++
++                        forgotPass.setForeground(
++                                Color.WHITE
++                        );
++                    }
++                }
++        );
++
++        backgroundPanel.add(forgotPass);
++
++
++        // Pressing ENTER logs in
++        getRootPane().setDefaultButton(logbtn);
+     }
+ 
++
++    // =========================
++    // BUTTON EVENTS
++    // =========================
++
+     @Override
+     public void actionPerformed(ActionEvent e) {
+-        
++
++        if (e.getSource() == logbtn) {
++
++            handleLogin();
++
++        } else if (e.getSource() == signbtn) {
++
++            dispose();
++
++            new SignupFrame(
++                    authService
++            ).setVisible(true);
++        }
++    }
++
++
++    // =========================
++    // LOGIN
++    // =========================
++
++    private void handleLogin() {
++
++        LoginResult result =
++                authService.login(
++                        username.getText(),
++                        pass.getPassword()
++                );
++
++
++        // Password should disappear
++        // after every login attempt
++        clearPassword();
++
++
++        // =========================
++        // UNVERIFIED CUSTOMER
++        // =========================
++
++        if (result.getStatus()
++                == AuthStatus.EMAIL_NOT_VERIFIED
++                && result.getUser() != null) {
++
++            dispose();
++
++            new EmailAuthFrame(
++                    authService,
++                    result.getUser()
++            ).setVisible(true);
++
++            return;
++        }
++
++
++        // =========================
++        // FAILED LOGIN
++        // =========================
++
++        if (!result.isSuccess()) {
++
++            Toolkit
++                    .getDefaultToolkit()
++                    .beep();
++
++
++            JOptionPane.showMessageDialog(
++                    this,
++                    result.getMessage(),
++                    "Login Warning",
++                    JOptionPane.WARNING_MESSAGE
++            );
++
++            return;
++        }
++
++
++        // =========================
++        // SUCCESSFUL LOGIN
++        // =========================
++
++        openDashboard(
++                result.getUser()
++        );
++    }
++
++
++    // =========================
++    // ROLE NAVIGATION
++    // =========================
++
++    private void openDashboard(User user) {
++
++        if (user == null) {
++
++            Toolkit
++                    .getDefaultToolkit()
++                    .beep();
++
++            JOptionPane.showMessageDialog(
++                    this,
++                    "Unable to load account information.",
++                    "Login Warning",
++                    JOptionPane.WARNING_MESSAGE
++            );
++
++            return;
++        }
++
++
++        dispose();
++
++
++        switch (user.getRole()) {
++
++            case ADMIN:
++
++                new AdminFrame(
++                        authService
++                ).setVisible(true);
++
++                break;
++
++
++            case STAFF:
++
++                new StaffFrame(
++                        authService
++                ).setVisible(true);
++
++                break;
++
++
++            case CUSTOMER:
++
++                new CustomerFrame(
++                        authService
++                ).setVisible(true);
++
++                break;
++
++
++            default:
++
++                Toolkit
++                        .getDefaultToolkit()
++                        .beep();
++
++                JOptionPane.showMessageDialog(
++                        this,
++                        "Unknown account role.",
++                        "Login Warning",
++                        JOptionPane.WARNING_MESSAGE
++                );
++
++                new LoginFrame(
++                        authService
++                ).setVisible(true);
++
++                break;
++        }
++    }
++
++
++    // =========================
++    // CLEAR PASSWORD
++    // =========================
++
++    private void clearPassword() {
++
++        pass.setText("");
++
++        showpass.setSelected(false);
++
++        pass.setEchoChar('•');
+     }
+-}
++}
+\ No newline at end of file
+diff --git a/src/gui/SignupFrame.java b/src/gui/SignupFrame.java
+index d9cce86..2ddf02b 100644
+--- a/src/gui/SignupFrame.java
++++ b/src/gui/SignupFrame.java
+@@ -1,13 +1,23 @@
+ package gui;
++
+ import java.awt.*;
+ import java.awt.event.*;
++import java.time.LocalDate;
++import java.time.format.DateTimeParseException;
++
+ import javax.swing.*;
++<<<<<<< HEAD
+ import javax.swing.text.Document;
+ import javax.swing.text.PlainDocument;
++=======
++
++>>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
+ import service.AuthService;
++import service.RegistrationResult;
+ 
+ public class SignupFrame extends JFrame implements ActionListener {
+ 
++<<<<<<< HEAD
+     RoundedButton signupbtn;
+     OutlineButton cancelbtn;
+     JTextField username, email, fullname, address, contactnum,birthday;
+@@ -17,35 +27,76 @@ public class SignupFrame extends JFrame implements ActionListener {
+     JRadioButton female = new JRadioButton("Female");
+     JRadioButton male = new JRadioButton("Male");
+     JRadioButton other = new JRadioButton("Other");
++=======
++    private final RoundedButton signupbtn;
++    private final OutlineButton cancelbtn;
++>>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
++
++    private final JTextField email;
++    private final JTextField fullname;
++    private final JTextField username;
++    private final JTextField address;
++    private final JTextField contactnum;
++    private final JTextField birthday;
+ 
+-    ButtonGroup gender = new ButtonGroup();
++    private final JPasswordField pass;
++    private final JCheckBox showpass;
++
++    private final JRadioButton female = new JRadioButton("Female");
++    private final JRadioButton male = new JRadioButton("Male");
++    private final JRadioButton other = new JRadioButton("Other");
++
++    private final ButtonGroup gender = new ButtonGroup();
+ 
+     private final AuthService authService;
+ 
++
+     public SignupFrame(AuthService authService) {
++
+         this.authService = authService;
+ 
+-        gender.add(female);
+-        gender.add(male);
+-        gender.add(other);
+         setTitle("Sign Up");
+         setDefaultCloseOperation(EXIT_ON_CLOSE);
+         setSize(1100, 733);
+         setLocationRelativeTo(null);
+         setResizable(false);
+ 
+-        //bg
++
++        // =========================
++        // BACKGROUND
++        // =========================
++
+         JPanel backgroundPanel = new JPanel() {
++
+             @Override
+             protected void paintComponent(Graphics g) {
++
+                 super.paintComponent(g);
++<<<<<<< HEAD
+                 ImageIcon img = new ImageIcon(getClass().getResource("/Gui_Images/signup3.png"));
+                 g.drawImage(img.getImage(), 0, 0, getWidth(), getHeight(), this);
++=======
++
++                ImageIcon img = new ImageIcon(
++                        getClass().getResource("/Gui_Images/signup2.png")
++                );
++
++                g.drawImage(
++                        img.getImage(),
++                        0,
++                        0,
++                        getWidth(),
++                        getHeight(),
++                        this
++                );
++>>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
+             }
+         };
++
+         backgroundPanel.setLayout(null);
+         setContentPane(backgroundPanel);
+ 
++<<<<<<< HEAD
+         female.setBounds(33, 550, 90, 25);
+         female.setOpaque(false);
+         female.setForeground(Color.BLACK);
+@@ -83,94 +134,214 @@ public class SignupFrame extends JFrame implements ActionListener {
+ 
+         email = new JTextField();
+         email.setBounds(33, 123, 390, 30);
++=======
++
++        // =========================
++        // EMAIL
++        // Maximum: 36 characters
++        // =========================
++
++        email = new JTextField();
++
++        email.setBounds(33, 129, 390, 30);
++>>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
+         email.setFont(new Font("Fira Code", Font.PLAIN, 14));
+         email.setOpaque(false);
+         email.setBackground(new Color(0, 0, 0, 0));
+         email.setBorder(BorderFactory.createEmptyBorder());
++
++        email.setDocument(
++                new LimitedDocument(
++                        36,
++                        false,
++                        "Email",
++                        this::clearPassword
++                )
++        );
++
+         backgroundPanel.add(email);
+ 
++
++        // =========================
++        // FULL NAME
++        // Maximum: 36 characters
++        // =========================
++
+         fullname = new JTextField();
++<<<<<<< HEAD
+         fullname.setBounds(33, 184, 390, 30);
++=======
++
++        fullname.setBounds(33, 195, 390, 30);
++>>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
+         fullname.setFont(new Font("Fira Code", Font.PLAIN, 14));
+         fullname.setOpaque(false);
+         fullname.setBackground(new Color(0, 0, 0, 0));
+         fullname.setBorder(BorderFactory.createEmptyBorder());
++
++        fullname.setDocument(
++                new LimitedDocument(
++                        36,
++                        false,
++                        "Full name",
++                        this::clearPassword
++                )
++        );
++
+         backgroundPanel.add(fullname);
+ 
++
++        // =========================
++        // USERNAME
++        // Maximum: 24 characters
++        // =========================
++
+         username = new JTextField();
++<<<<<<< HEAD
+         username.setBounds(33, 245, 390, 30);
++=======
++
++        username.setBounds(33, 261, 390, 30);
++>>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
+         username.setFont(new Font("Fira Code", Font.PLAIN, 14));
+         username.setOpaque(false);
+         username.setBackground(new Color(0, 0, 0, 0));
+         username.setBorder(BorderFactory.createEmptyBorder());
++
++        username.setDocument(
++                new LimitedDocument(
++                        24,
++                        false,
++                        "Username",
++                        this::clearPassword
++                )
++        );
++
+         backgroundPanel.add(username);
+ 
++
++        // =========================
++        // PASSWORD
++        // Maximum: 16 characters
++        // =========================
++
+         pass = new JPasswordField();
++<<<<<<< HEAD
+         pass.setBounds(33, 305, 390, 30);
++=======
++
++        pass.setBounds(33, 327, 390, 30);
++>>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
+         pass.setFont(new Font("Fira Code", Font.PLAIN, 14));
+         pass.setOpaque(false);
+         pass.setBackground(new Color(0, 0, 0, 0));
+         pass.setBorder(BorderFactory.createEmptyBorder());
++
++        pass.setDocument(
++                new LimitedDocument(
++                        16,
++                        false,
++                        "Password",
++                        this::clearPassword
++                )
++        );
++
+         backgroundPanel.add(pass);
+ 
++<<<<<<< HEAD
+         showpass = new JCheckBox ("Show Password");
+         showpass.setBounds(33, 340, 150, 20);
++=======
++
++        // =========================
++        // SHOW PASSWORD
++        // =========================
++
++        showpass = new JCheckBox("Show Password");
++
++        showpass.setBounds(33, 360, 150, 20);
++>>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
+         showpass.setOpaque(false);
+         showpass.setForeground(Color.BLACK);
+         showpass.setFocusPainted(false);
++        showpass.setFont(
++                new Font("Fira Code", Font.PLAIN, 12)
++        );
+ 
+-        showpass.setFont(new Font("Fira Code", Font.PLAIN, 12));
+-        showpass.addActionListener(new ActionListener() {
+-            @Override
+-            public void actionPerformed(ActionEvent e) {
+-                if (showpass.isSelected()) {
+-                    pass.setEchoChar((char) 0);
+-                } else {
+-                    pass.setEchoChar('*');
+-                }
++        showpass.addActionListener(e -> {
++
++            if (showpass.isSelected()) {
++
++                pass.setEchoChar((char) 0);
++
++            } else {
++
++                pass.setEchoChar('*');
+             }
+         });
++
+         backgroundPanel.add(showpass);
+ 
++
++        // =========================
++        // ADDRESS
++        // Maximum: 36 characters
++        // =========================
++
+         address = new JTextField();
++<<<<<<< HEAD
+         address.setBounds(33, 385, 390, 30);
++=======
++
++        address.setBounds(33, 415, 390, 30);
++>>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
+         address.setFont(new Font("Fira Code", Font.PLAIN, 14));
+         address.setOpaque(false);
+         address.setBackground(new Color(0, 0, 0, 0));
+         address.setBorder(BorderFactory.createEmptyBorder());
++
++        address.setDocument(
++                new LimitedDocument(
++                        36,
++                        false,
++                        "Address",
++                        this::clearPassword
++                )
++        );
++
+         backgroundPanel.add(address);
+ 
++
++        // =========================
++        // CONTACT NUMBER
++        // Exactly up to 11 digits
++        // Digits only
++        // =========================
++
+         contactnum = new JTextField();
++<<<<<<< HEAD
+         contactnum.setBounds(33, 452, 390, 30);
++=======
++
++        contactnum.setBounds(33, 486, 390, 30);
++>>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
+         contactnum.setFont(new Font("Fira Code", Font.PLAIN, 14));
+         contactnum.setOpaque(false);
+         contactnum.setBackground(new Color(0, 0, 0, 0));
+         contactnum.setBorder(BorderFactory.createEmptyBorder());
+-        contactnum.setDocument(new PlainDocument() {
+-            @Override
+-            public void insertString(int offs, String str, javax.swing.text.AttributeSet a)
+-                    throws javax.swing.text.BadLocationException {
+-                if (str == null)
+-                    return;
+-                if (!str.matches("\\d+")) {
+-                    Toolkit.getDefaultToolkit().beep();
+-                    JOptionPane.showMessageDialog(null, "Only numbers are allowed!", "Error",
+-                            JOptionPane.ERROR_MESSAGE);
+-                    contactnum.setText("");
+-                    return;
+-                }
+-                if (getLength() + str.length() <= 12) {
+-                    super.insertString(offs, str, a);
+-                } else {
+-                    Toolkit.getDefaultToolkit().beep();
+-                    JOptionPane.showMessageDialog(null, "Maximum of 12 numbers only!", "Error",
+-                            JOptionPane.ERROR_MESSAGE);
+-                    contactnum.setText("");
+-                }
+-            }
+-        });
++
++        contactnum.setDocument(
++                new LimitedDocument(
++                        11,
++                        true,
++                        "Contact number",
++                        this::clearPassword
++                )
++        );
++
+         backgroundPanel.add(contactnum);
+ 
++<<<<<<< HEAD
+         // =========================
+         // BIRTHDAY
+         // YYYY-MM-DD
+@@ -208,19 +379,351 @@ public class SignupFrame extends JFrame implements ActionListener {
+             );
+ 
+             backgroundPanel.add(birthday);
++=======
++>>>>>>> 4201d9a43777c67f59ae941f7993c032b75fadaa
+ 
+-        
++        // =========================
++        // GENDER
++        // =========================
++
++        gender.add(female);
++        gender.add(male);
++        gender.add(other);
++
++
++        female.setBounds(33, 535, 90, 25);
++        female.setOpaque(false);
++        female.setForeground(Color.BLACK);
++        female.setFocusPainted(false);
++        female.setFont(
++                new Font("Fira Code", Font.PLAIN, 15)
++        );
++
++
++        male.setBounds(130, 535, 70, 25);
++        male.setOpaque(false);
++        male.setForeground(Color.BLACK);
++        male.setFocusPainted(false);
++        male.setFont(
++                new Font("Fira Code", Font.PLAIN, 15)
++        );
++
++
++        other.setBounds(210, 535, 80, 25);
++        other.setOpaque(false);
++        other.setForeground(Color.BLACK);
++        other.setFocusPainted(false);
++        other.setFont(
++                new Font("Fira Code", Font.PLAIN, 15)
++        );
++
++
++        backgroundPanel.add(female);
++        backgroundPanel.add(male);
++        backgroundPanel.add(other);
++
++
++        // =========================
++        // BIRTHDAY
++        // YYYY-MM-DD
++        // Maximum: 10 characters
++        // =========================
++
++        JLabel birthdayLabel =
++                new JLabel("Birthday (YYYY-MM-DD):");
++
++        birthdayLabel.setBounds(670, 185, 250, 25);
++        birthdayLabel.setForeground(Color.WHITE);
++        birthdayLabel.setFont(
++                new Font("Fira Code", Font.BOLD, 15)
++        );
++
++        backgroundPanel.add(birthdayLabel);
++
++
++        birthday = new JTextField();
++
++        birthday.setBounds(670, 215, 300, 36);
++        birthday.setFont(
++                new Font("Fira Code", Font.PLAIN, 14)
++        );
++
++        birthday.setBackground(
++                new Color(245, 245, 245)
++        );
++
++        birthday.setBorder(
++                BorderFactory.createEmptyBorder(
++                        5,
++                        10,
++                        5,
++                        10
++                )
++        );
++
++        birthday.setDocument(
++                new LimitedDocument(
++                        10,
++                        false,
++                        "Birthday",
++                        this::clearPassword
++                )
++        );
++
++        backgroundPanel.add(birthday);
++
++
++        // =========================
++        // SIGN UP BUTTON
++        // =========================
++
++        signupbtn =
++                new RoundedButton(
++                        "Sign Up",
++                        Color.BLACK,
++                        Color.WHITE
++                );
++
++        signupbtn.setBounds(
++                19,
++                590,
++                420,
++                40
++        );
++
++        signupbtn.setFont(
++                new Font(
++                        "Fira Code",
++                        Font.BOLD,
++                        18
++                )
++        );
++
++        signupbtn.setHoverColor(
++                Color.DARK_GRAY
++        );
++
++        signupbtn.addActionListener(this);
++
++        backgroundPanel.add(signupbtn);
++
++
++        // =========================
++        // CANCEL BUTTON
++        // =========================
+ 
++        cancelbtn =
++                new OutlineButton(
++                        "Cancel",
++                        Color.BLACK,
++                        Color.BLACK
++                );
++
++        cancelbtn.setBounds(
++                19,
++                640,
++                420,
++                40
++        );
++
++        cancelbtn.setFont(
++                new Font(
++                        "Fira Code",
++                        Font.BOLD,
++                        18
++                )
++        );
++
++        cancelbtn.setBgColor(
++                new Color(0, 0, 0, 60)
++        );
++
++        cancelbtn.addActionListener(this);
++
++        backgroundPanel.add(cancelbtn);
++
++
++        // Press Enter = Sign Up
++        getRootPane().setDefaultButton(signupbtn);
+     }
+ 
++
++    // =========================
++    // BUTTON EVENTS
++    // =========================
++
+     @Override
+     public void actionPerformed(ActionEvent e) {
++
+         if (e.getSource() == cancelbtn) {
++
+             dispose();
+-            new LoginFrame(authService).setVisible(true);
++
++            new LoginFrame(authService)
++                    .setVisible(true);
++
++            return;
++        }
++
++
++        if (e.getSource() == signupbtn) {
++
++            handleRegistration();
++        }
+     }
+ 
+-    
+ 
++    // =========================
++    // REGISTRATION
++    // =========================
++
++    private void handleRegistration() {
++
++        LocalDate parsedBirthday = null;
++
++        String birthdayText =
++                birthday.getText().trim();
++
++
++        // Birthday field empty
++        if (birthdayText.isEmpty()) {
++
++            showWarning(
++                    "Please enter your birthday."
++            );
++
++            return;
++        }
++
++
++        // Birthday format validation
++        try {
++
++            parsedBirthday =
++                    LocalDate.parse(birthdayText);
++
++        } catch (DateTimeParseException ex) {
++
++            showWarning(
++                    "Birthday must use YYYY-MM-DD.\n"
++                            + "Example: 2005-08-20."
++            );
++
++            return;
++        }
++
++
++        // Send information to AuthService
++        RegistrationResult result =
++                authService.registerCustomer(
++
++                        email.getText(),
++
++                        fullname.getText(),
++
++                        username.getText(),
++
++                        pass.getPassword(),
++
++                        address.getText(),
++
++                        contactnum.getText(),
++
++                        selectedGender(),
++
++                        parsedBirthday
++                );
++
++
++        // Any registration error
++        if (!result.isSuccess()) {
++
++            showWarning(
++                    result.getMessage()
++            );
++
++            return;
++        }
++
++
++        // Clear password after successful registration
++        clearPassword();
++
++
++        JOptionPane.showMessageDialog(
++                this,
++                "Account created successfully.\n"
++                        + "Please verify your email to continue.",
++                "QueueTees",
++                JOptionPane.INFORMATION_MESSAGE
++        );
++
++
++        // Go to temporary Email Authentication
++        dispose();
++
++        new EmailAuthFrame(
++                authService,
++                result.getUser()
++        ).setVisible(true);
++    }
++
++
++    // =========================
++    // GET SELECTED GENDER
++    // =========================
++
++    private String selectedGender() {
++
++        if (female.isSelected()) {
++
++            return "Female";
++        }
++
++        if (male.isSelected()) {
++
++            return "Male";
++        }
++
++        if (other.isSelected()) {
++
++            return "Other";
++        }
++
++        return "";
++    }
++
++
++    // =========================
++    // WARNING
++    // BEEP + CLEAR PASSWORD
++    // =========================
++
++    private void showWarning(String message) {
++
++        Toolkit.getDefaultToolkit().beep();
++
++        JOptionPane.showMessageDialog(
++                this,
++                message,
++                "Registration Warning",
++                JOptionPane.WARNING_MESSAGE
++        );
++
++        clearPassword();
++    }
++
++
++    // =========================
++    // CLEAR PASSWORD
++    // =========================
++
++    private void clearPassword() {
++
++        pass.setText("");
++
++        showpass.setSelected(false);
++
++        pass.setEchoChar('*');
+     }
+-}
++}
+\ No newline at end of file
+diff --git a/src/gui/StaffFrame.java b/src/gui/StaffFrame.java
+index 9e6bd1d..8e0dba6 100644
+--- a/src/gui/StaffFrame.java
++++ b/src/gui/StaffFrame.java
+@@ -1,22 +1,19 @@
+ package gui;
+ 
+ import java.awt.*;
+-import java.awt.event.*;
+ import javax.swing.*;
+ import service.AuthService;
+-import service.LoginResult;
+-import javax.swing.text.PlainDocument;
+-public class StaffFrame extends JFrame implements ActionListener {
+-    
+-    StaffFrame (authService authService) {
+-        setTitle("Staff Panel");
++
++public class StaffFrame extends JFrame {
++
++    public StaffFrame(AuthService authService) {
++        setTitle("Staff Dashboard");
+         setDefaultCloseOperation(EXIT_ON_CLOSE);
+         setSize(1100, 733);
+         setLocationRelativeTo(null);
+         setResizable(false);
+ 
+-        // bg
+-        JPanel backgroundPanel = new JPanel() {
++        JPanel panel = new JPanel(null) {
+             @Override
+             protected void paintComponent(Graphics g) {
+                 super.paintComponent(g);
+@@ -24,15 +21,20 @@ public class StaffFrame extends JFrame implements ActionListener {
+                 g.drawImage(img.getImage(), 0, 0, getWidth(), getHeight(), this);
+             }
+         };
+-        backgroundPanel.setLayout(null);
+-        setContentPane(backgroundPanel);
+-
++        setContentPane(panel);
+ 
++        JLabel label = new JLabel("STAFF DASHBOARD", SwingConstants.CENTER);
++        label.setBounds(300, 250, 500, 60);
++        label.setFont(new Font("Fira Code", Font.BOLD, 30));
++        panel.add(label);
+ 
+-    }
+-
+-    @Override
+-    public void actionPerformed(ActionEvent e) {
+-        
++        RoundedButton logout = new RoundedButton("Log Out", Color.BLACK, Color.WHITE);
++        logout.setBounds(400, 350, 300, 42);
++        logout.setHoverColor(Color.DARK_GRAY);
++        logout.addActionListener(e -> {
++            dispose();
++            new LoginFrame(authService).setVisible(true);
++        });
++        panel.add(logout);
+     }
+ }
+diff --git a/src/gui/loginFrame.java b/src/gui/loginFrame.java
+index 12ad100..3068cde 100644
+--- a/src/gui/loginFrame.java
++++ b/src/gui/loginFrame.java
+@@ -4,84 +4,538 @@ import java.awt.*;
+ import java.awt.event.*;
+ import javax.swing.*;
+ 
++import model.User;
++import service.AuthService;
++import service.AuthStatus;
++import service.LoginResult;
+ 
+ public class LoginFrame extends JFrame implements ActionListener {
+ 
+-    RoundedButton logButton, signButton;
+-    JTextField username;
+-    JPasswordField pass;
+-    JCheckBox showPass;
++    private final RoundedButton logbtn;
++    private final OutlineButton signbtn;
+ 
++    private final JTextField username;
++    private final JPasswordField pass;
++    private final JCheckBox showpass;
+ 
++    private final AuthService authService;
+ 
+-    public LoginFrame() {
+-        setTitle("login and sign up");
++
++    public LoginFrame(AuthService authService) {
++
++        this.authService = authService;
++
++        setTitle("Log In");
+         setDefaultCloseOperation(EXIT_ON_CLOSE);
+         setSize(1100, 733);
+         setLocationRelativeTo(null);
+         setResizable(false);
+ 
+-        // Background image panel
++        // =========================
++        // BACKGROUND
++        // =========================
++
+         JPanel backgroundPanel = new JPanel() {
++
+             @Override
+             protected void paintComponent(Graphics g) {
++
+                 super.paintComponent(g);
+-                ImageIcon img = new ImageIcon(getClass().getResource("/Gui_Images/landpage5.png"));
+-                g.drawImage(img.getImage(), 0, 0, getWidth(), getHeight(), this);
++                ImageIcon img = new ImageIcon(
++                        getClass().getResource(
++                                "/Gui_Images/landpage6.png"
++                        )
++                );
++
++                g.drawImage(
++                        img.getImage(),
++                        0,
++                        0,
++                        getWidth(),
++                        getHeight(),
++                        this
++                );
+             }
+         };
++
+         backgroundPanel.setLayout(null);
+         setContentPane(backgroundPanel);
+ 
+-        logButton = new RoundedButton("Log In", Color.WHITE, Color.BLACK);
+-        logButton.setBounds(334, 490, 390, 40);
+-        logButton.setFont(new Font("Fira Code", Font.BOLD, 18));
+-        logButton.setBackground(Color.WHITE);
+-        backgroundPanel.add(logButton);
++        // =========================
++        // USERNAME / EMAIL
++        // Maximum: 36 characters
++        // =========================
++
++        username = new JTextField();
+ 
+-        signButton = new RoundedButton("Sign Up",new Color(30, 30, 30), Color.WHITE);
+-        signButton.setBounds(334, 540, 390, 40);
+-        signButton.setFont(new Font("Fira Code", Font.BOLD, 18));
+-        backgroundPanel.add(signButton);
++        username.setBounds(
++                342,
++                291,
++                370,
++                30
++        );
+ 
++        username.setFont(
++                new Font(
++                        "Fira Code",
++                        Font.PLAIN,
++                        15
++                )
++        );
+ 
+-        username = new JTextField();
+-        username.setBounds(342, 291, 370, 30);
+-        username.setFont(new Font("Fira Code", Font.PLAIN, 15));
+         username.setOpaque(false);
+-        username.setBackground(new Color(0, 0, 0, 0));
++
++        username.setBackground(
++                new Color(0, 0, 0, 0)
++        );
++
+         username.setForeground(Color.BLACK);
+-        username.setBorder(BorderFactory.createEmptyBorder());
++
++        username.setBorder(
++                BorderFactory.createEmptyBorder()
++        );
++
++
++        // Character limit
++        username.setDocument(
++                new LimitedDocument(
++                        36,
++                        false,
++                        "Username or email",
++                        this::clearPassword
++                )
++        );
++
+         backgroundPanel.add(username);
+ 
++
++        // =========================
++        // PASSWORD
++        // Maximum: 16 characters
++        // =========================
++
+         pass = new JPasswordField();
+-        pass.setBounds(342, 368, 370, 30);
+-        pass.setFont(new Font("Fira Code", Font.PLAIN, 15));
++
++        pass.setBounds(
++                342,
++                368,
++                370,
++                30
++        );
++
++        pass.setFont(
++                new Font(
++                        "Fira Code",
++                        Font.PLAIN,
++                        15
++                )
++        );
++
+         pass.setOpaque(false);
+-        pass.setBackground(new Color(0, 0, 0, 0));
++
++        pass.setBackground(
++                new Color(0, 0, 0, 0)
++        );
++
+         pass.setForeground(Color.BLACK);
+-        pass.setBorder(BorderFactory.createEmptyBorder());
++
++        pass.setBorder(
++                BorderFactory.createEmptyBorder()
++        );
++
++
++        // Character limit
++        pass.setDocument(
++                new LimitedDocument(
++                        16,
++                        false,
++                        "Password",
++                        this::clearPassword
++                )
++        );
++
+         backgroundPanel.add(pass);
+ 
+-        showPass = new JCheckBox("Show Password");
+-        showPass.setBounds(342, 410, 150, 20);
+-        showPass.setOpaque(false);
+-        showPass.setForeground(Color.BLACK);
+-        showPass.setFont(new Font("Fira Code", Font.PLAIN, 12));
+-        showPass.setFocusPainted(false);
+-        showPass.addActionListener(e -> {
+-            if (showPass.isSelected()) {
+-                pass.setEchoChar((char) 0);
++        // =========================
++        // SHOW PASSWORD
++        // =========================
++
++        showpass =
++                new JCheckBox(
++                        "Show Password"
++                );
++
++        showpass.setBounds(
++                342,
++                410,
++                150,
++                20
++        );
++
++        showpass.setOpaque(false);
++        showpass.setForeground(Color.BLACK);
++
++        showpass.setFont(
++                new Font(
++                        "Fira Code",
++                        Font.PLAIN,
++                        12
++                )
++        );
++
++        showpass.setFocusPainted(false);
++
++
++        showpass.addActionListener(e -> {
++
++            if (showpass.isSelected()) {
++
++                pass.setEchoChar(
++                        (char) 0
++                );
++
+             } else {
++
+                 pass.setEchoChar('•');
+             }
+         });
+-        backgroundPanel.add(showPass);
++        backgroundPanel.add(showpass);
++
++
++        // =========================
++        // LOG IN BUTTON
++        // =========================
++
++        logbtn =
++                new RoundedButton(
++                        "Log In",
++                        Color.WHITE,
++                        Color.BLACK
++                );
++
++        logbtn.setBounds(
++                334,
++                490,
++                390,
++                40
++        );
++
++        logbtn.setFont(
++                new Font(
++                        "Fira Code",
++                        Font.BOLD,
++                        18
++                )
++        );
++
++        logbtn.setBackground(Color.WHITE);
++
++        logbtn.setHoverColor(
++                new Color(
++                        220,
++                        220,
++                        220
++                )
++        );
++
++        logbtn.addActionListener(this);
++
++        backgroundPanel.add(logbtn);
++
++
++        // =========================
++        // SIGN UP BUTTON
++        // =========================
++
++        signbtn =
++                new OutlineButton(
++                        "Sign Up",
++                        Color.WHITE,
++                        Color.WHITE
++                );
++
++        signbtn.setBounds(
++                334,
++                540,
++                390,
++                40
++        );
++
++        signbtn.setFont(
++                new Font(
++                        "Fira Code",
++                        Font.BOLD,
++                        18
++                )
++        );
++
++        signbtn.setBgColor(
++                Color.DARK_GRAY
++        );
++
++        signbtn.addActionListener(this);
++
++        backgroundPanel.add(signbtn);
++
++
++        // =========================
++        // FORGOT PASSWORD
++        // Temporary only
++        // =========================
++
++        JLabel forgotPass =
++                new JLabel(
++                        "<html><u>Forgot Password?</u></html>"
++                );
++
++        forgotPass.setBounds(
++                478,
++                590,
++                150,
++                20
++        );
++
++        forgotPass.setForeground(
++                Color.WHITE
++        );
++
++        forgotPass.setFont(
++                new Font(
++                        "Fira Code",
++                        Font.PLAIN,
++                        12
++                )
++        );
++
++        forgotPass.setCursor(
++                new Cursor(
++                        Cursor.HAND_CURSOR
++                )
++        );
++
++
++        forgotPass.addMouseListener(
++                new MouseAdapter() {
++
++                    @Override
++                    public void mouseClicked(
++                            MouseEvent e) {
++
++                        JOptionPane.showMessageDialog(
++                                LoginFrame.this,
++                                "Password reset is not available yet.",
++                                "QueueTees",
++                                JOptionPane.INFORMATION_MESSAGE
++                        );
++                    }
++
++
++                    @Override
++                    public void mouseEntered(
++                            MouseEvent e) {
++
++                        forgotPass.setForeground(
++                                Color.LIGHT_GRAY
++                        );
++                    }
+ 
++
++                    @Override
++                    public void mouseExited(
++                            MouseEvent e) {
++
++                        forgotPass.setForeground(
++                                Color.WHITE
++                        );
++                    }
++                }
++        );
++
++        backgroundPanel.add(forgotPass);
++
++
++        // Pressing ENTER logs in
++        getRootPane().setDefaultButton(logbtn);
+     }
+ 
++
++    // =========================
++    // BUTTON EVENTS
++    // =========================
++
+     @Override
+     public void actionPerformed(ActionEvent e) {
+-        
++        if (e.getSource() == logbtn) {
++
++            handleLogin();
++
++        } else if (e.getSource() == signbtn) {
++
++            dispose();
++
++            new SignupFrame(
++                    authService
++            ).setVisible(true);
++        }
++    }
++
++
++    // =========================
++    // LOGIN
++    // =========================
++
++    private void handleLogin() {
++
++        LoginResult result =
++                authService.login(
++                        username.getText(),
++                        pass.getPassword()
++                );
++
++
++        // Password should disappear
++        // after every login attempt
++        clearPassword();
++
++
++        // =========================
++        // UNVERIFIED CUSTOMER
++        // =========================
++
++        if (result.getStatus()
++                == AuthStatus.EMAIL_NOT_VERIFIED
++                && result.getUser() != null) {
++
++            dispose();
++
++            new EmailAuthFrame(
++                    authService,
++                    result.getUser()
++            ).setVisible(true);
++
++            return;
++        }
++
++
++        // =========================
++        // FAILED LOGIN
++        // =========================
++
++        if (!result.isSuccess()) {
++
++            Toolkit
++                    .getDefaultToolkit()
++                    .beep();
++
++
++            JOptionPane.showMessageDialog(
++                    this,
++                    result.getMessage(),
++                    "Login Warning",
++                    JOptionPane.WARNING_MESSAGE
++            );
++
++            return;
++        }
++
++
++        // =========================
++        // SUCCESSFUL LOGIN
++        // =========================
++
++        openDashboard(
++                result.getUser()
++        );
++    }
++
++
++    // =========================
++    // ROLE NAVIGATION
++    // =========================
++
++    private void openDashboard(User user) {
++
++        if (user == null) {
++
++            Toolkit
++                    .getDefaultToolkit()
++                    .beep();
++
++            JOptionPane.showMessageDialog(
++                    this,
++                    "Unable to load account information.",
++                    "Login Warning",
++                    JOptionPane.WARNING_MESSAGE
++            );
++
++            return;
++        }
++
++
++        dispose();
++
++
++        switch (user.getRole()) {
++
++            case ADMIN:
++
++                new AdminFrame(
++                        authService
++                ).setVisible(true);
++
++                break;
++
++
++            case STAFF:
++
++                new StaffFrame(
++                        authService
++                ).setVisible(true);
++
++                break;
++
++
++            case CUSTOMER:
++
++                new CustomerFrame(
++                        authService
++                ).setVisible(true);
++
++                break;
++
++
++            default:
++
++                Toolkit
++                        .getDefaultToolkit()
++                        .beep();
++
++                JOptionPane.showMessageDialog(
++                        this,
++                        "Unknown account role.",
++                        "Login Warning",
++                        JOptionPane.WARNING_MESSAGE
++                );
++
++                new LoginFrame(
++                        authService
++                ).setVisible(true);
++
++                break;
++        }
++    }
++
++
++    // =========================
++    // CLEAR PASSWORD
++    // =========================
++
++    private void clearPassword() {
++
++        pass.setText("");
++
++        showpass.setSelected(false);
++
++        pass.setEchoChar('•');
+     }
+ }
+diff --git a/src/main.java b/src/main.java
+index bd60007..a541967 100644
+--- a/src/main.java
++++ b/src/main.java
+@@ -1,4 +1,5 @@
+ import gui.LoginFrame;
++import javax.swing.SwingUtilities;
+ import model.AccountStatus;
+ import model.User;
+ import model.UserRole;
+@@ -9,36 +10,20 @@ import service.PasswordUtil;
+ 
+ public class main {
+ 
+-        public static void main(String[] args) {
+-
+-        javax.swing.SwingUtilities.invokeLater(() -> {
+-
+-            // Temporary repository
+-        UserRepository userRepository = createTestUsers();
+-
+-            // Connect repository to authentication service
+-        AuthService authService = new AuthService(userRepository);
+-
+-            // Open Login GUI and give it access to AuthService
+-        LoginFrame loginframe = new LoginFrame(authService);
+-        loginframe.setVisible(true);
+-
+-        //         SignupFrame signupFrame = new SignupFrame(new AuthService(createTestUsers()));
+-        // signupFrame.setVisible(true);
+-        
++    public static void main(String[] args) {
++        SwingUtilities.invokeLater(() -> {
++            UserRepository userRepository = createTestUsers();
++            AuthService authService = new AuthService(userRepository);
++            new LoginFrame(authService).setVisible(true);
+         });
++    }
+ 
++    private static UserRepository createTestUsers() {
++        InMemoryUserRepository repository = new InMemoryUserRepository();
+ 
+-
+-}
+-
+-private static UserRepository createTestUsers() {
+-
+-        InMemoryUserRepository repository =
+-                new InMemoryUserRepository();
+-
+-        // 1. VERIFIED CUSTOMER
+-        repository.save(new User(1,"verifiedcustomer",
++        repository.save(new User(
++                1,
++                "verifiedcustomer",
+                 "verified@queuetees.local",
+                 PasswordUtil.hashPassword("Customer123!"),
+                 UserRole.CUSTOMER,
+@@ -46,7 +31,6 @@ private static UserRepository createTestUsers() {
+                 AccountStatus.ACTIVE
+         ));
+ 
+-        // 2. UNVERIFIED CUSTOMER
+         repository.save(new User(
+                 2,
+                 "unverifiedcustomer",
+@@ -57,7 +41,6 @@ private static UserRepository createTestUsers() {
+                 AccountStatus.ACTIVE
+         ));
+ 
+-        // 3. STAFF WAITING FOR ADMIN APPROVAL
+         repository.save(new User(
+                 3,
+                 "pendingstaff",
+@@ -68,9 +51,18 @@ private static UserRepository createTestUsers() {
+                 AccountStatus.PENDING_APPROVAL
+         ));
+ 
+-        // 4. ADMIN
+         repository.save(new User(
+                 4,
++                "staff",
++                "staff@queuetees.local",
++                PasswordUtil.hashPassword("Staff123!"),
++                UserRole.STAFF,
++                true,
++                AccountStatus.ACTIVE
++        ));
++
++        repository.save(new User(
++                5,
+                 "admin",
+                 "admin@queuetees.local",
+                 PasswordUtil.hashPassword("Admin123!"),
+@@ -80,5 +72,5 @@ private static UserRepository createTestUsers() {
+         ));
+ 
+         return repository;
++    }
+ }
+-}
+\ No newline at end of file
+diff --git a/src/model/User.java b/src/model/User.java
+index 699eabb..3af079e 100644
+--- a/src/model/User.java
++++ b/src/model/User.java
+@@ -1,21 +1,65 @@
+ package model;
+ 
++import java.time.LocalDate;
++
+ public class User {
++
+     private final int id;
+     private final String username;
+     private final String email;
+     private final String passwordHash;
+     private final UserRole role;
++
++    private final String fullName;
++    private final String address;
++    private final String contactNumber;
++    private final String gender;
++    private final LocalDate birthday;
++
+     private boolean emailVerified;
+     private AccountStatus status;
+ 
+-    public User(int id,
+-                String username,
+-                String email,
+-                String passwordHash,
+-                UserRole role,
+-                boolean emailVerified,
+-                AccountStatus status) {
++    // Constructor for the temporary test accounts in main.java
++    public User(
++            int id,
++            String username,
++            String email,
++            String passwordHash,
++            UserRole role,
++            boolean emailVerified,
++            AccountStatus status
++    ) {
++        this(
++                id,
++                username,
++                email,
++                passwordHash,
++                role,
++                emailVerified,
++                status,
++                "",
++                "",
++                "",
++                "",
++                null
++        );
++    }
++
++    // Constructor for newly registered customers
++    public User(
++            int id,
++            String username,
++            String email,
++            String passwordHash,
++            UserRole role,
++            boolean emailVerified,
++            AccountStatus status,
++            String fullName,
++            String address,
++            String contactNumber,
++            String gender,
++            LocalDate birthday
++    ) {
+         this.id = id;
+         this.username = username;
+         this.email = email;
+@@ -23,6 +67,12 @@ public class User {
+         this.role = role;
+         this.emailVerified = emailVerified;
+         this.status = status;
++
++        this.fullName = fullName;
++        this.address = address;
++        this.contactNumber = contactNumber;
++        this.gender = gender;
++        this.birthday = birthday;
+     }
+ 
+     public int getId() {
+@@ -60,4 +110,24 @@ public class User {
+     public void setStatus(AccountStatus status) {
+         this.status = status;
+     }
+-}
++
++    public String getFullName() {
++        return fullName;
++    }
++
++    public String getAddress() {
++        return address;
++    }
++
++    public String getContactNumber() {
++        return contactNumber;
++    }
++
++    public String getGender() {
++        return gender;
++    }
++
++    public LocalDate getBirthday() {
++        return birthday;
++    }
++}
+\ No newline at end of file
+diff --git a/src/repository/InMemoryUserRepository.java b/src/repository/InMemoryUserRepository.java
+index 8cfec4d..3e5a4dc 100644
+--- a/src/repository/InMemoryUserRepository.java
++++ b/src/repository/InMemoryUserRepository.java
+@@ -15,13 +15,29 @@ public class InMemoryUserRepository implements UserRepository {
+         }
+ 
+         String normalized = identifier.trim();
+-
+         return users.stream()
+                 .filter(user -> user.getEmail().equalsIgnoreCase(normalized)
+                         || user.getUsername().equalsIgnoreCase(normalized))
+                 .findFirst();
+     }
+ 
++    @Override
++    public boolean emailExists(String email) {
++        if (email == null) return false;
++        return users.stream().anyMatch(user -> user.getEmail().equalsIgnoreCase(email.trim()));
++    }
++
++    @Override
++    public boolean usernameExists(String username) {
++        if (username == null) return false;
++        return users.stream().anyMatch(user -> user.getUsername().equalsIgnoreCase(username.trim()));
++    }
++
++    @Override
++    public int nextId() {
++        return users.stream().mapToInt(User::getId).max().orElse(0) + 1;
++    }
++
+     @Override
+     public void save(User user) {
+         users.add(user);
+diff --git a/src/repository/UserRepository.java b/src/repository/UserRepository.java
+index 84c8c9e..47b54fc 100644
+--- a/src/repository/UserRepository.java
++++ b/src/repository/UserRepository.java
+@@ -5,5 +5,8 @@ import model.User;
+ 
+ public interface UserRepository {
+     Optional<User> findByEmailOrUsername(String identifier);
++    boolean emailExists(String email);
++    boolean usernameExists(String username);
++    int nextId();
+     void save(User user);
+ }
+diff --git a/src/service/AuthService.java b/src/service/AuthService.java
+index 2d8a7c7..6bdd719 100644
+--- a/src/service/AuthService.java
++++ b/src/service/AuthService.java
+@@ -1,12 +1,23 @@
+ package service;
+ 
++import java.time.LocalDate;
++import java.time.Period;
++import java.util.Arrays;
+ import java.util.Optional;
++import java.util.regex.Pattern;
+ import model.AccountStatus;
+ import model.User;
+ import model.UserRole;
+ import repository.UserRepository;
+ 
+ public class AuthService {
++    private static final Pattern EMAIL_PATTERN = Pattern.compile(
++            "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
++    );
++    private static final Pattern USERNAME_PATTERN = Pattern.compile("^[A-Za-z0-9_]{4,20}$");
++    private static final Pattern FULL_NAME_PATTERN = Pattern.compile("^[A-Za-zÀ-ÖØ-öø-ÿÑñ .'-]{2,60}$");
++    private static final Pattern CONTACT_PATTERN = Pattern.compile("^09\\d{9}$");
++
+     private final UserRepository userRepository;
+ 
+     public AuthService(UserRepository userRepository) {
+@@ -25,13 +36,16 @@ public class AuthService {
+                 );
+             }
+ 
++            if (cleanIdentifier.length() > 100 || password.length() > 128) {
++                return LoginResult.failure(AuthStatus.INVALID_CREDENTIALS, "Invalid credentials.");
++            }
++
+             Optional<User> optionalUser = userRepository.findByEmailOrUsername(cleanIdentifier);
+             if (optionalUser.isEmpty()) {
+                 return invalidCredentials();
+             }
+ 
+             User user = optionalUser.get();
+-
+             if (!PasswordUtil.verifyPassword(password, user.getPasswordHash())) {
+                 return invalidCredentials();
+             }
+@@ -39,24 +53,17 @@ public class AuthService {
+             if (user.getStatus() == AccountStatus.SUSPENDED) {
+                 return LoginResult.failure(AuthStatus.ACCOUNT_SUSPENDED, "This account is suspended.");
+             }
+-
+             if (user.getStatus() == AccountStatus.BANNED) {
+                 return LoginResult.failure(AuthStatus.ACCOUNT_BANNED, "This account is banned.");
+             }
+-
+             if (user.getStatus() == AccountStatus.REJECTED) {
+                 return LoginResult.failure(AuthStatus.ACCOUNT_REJECTED, "This account registration was rejected.");
+             }
+ 
+-            // QueueTees requirement: customers must verify their email before customer access.
+             if (user.getRole() == UserRole.CUSTOMER && !user.isEmailVerified()) {
+-                return LoginResult.failure(
+-                        AuthStatus.EMAIL_NOT_VERIFIED,
+-                        "Please verify your email before logging in."
+-                );
++                return LoginResult.emailVerificationRequired(user);
+             }
+ 
+-            // QueueTees requirement: staff must be approved by an administrator first.
+             if (user.getRole() == UserRole.STAFF && user.getStatus() != AccountStatus.ACTIVE) {
+                 return LoginResult.failure(
+                         AuthStatus.STAFF_NOT_APPROVED,
+@@ -65,24 +72,141 @@ public class AuthService {
+             }
+ 
+             if (user.getStatus() != AccountStatus.ACTIVE) {
+-                return LoginResult.failure(
+-                        AuthStatus.INVALID_CREDENTIALS,
+-                        "This account cannot log in right now."
+-                );
++                return LoginResult.failure(AuthStatus.INVALID_CREDENTIALS, "This account cannot log in right now.");
+             }
+ 
+             return LoginResult.success(user);
+         } finally {
+             if (passwordChars != null) {
+-                java.util.Arrays.fill(passwordChars, '\0');
++                Arrays.fill(passwordChars, '\0');
++            }
++        }
++    }
++
++    public RegistrationResult registerCustomer(
++            String email,
++            String fullName,
++            String username,
++            char[] passwordChars,
++            String address,
++            String contactNumber,
++            String gender,
++            LocalDate birthday) {
++
++        String cleanEmail = clean(email);
++        String cleanFullName = clean(fullName);
++        String cleanUsername = clean(username);
++        String cleanAddress = clean(address);
++        String cleanContact = clean(contactNumber);
++        String cleanGender = clean(gender);
++        String password = passwordChars == null ? "" : new String(passwordChars);
++
++        try {
++            if (cleanEmail.isEmpty() || cleanFullName.isEmpty() || cleanUsername.isEmpty()
++                    || password.isEmpty() || cleanAddress.isEmpty() || cleanContact.isEmpty()
++                    || cleanGender.isEmpty() || birthday == null) {
++                return RegistrationResult.failure("Please complete all registration fields.");
++            }
++
++            if (!EMAIL_PATTERN.matcher(cleanEmail).matches()) {
++                return RegistrationResult.failure("Please enter a valid email address.");
++            }
++
++            if (!FULL_NAME_PATTERN.matcher(cleanFullName).matches()) {
++                return RegistrationResult.failure("Full name may only contain letters, spaces, apostrophes, periods, and hyphens.");
++            }
++
++            if (!USERNAME_PATTERN.matcher(cleanUsername).matches()) {
++                return RegistrationResult.failure("Username must be 4-20 characters using letters, numbers, or underscore only.");
++            }
++
++            String passwordError = validatePassword(password);
++            if (passwordError != null) {
++                return RegistrationResult.failure(passwordError);
++            }
++
++            if (cleanAddress.length() < 5 || cleanAddress.length() > 150) {
++                return RegistrationResult.failure("Please enter a valid full address.");
++            }
++
++            if (!CONTACT_PATTERN.matcher(cleanContact).matches()) {
++                return RegistrationResult.failure("Contact number must be 11 digits and start with 09.");
++            }
++
++            if (birthday.isAfter(LocalDate.now())) {
++                return RegistrationResult.failure("Birthday cannot be in the future.");
++            }
++
++            int age = Period.between(birthday, LocalDate.now()).getYears();
++            if (age < 18) {
++                return RegistrationResult.failure("Only customers who are 18 years old or older can sign up.");
++            }
++            if (age > 120) {
++                return RegistrationResult.failure("Please enter a valid birthday.");
++            }
++
++            if (userRepository.emailExists(cleanEmail)) {
++                return RegistrationResult.failure("That email address is already registered.");
++            }
++
++            if (userRepository.usernameExists(cleanUsername)) {
++                return RegistrationResult.failure("That username is already taken.");
++            }
++
++            User user = new User(
++                    userRepository.nextId(),
++                    cleanUsername,
++                    cleanEmail,
++                    PasswordUtil.hashPassword(password),
++                    UserRole.CUSTOMER,
++                    false,
++                    AccountStatus.ACTIVE,
++                    cleanFullName,
++                    cleanAddress,
++                    cleanContact,
++                    cleanGender,
++                    birthday
++            );
++
++            userRepository.save(user);
++            return RegistrationResult.success(user);
++        } finally {
++            if (passwordChars != null) {
++                Arrays.fill(passwordChars, '\0');
+             }
+         }
+     }
+ 
++    public void verifyEmail(User user) {
++        if (user != null && user.getRole() == UserRole.CUSTOMER) {
++            user.setEmailVerified(true);
++        }
++    }
++
++    private String validatePassword(String password) {
++        if (password.length() < 8 || password.length() > 64) {
++            return "Password must be 8-64 characters long.";
++        }
++        if (!password.matches(".*[A-Z].*")) {
++            return "Password must contain at least one uppercase letter.";
++        }
++        if (!password.matches(".*[a-z].*")) {
++            return "Password must contain at least one lowercase letter.";
++        }
++        if (!password.matches(".*\\d.*")) {
++            return "Password must contain at least one number.";
++        }
++        if (!password.matches(".*[^A-Za-z0-9].*")) {
++            return "Password must contain at least one special character.";
++        }
++        return null;
++    }
++
+     private LoginResult invalidCredentials() {
+-        return LoginResult.failure(
+-                AuthStatus.INVALID_CREDENTIALS,
+-                "Invalid email/username or password."
+-        );
++        return LoginResult.failure(AuthStatus.INVALID_CREDENTIALS, "Invalid email/username or password.");
++    }
++
++    private String clean(String value) {
++        return value == null ? "" : value.trim();
+     }
+ }
+diff --git a/src/service/LoginResult.java b/src/service/LoginResult.java
+index 446ef4e..7470ea8 100644
+--- a/src/service/LoginResult.java
++++ b/src/service/LoginResult.java
+@@ -21,19 +21,16 @@ public class LoginResult {
+         return new LoginResult(status, message, null);
+     }
+ 
+-    public AuthStatus getStatus() {
+-        return status;
++    public static LoginResult emailVerificationRequired(User user) {
++        return new LoginResult(
++                AuthStatus.EMAIL_NOT_VERIFIED,
++                "Please verify your email to continue.",
++                user
++        );
+     }
+ 
+-    public String getMessage() {
+-        return message;
+-    }
+-
+-    public User getUser() {
+-        return user;
+-    }
+-
+-    public boolean isSuccess() {
+-        return status == AuthStatus.SUCCESS;
+-    }
++    public AuthStatus getStatus() { return status; }
++    public String getMessage() { return message; }
++    public User getUser() { return user; }
++    public boolean isSuccess() { return status == AuthStatus.SUCCESS; }
+ }
+diff --git a/src/service/RegistrationResult.java b/src/service/RegistrationResult.java
+new file mode 100644
+index 0000000..c09a77a
+--- /dev/null
++++ b/src/service/RegistrationResult.java
+@@ -0,0 +1,27 @@
++package service;
++
++import model.User;
++
++public class RegistrationResult {
++    private final boolean success;
++    private final String message;
++    private final User user;
++
++    private RegistrationResult(boolean success, String message, User user) {
++        this.success = success;
++        this.message = message;
++        this.user = user;
++    }
++
++    public static RegistrationResult success(User user) {
++        return new RegistrationResult(true, "Registration successful.", user);
++    }
++
++    public static RegistrationResult failure(String message) {
++        return new RegistrationResult(false, message, null);
++    }
++
++    public boolean isSuccess() { return success; }
++    public String getMessage() { return message; }
++    public User getUser() { return user; }
++}
