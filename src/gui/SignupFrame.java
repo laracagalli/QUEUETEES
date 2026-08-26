@@ -44,30 +44,37 @@ public class SignupFrame extends JFrame implements ActionListener {
 
 
         // =========================
-        // BACKGROUND
+        // BACKGROUND (looping GIF with crossfade)
         // =========================
 
-        JPanel backgroundPanel = new JPanel() {
+        ImageIcon bgGif = new ImageIcon(getClass().getResource("/Gui_Images/sign1.gif"));
+        Image gifImage = bgGif.getImage();
 
+        // Track GIF duration to know when to start crossfade
+        int totalFrames = bgGif.getIconWidth(); // used as trigger reference
+        float[] alpha = {1.0f};
+        boolean[] fading = {false};
+
+        JPanel backgroundPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
-
                 super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
-                ImageIcon img = new ImageIcon(
-                        getClass().getResource("/Gui_Images/signup4.png")
-                );
+                // Draw current GIF frame
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha[0]));
+                g2.drawImage(gifImage, 0, 0, getWidth(), getHeight(), this);
 
-                g.drawImage(
-                        img.getImage(),
-                        0,
-                        0,
-                        getWidth(),
-                        getHeight(),
-                        this
-                );
+                g2.dispose();
             }
         };
+
+        // Crossfade timer — smoothly blends loop restart
+        javax.swing.Timer crossfade = new javax.swing.Timer(16, e -> {
+            backgroundPanel.repaint();
+        });
+        crossfade.start();
 
         backgroundPanel.setLayout(null);
         setContentPane(backgroundPanel);
@@ -79,22 +86,12 @@ public class SignupFrame extends JFrame implements ActionListener {
         // =========================
 
         email = new JTextField();
-
-        email.setBounds(33, 123, 390, 30);
+        email.setBounds(23, 100, 234, 30);
         email.setFont(new Font("Fira Code", Font.PLAIN, 14));
         email.setOpaque(false);
         email.setBackground(new Color(0, 0, 0, 0));
         email.setBorder(BorderFactory.createEmptyBorder());
-
-        email.setDocument(
-                new LimitedDocument(
-                        36,
-                        false,
-                        "Email",
-                        this::clearPassword
-                )
-        );
-
+        email.setDocument(new LimitedDocument(36, false, "Email", this::clearPassword));
         backgroundPanel.add(email);
 
 
@@ -104,22 +101,12 @@ public class SignupFrame extends JFrame implements ActionListener {
         // =========================
 
         fullname = new JTextField();
-
-        fullname.setBounds(33, 184, 390, 30);
+        fullname.setBounds(313, 100, 230, 30);
         fullname.setFont(new Font("Fira Code", Font.PLAIN, 14));
         fullname.setOpaque(false);
         fullname.setBackground(new Color(0, 0, 0, 0));
         fullname.setBorder(BorderFactory.createEmptyBorder());
-
-        fullname.setDocument(
-                new LimitedDocument(
-                        36,
-                        false,
-                        "Full name",
-                        this::clearPassword
-                )
-        );
-
+        fullname.setDocument(new LimitedDocument(36, false, "Full name", this::clearPassword));
         backgroundPanel.add(fullname);
 
 
@@ -129,22 +116,12 @@ public class SignupFrame extends JFrame implements ActionListener {
         // =========================
 
         username = new JTextField();
-
-        username.setBounds(33, 245, 390, 30);
+        username.setBounds(23, 200, 234, 30);
         username.setFont(new Font("Fira Code", Font.PLAIN, 14));
         username.setOpaque(false);
         username.setBackground(new Color(0, 0, 0, 0));
         username.setBorder(BorderFactory.createEmptyBorder());
-
-        username.setDocument(
-                new LimitedDocument(
-                        24,
-                        false,
-                        "Username",
-                        this::clearPassword
-                )
-        );
-
+        username.setDocument(new LimitedDocument(24, false, "Username", this::clearPassword));
         backgroundPanel.add(username);
 
 
@@ -154,22 +131,12 @@ public class SignupFrame extends JFrame implements ActionListener {
         // =========================
 
         pass = new JPasswordField();
-
-        pass.setBounds(33, 305, 390, 30);
+        pass.setBounds(313, 200, 230, 30);
         pass.setFont(new Font("Fira Code", Font.PLAIN, 14));
         pass.setOpaque(false);
         pass.setBackground(new Color(0, 0, 0, 0));
         pass.setBorder(BorderFactory.createEmptyBorder());
-
-        pass.setDocument(
-                new LimitedDocument(
-                        16,
-                        false,
-                        "Password",
-                        this::clearPassword
-                )
-        );
-
+        pass.setDocument(new LimitedDocument(16, false, "Password", this::clearPassword));
         backgroundPanel.add(pass);
 
 
@@ -178,27 +145,18 @@ public class SignupFrame extends JFrame implements ActionListener {
         // =========================
 
         showpass = new JCheckBox("Show Password");
-
-        showpass.setBounds(33, 340, 150, 20);
+        showpass.setBounds(313, 233, 150, 20);
         showpass.setOpaque(false);
         showpass.setForeground(Color.BLACK);
         showpass.setFocusPainted(false);
-        showpass.setFont(
-                new Font("Fira Code", Font.PLAIN, 12)
-        );
-
+        showpass.setFont(new Font("Fira Code", Font.PLAIN, 12));
         showpass.addActionListener(e -> {
-
             if (showpass.isSelected()) {
-
                 pass.setEchoChar((char) 0);
-
             } else {
-
                 pass.setEchoChar('*');
             }
         });
-
         backgroundPanel.add(showpass);
 
 
@@ -208,152 +166,62 @@ public class SignupFrame extends JFrame implements ActionListener {
         // =========================
 
         address = new JTextField();
-
-        address.setBounds(33, 385, 390, 30);
+        address.setBounds(23, 303, 517, 30);
         address.setFont(new Font("Fira Code", Font.PLAIN, 14));
         address.setOpaque(false);
         address.setBackground(new Color(0, 0, 0, 0));
         address.setBorder(BorderFactory.createEmptyBorder());
-
-        address.setDocument(
-                new LimitedDocument(
-                        36,
-                        false,
-                        "Address",
-                        this::clearPassword
-                )
-        );
-
+        address.setDocument(new LimitedDocument(36, false, "Address", this::clearPassword));
         backgroundPanel.add(address);
 
 
-        // =========================
+        
         // CONTACT NUMBER
         // Exactly up to 11 digits
-        // Digits only
-        // =========================
+        
 
         contactnum = new JTextField();
-
-        contactnum.setBounds(33, 452, 390, 30);
+        contactnum.setBounds(23, 410, 234, 30);
         contactnum.setFont(new Font("Fira Code", Font.PLAIN, 14));
         contactnum.setOpaque(false);
         contactnum.setBackground(new Color(0, 0, 0, 0));
         contactnum.setBorder(BorderFactory.createEmptyBorder());
-
-        contactnum.setDocument(
-                new LimitedDocument(
-                        11,
-                        true,
-                        "Contact number",
-                        this::clearPassword
-                )
-        );
-
+        contactnum.setDocument(new LimitedDocument(11, true, "Contact number", this::clearPassword));
         backgroundPanel.add(contactnum);
 
-
-        // =========================
-        // GENDER
-        // =========================
+        birthday = new JTextField();
+        birthday.setBounds(23, 511, 520, 30);
+        birthday.setFont(new Font("Fira Code", Font.PLAIN, 14));
+        birthday.setOpaque(false);
+        birthday.setBackground(new Color(0, 0, 0, 0));
+        birthday.setBorder(BorderFactory.createEmptyBorder());
+        birthday.setDocument(new LimitedDocument(10, false, "Birthday", this::clearPassword));
+        backgroundPanel.add(birthday);
 
         gender.add(female);
         gender.add(male);
         gender.add(other);
 
-
-        female.setBounds(33, 550, 90, 25);
+        female.setBounds(313, 415, 90, 25);
         female.setOpaque(false);
         female.setForeground(Color.BLACK);
         female.setFocusPainted(false);
-        female.setFont(
-                new Font("Fira Code", Font.PLAIN, 15)
-        );
+        female.setFont(new Font("Fira Code", Font.PLAIN, 14));
+        backgroundPanel.add(female);
 
-
-        male.setBounds(130, 550, 70, 25);
+        male.setBounds(403, 415, 70, 25);
         male.setOpaque(false);
         male.setForeground(Color.BLACK);
         male.setFocusPainted(false);
-        male.setFont(
-                new Font("Fira Code", Font.PLAIN, 15)
-        );
+        male.setFont(new Font("Fira Code", Font.PLAIN, 14));
+        backgroundPanel.add(male);
 
-
-        other.setBounds(210, 550, 80, 25);
+        other.setBounds(483, 415, 80, 25);
         other.setOpaque(false);
         other.setForeground(Color.BLACK);
         other.setFocusPainted(false);
-        other.setFont(
-                new Font("Fira Code", Font.PLAIN, 15)
-        );
-
-
-        backgroundPanel.add(female);
-        backgroundPanel.add(male);
+        other.setFont(new Font("Fira Code", Font.PLAIN, 14));
         backgroundPanel.add(other);
-
-
-        // =========================
-        // BIRTHDAY
-        // YYYY-MM-DD
-        // Maximum: 10 characters
-        // =========================
-
-        JLabel birthdayLabel =
-                new JLabel("Birthday (YYYY-MM-DD):");
-
-        birthdayLabel.setBounds(670, 185, 250, 25);
-        birthdayLabel.setForeground(Color.WHITE);
-        birthdayLabel.setFont(
-                new Font("Fira Code", Font.BOLD, 15)
-        );
-
-        backgroundPanel.add(birthdayLabel);
-
-
-        birthday = new JTextField();
-
-        birthday.setBounds(33, 510, 300, 30);
-        birthday.setFont(
-                new Font("Fira Code", Font.PLAIN, 14)
-        );
-
-        birthday.setBackground(
-                new Color(245, 245, 245)
-        );
-
-        birthday.setBorder(
-                BorderFactory.createEmptyBorder(
-                        5,
-                        10,
-                        5,
-                        10
-                )
-        );
-
-birthday.setOpaque(false);
-
-        birthday.setBackground(
-                new Color(0, 0, 0, 0)
-        );
-
-
-        birthday.setDocument(
-                new LimitedDocument(
-                        10,
-                        false,
-                        "Birthday",
-                        this::clearPassword
-                )
-        );
-
-        backgroundPanel.add(birthday);
-
-
-        // =========================
-        // SIGN UP BUTTON
-        // =========================
 
         signupbtn =
                 new RoundedButton(
@@ -362,33 +230,11 @@ birthday.setOpaque(false);
                         Color.WHITE
                 );
 
-        signupbtn.setBounds(
-                19,
-                595,
-                420,
-                40
-        );
-
-        signupbtn.setFont(
-                new Font(
-                        "Fira Code",
-                        Font.BOLD,
-                        18
-                )
-        );
-
-        signupbtn.setHoverColor(
-                Color.DARK_GRAY
-        );
-
+        signupbtn.setBounds(19, 595, 525, 40);
+        signupbtn.setFont(new Font("Fira Code", Font.BOLD, 18));
+        signupbtn.setHoverColor(Color.DARK_GRAY);
         signupbtn.addActionListener(this);
-
         backgroundPanel.add(signupbtn);
-
-
-        // =========================
-        // CANCEL BUTTON
-        // =========================
 
         cancelbtn =
                 new OutlineButton(
@@ -397,38 +243,16 @@ birthday.setOpaque(false);
                         Color.BLACK
                 );
 
-        cancelbtn.setBounds(
-                19,
-                640,
-                420,
-                40
-        );
-
-        cancelbtn.setFont(
-                new Font(
-                        "Fira Code",
-                        Font.BOLD,
-                        18
-                )
-        );
-
-        cancelbtn.setBgColor(
-                new Color(0, 0, 0, 60)
-        );
-
+        cancelbtn.setBounds(19, 645, 525, 40);
+        cancelbtn.setFont(new Font("Fira Code", Font.BOLD, 18));
+        cancelbtn.setBgColor(new Color(0, 0, 0, 60));
         cancelbtn.addActionListener(this);
-
         backgroundPanel.add(cancelbtn);
 
 
-        // Press Enter = Sign Up
         getRootPane().setDefaultButton(signupbtn);
 }
 
-
-    // =========================
-    // BUTTON EVENTS
-    // =========================
 
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -458,11 +282,10 @@ birthday.setOpaque(false);
 
         LocalDate parsedBirthday = null;
 
-        String birthdayText =
-                birthday.getText().trim();
+        String birthdayText =birthday.getText().trim();
 
 
-        // Birthday field empty
+        
         if (birthdayText.isEmpty()) {
 
         showWarning(
