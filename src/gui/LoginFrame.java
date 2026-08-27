@@ -5,6 +5,9 @@ import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import gui.admin.AdminFrame;
+import gui.customer.CustomerFrame;
+import gui.staff.StaffFrame;
 import model.User;
 import service.AuthService;
 import service.AuthStatus;
@@ -36,16 +39,12 @@ public class LoginFrame extends JFrame implements ActionListener {
                         @Override
                         protected void paintComponent(Graphics g) {
                                 super.paintComponent(g);
-                                ImageIcon img = new ImageIcon(
-                                                getClass().getResource(
-                                                                "/Gui_Images/landpage8.png"));
-                                g.drawImage(
-                                                img.getImage(),
-                                                0,
-                                                0,
-                                                getWidth(),
-                                                getHeight(),
-                                                this);
+                                Graphics2D g2 = (Graphics2D) g.create();
+                                g2.setPaint(new GradientPaint(
+                                                0, 0, new Color(0xF1, 0xF1, 0xE8),
+                                                0, getHeight(), new Color(0x91, 0x9B, 0x91)));
+                                g2.fillRect(0, 0, getWidth(), getHeight());
+                                g2.dispose();
                         }
                 };
 
