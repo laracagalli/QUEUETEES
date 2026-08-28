@@ -4,6 +4,7 @@ import jakarta.mail.*;
 import jakarta.mail.internet.*;
 import java.util.Properties;
 
+
 public class EmailService {
 
     public static void sendOtpEmail(String recipientEmail, String otp) {

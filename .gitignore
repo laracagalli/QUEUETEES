@@ -1,0 +1,5 @@
+# Redundant pre-consolidation project copy. The active project now lives at the repository root.
+/QUEUETEE/
+
+# Java build output is generated locally from src.
+/bin/
