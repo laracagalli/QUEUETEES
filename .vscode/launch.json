@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Run QueueTees",
+            "request": "launch",
+            "mainClass": "main",
+            "projectName": "QUEUETEE",
+            "cwd": "${workspaceFolder}/QUEUETEE",
+            "console": "integratedTerminal"
+        }
+    ]
+}
