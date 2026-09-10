@@ -98,6 +98,7 @@ public final class CustomerProfilePanel extends JPanel {
         static JPanel toolbar(String placeholder, String action) {
             JPanel toolbar = new JPanel(new BorderLayout(12, 0));
             toolbar.setOpaque(false);
+            toolbar.setAlignmentX(Component.LEFT_ALIGNMENT);
             toolbar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
             JTextField search = new JTextField(placeholder);
             search.setFont(font(11, Font.PLAIN));
@@ -193,7 +194,9 @@ public final class CustomerProfilePanel extends JPanel {
             table.setBackground(PAPER);
             table.setSelectionBackground(new Color(222, 229, 217));
             table.setRowHeight(38);
-            table.setShowGrid(false);
+            table.setShowGrid(true);
+            table.setGridColor(LINE);
+            table.setIntercellSpacing(new Dimension(1, 1));
             table.setFillsViewportHeight(true);
             javax.swing.table.JTableHeader header = table.getTableHeader();
             header.setFont(font(10, Font.BOLD));
@@ -246,5 +249,3 @@ public final class CustomerProfilePanel extends JPanel {
     }
 
 }
-
-

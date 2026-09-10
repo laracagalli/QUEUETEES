@@ -91,13 +91,14 @@ public final class StaffProfilePanel extends JPanel {
             detail.setAlignmentX(Component.CENTER_ALIGNMENT);
             center.add(detail);
             panel.add(center);
-            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 205));
-            panel.setPreferredSize(new Dimension(1000, 205));
+            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+            panel.setPreferredSize(new Dimension(1000, 390));
             return panel;
         }
         static JPanel toolbar(String placeholder, String action) {
             JPanel toolbar = new JPanel(new BorderLayout(12, 0));
             toolbar.setOpaque(false);
+            toolbar.setAlignmentX(Component.LEFT_ALIGNMENT);
             toolbar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
             JTextField search = new JTextField(placeholder);
             search.setFont(font(11, Font.PLAIN));
@@ -139,8 +140,8 @@ public final class StaffProfilePanel extends JPanel {
                 wrap.add(button);
                 panel.add(wrap, BorderLayout.SOUTH);
             }
-            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 350));
-            panel.setPreferredSize(new Dimension(1000, 350));
+            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+            panel.setPreferredSize(new Dimension(1000, 520));
             return panel;
         }
         static JPanel productCard(String imagePath) {
@@ -193,7 +194,9 @@ public final class StaffProfilePanel extends JPanel {
             table.setBackground(PAPER);
             table.setSelectionBackground(new Color(222, 229, 217));
             table.setRowHeight(38);
-            table.setShowGrid(false);
+            table.setShowGrid(true);
+            table.setGridColor(LINE);
+            table.setIntercellSpacing(new Dimension(1, 1));
             table.setFillsViewportHeight(true);
             javax.swing.table.JTableHeader header = table.getTableHeader();
             header.setFont(font(10, Font.BOLD));
@@ -246,5 +249,3 @@ public final class StaffProfilePanel extends JPanel {
     }
 
 }
-
-

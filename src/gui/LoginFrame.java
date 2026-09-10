@@ -373,7 +373,7 @@ public class LoginFrame extends JFrame implements ActionListener {
         switch (user.getRole()) {
             case ADMIN:   new AdminFrame(authService).setVisible(true);    break;
             case STAFF:   new StaffFrame(authService).setVisible(true);    break;
-            case CUSTOMER: new CustomerFrame(authService).setVisible(true); break;
+            case CUSTOMER: new CustomerFrame(authService, user).setVisible(true); break;
             default:
                 Toolkit.getDefaultToolkit().beep();
                 JOptionPane.showMessageDialog(this, "Unknown account role.",

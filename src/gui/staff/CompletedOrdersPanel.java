@@ -1,10 +1,21 @@
 package gui.staff;
 
 import java.awt.*;
+import java.time.format.DateTimeFormatter;
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import model.Order;
+import service.StoreService;
 
 /** Staff page containing completed order records. */
 public final class CompletedOrdersPanel extends JPanel {
+    private final StoreService store = StoreService.getInstance();
+    private final DefaultTableModel model = new DefaultTableModel(new String[]{"Queue no.", "Customer", "Placed", "Items", "Total"}, 0) {
+        @Override public boolean isCellEditable(int row, int column) { return false; }
+    };
+    private final JTable table = new JTable(model);
+    private final JLabel message = Ui.label("", 11, Font.PLAIN, Ui.MUTED);
+
     public CompletedOrdersPanel() {
         setOpaque(false);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -14,9 +25,33 @@ public final class CompletedOrdersPanel extends JPanel {
         add(Box.createVerticalStrut(5));
         Ui.addLeft(this, Ui.label("A record of orders completed by the staff team.", 11, Font.PLAIN, Ui.MUTED));
         add(Box.createVerticalStrut(18));
-        add(Ui.toolbar("Search records", null));
-        add(Box.createVerticalStrut(16));
-        add(Ui.tableCard(new String[]{"Queue no.", "Customer", "Completed", "Total"}, "No completed orders are available yet.", null));
+        add(createTableCard());
+        refresh();
+    }
+
+    private JPanel createTableCard() {
+        JPanel card = Ui.card(Ui.PAPER, 22, true);
+        card.setLayout(new BorderLayout());
+        Ui.styleTable(table);
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(null);
+        card.add(scroll);
+        message.setHorizontalAlignment(SwingConstants.CENTER);
+        message.setBorder(new javax.swing.border.EmptyBorder(12, 8, 12, 8));
+        card.add(message, BorderLayout.NORTH);
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        card.setPreferredSize(new Dimension(1000, 520));
+        return card;
+    }
+
+    public void refresh() {
+        model.setRowCount(0);
+        for (Order order : store.getCompletedOrders()) {
+            model.addRow(new Object[]{"Q-" + String.format("%03d", order.getQueueNumber()), order.getCustomerName(),
+                    order.getPlacedAt().format(DateTimeFormatter.ofPattern("MMM d, h:mm a")), order.getItemCount(),
+                    String.format("₱%,.2f", order.getTotal())});
+        }
+        message.setText(model.getRowCount() == 0 ? "No completed orders are available yet." : model.getRowCount() + " completed order(s)");
     }
 
     /** Styling owned by this panel so the screen can be configured independently. */
@@ -93,13 +128,14 @@ public final class CompletedOrdersPanel extends JPanel {
             detail.setAlignmentX(Component.CENTER_ALIGNMENT);
             center.add(detail);
             panel.add(center);
-            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 205));
-            panel.setPreferredSize(new Dimension(1000, 205));
+            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+            panel.setPreferredSize(new Dimension(1000, 390));
             return panel;
         }
         static JPanel toolbar(String placeholder, String action) {
             JPanel toolbar = new JPanel(new BorderLayout(12, 0));
             toolbar.setOpaque(false);
+            toolbar.setAlignmentX(Component.LEFT_ALIGNMENT);
             toolbar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
             JTextField search = new JTextField(placeholder);
             search.setFont(font(11, Font.PLAIN));
@@ -141,8 +177,8 @@ public final class CompletedOrdersPanel extends JPanel {
                 wrap.add(button);
                 panel.add(wrap, BorderLayout.SOUTH);
             }
-            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 350));
-            panel.setPreferredSize(new Dimension(1000, 350));
+            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+            panel.setPreferredSize(new Dimension(1000, 520));
             return panel;
         }
         static JPanel productCard(String imagePath) {
@@ -195,7 +231,9 @@ public final class CompletedOrdersPanel extends JPanel {
             table.setBackground(PAPER);
             table.setSelectionBackground(new Color(222, 229, 217));
             table.setRowHeight(38);
-            table.setShowGrid(false);
+            table.setShowGrid(true);
+            table.setGridColor(LINE);
+            table.setIntercellSpacing(new Dimension(1, 1));
             table.setFillsViewportHeight(true);
             javax.swing.table.JTableHeader header = table.getTableHeader();
             header.setFont(font(10, Font.BOLD));
@@ -248,5 +286,3 @@ public final class CompletedOrdersPanel extends JPanel {
     }
 
 }
-
-

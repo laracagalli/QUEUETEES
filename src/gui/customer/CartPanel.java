@@ -1,11 +1,46 @@
 package gui.customer;
 
 import java.awt.*;
+import java.util.List;
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import model.CartItem;
+import model.CheckoutDetails;
+import model.Order;
+import model.User;
+import service.StoreService;
 
 /** Customer shopping cart page. */
 public final class CartPanel extends JPanel {
-    public CartPanel() {
+    private final StoreService store = StoreService.getInstance();
+    private final User user;
+    private final Runnable openTracking;
+    private final DefaultTableModel model = new DefaultTableModel(new String[]{"Photo", "Product", "Price", "Quantity", "Subtotal"}, 0) {
+        @Override public boolean isCellEditable(int row, int column) { return false; }
+    };
+    private final JTable table = new JTable(model);
+    private final JLabel summary = Ui.label("", 12, Font.BOLD, Ui.INK);
+    private final CardLayout checkoutLayout = new CardLayout();
+    private final JPanel checkoutViews = new JPanel(checkoutLayout);
+    private final JTextField fullName = new JTextField();
+    private final JTextField email = new JTextField();
+    private final JTextField contact = new JTextField();
+    private final JTextArea address = new JTextArea(2, 20);
+    private final JComboBox<String> payment = new JComboBox<>(new String[]{"GCash", "Card"});
+    private final JTextArea notes = new JTextArea(2, 20);
+    private final JTextArea receipt = new JTextArea();
+    private final CardLayout paymentDetailsLayout = new CardLayout();
+    private final JPanel paymentDetails = new JPanel(paymentDetailsLayout);
+    private final JTextField cardholderName = new JTextField();
+    private final JTextField cardNumber = new JTextField();
+    private final JTextField cardExpiry = new JTextField();
+    private final JPasswordField cardCvv = new JPasswordField();
+    private final JTextField qrReference = new JTextField();
+    private List<CartItem> visibleItems;
+
+    public CartPanel(User user, Runnable openTracking) {
+        this.user = user;
+        this.openTracking = openTracking;
         setOpaque(false);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         Ui.addLeft(this, Ui.label("CART", 10, Font.BOLD, Ui.FOREST));
@@ -14,7 +49,392 @@ public final class CartPanel extends JPanel {
         add(Box.createVerticalStrut(5));
         Ui.addLeft(this, Ui.label("Review selected products before checkout.", 11, Font.PLAIN, Ui.MUTED));
         add(Box.createVerticalStrut(18));
-        add(Ui.emptyState("Your cart is empty", "Browse the catalog to add your first Hiraya Clothing item."));
+        fullName.setText(user.getUsername());
+        email.setText(user.getEmail());
+        email.setEditable(false);
+        checkoutViews.setOpaque(false);
+        checkoutViews.setAlignmentX(Component.LEFT_ALIGNMENT);
+        checkoutViews.add(createCartCard(), "cart");
+        checkoutViews.add(createCheckoutPanel(), "checkout");
+        checkoutViews.setMaximumSize(new Dimension(Integer.MAX_VALUE, 520));
+        checkoutViews.setPreferredSize(new Dimension(1000, 520));
+        add(checkoutViews);
+        refresh();
+    }
+
+    private JPanel createCartCard() {
+        JPanel card = Ui.card(Ui.PAPER, 22, true);
+        card.setLayout(new BorderLayout());
+        Ui.styleTable(table);
+        table.setRowHeight(72);
+        table.getColumnModel().getColumn(0).setPreferredWidth(88);
+        table.getColumnModel().getColumn(0).setMaxWidth(100);
+        table.getColumnModel().getColumn(0).setCellRenderer(new javax.swing.table.DefaultTableCellRenderer() {
+            @Override protected void setValue(Object value) {
+                setHorizontalAlignment(SwingConstants.CENTER);
+                setIcon(value instanceof Icon ? (Icon) value : null);
+                setText(value instanceof Icon ? "" : "No image");
+            }
+        });
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(null);
+        card.add(scroll);
+        JPanel actions = new JPanel(new BorderLayout(12, 0));
+        actions.setOpaque(false);
+        actions.setBorder(new javax.swing.border.EmptyBorder(12, 15, 12, 15));
+        actions.add(summary, BorderLayout.WEST);
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        buttons.setOpaque(false);
+        gui.RoundedButton remove = Ui.lightButton("Remove Selected");
+        remove.addActionListener(e -> removeSelected());
+        gui.RoundedButton checkout = Ui.primaryButton("Check Out");
+        checkout.addActionListener(e -> showCheckout());
+        buttons.add(remove);
+        buttons.add(checkout);
+        actions.add(buttons, BorderLayout.EAST);
+        card.add(actions, BorderLayout.SOUTH);
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 430));
+        card.setPreferredSize(new Dimension(1000, 430));
+        return card;
+    }
+
+    private JPanel createCheckoutPanel() {
+        JPanel columns = new JPanel(new BorderLayout(16, 0));
+        columns.setOpaque(false);
+
+        JPanel formCard = Ui.card(Ui.PAPER, 22, true);
+        formCard.setLayout(new BorderLayout());
+        formCard.setBorder(new javax.swing.border.EmptyBorder(18, 20, 18, 20));
+        JLabel formTitle = Ui.label("Customer & payment details", 16, Font.BOLD, Ui.INK);
+        formTitle.setBorder(new javax.swing.border.EmptyBorder(0, 0, 10, 0));
+        formCard.add(formTitle, BorderLayout.NORTH);
+
+        JPanel formStack = new JPanel();
+        formStack.setOpaque(false);
+        formStack.setLayout(new BoxLayout(formStack, BoxLayout.Y_AXIS));
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setOpaque(false);
+        form.setAlignmentX(Component.LEFT_ALIGNMENT);
+        form.setMaximumSize(new Dimension(Integer.MAX_VALUE, 410));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        addFormField(form, gbc, "Full name", fullName);
+        addFormField(form, gbc, "Email", email);
+        addFormField(form, gbc, "Contact number", contact);
+        address.setLineWrap(true); address.setWrapStyleWord(true);
+        addFormField(form, gbc, "Delivery address", new JScrollPane(address));
+        addFormField(form, gbc, "Payment method", payment);
+        notes.setLineWrap(true); notes.setWrapStyleWord(true);
+        addFormField(form, gbc, "Order notes (optional)", new JScrollPane(notes));
+        gbc.gridy++;
+        formStack.add(form);
+        formStack.add(Box.createVerticalStrut(12));
+        configurePaymentDetails();
+        paymentDetails.setOpaque(false);
+        paymentDetails.setAlignmentX(Component.LEFT_ALIGNMENT);
+        paymentDetails.setPreferredSize(new Dimension(800, 190));
+        paymentDetails.setMinimumSize(new Dimension(300, 190));
+        paymentDetails.setMaximumSize(new Dimension(Integer.MAX_VALUE, 190));
+        formStack.add(paymentDetails);
+        formStack.add(Box.createVerticalGlue());
+        JScrollPane formScroll = new JScrollPane(formStack);
+        formScroll.setBorder(null);
+        formScroll.setOpaque(false);
+        formScroll.getViewport().setOpaque(false);
+        formScroll.getVerticalScrollBar().setUnitIncrement(14);
+        formCard.add(formScroll);
+        columns.add(formCard, BorderLayout.CENTER);
+
+        JPanel receiptCard = Ui.card(Color.WHITE, 22, true);
+        receiptCard.setLayout(new BorderLayout());
+        receiptCard.setBorder(new javax.swing.border.EmptyBorder(18, 20, 18, 20));
+        JLabel receiptTitle = Ui.label("Receipt", 16, Font.BOLD, Ui.INK);
+        receiptTitle.setHorizontalAlignment(SwingConstants.CENTER);
+        receiptCard.add(receiptTitle, BorderLayout.NORTH);
+        receipt.setEditable(false);
+        receipt.setOpaque(false);
+        receipt.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        receipt.setForeground(Ui.INK);
+        receipt.setBorder(new javax.swing.border.EmptyBorder(14, 40, 10, 0));
+        JScrollPane receiptScroll = new JScrollPane(receipt);
+        receiptScroll.setBorder(null);
+        receiptScroll.setOpaque(false);
+        receiptScroll.getViewport().setOpaque(false);
+        receiptCard.add(receiptScroll);
+        JPanel receiptActions = new JPanel(new GridLayout(2, 1, 0, 12));
+        receiptActions.setOpaque(false);
+        receiptActions.setBorder(new javax.swing.border.CompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, Ui.LINE),
+                new javax.swing.border.EmptyBorder(18, 0, 0, 0)));
+        gui.RoundedButton placeOrder = Ui.primaryButton("Place Order");
+        placeOrder.setPreferredSize(new Dimension(300, 44));
+        placeOrder.addActionListener(e -> placeOrder());
+        gui.OutlineButton back = new gui.OutlineButton("Back to Cart", Ui.FOREST, Ui.FOREST);
+        back.setFont(Ui.font(11, Font.BOLD));
+        back.setBgColor(new Color(222, 229, 217));
+        back.setPreferredSize(new Dimension(300, 42));
+        back.addActionListener(e -> checkoutLayout.show(checkoutViews, "cart"));
+        receiptActions.add(placeOrder);
+        receiptActions.add(back);
+        receiptCard.add(receiptActions, BorderLayout.SOUTH);
+        receiptCard.setPreferredSize(new Dimension(350, 500));
+        columns.add(receiptCard, BorderLayout.EAST);
+
+        payment.addActionListener(e -> {
+            showSelectedPaymentDetails();
+            updateReceipt();
+        });
+        watchReceipt(qrReference);
+        watchReceipt(cardNumber);
+        watchReceipt(fullName);
+        watchReceipt(contact);
+        showSelectedPaymentDetails();
+        return columns;
+    }
+
+    private void watchReceipt(JTextField field) {
+        field.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { updateReceipt(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { updateReceipt(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { updateReceipt(); }
+        });
+    }
+
+    private void configurePaymentDetails() {
+        JPanel qrPanel = Ui.card(new Color(244, 244, 236), 16, true);
+        qrPanel.setLayout(new BorderLayout(12, 8));
+        qrPanel.setBorder(new javax.swing.border.EmptyBorder(12, 14, 12, 14));
+        JLabel qr = createQrPreview();
+        qrPanel.add(qr, BorderLayout.WEST);
+        JPanel qrCopy = Ui.verticalBox();
+        qrCopy.add(Ui.label("Scan to pay", 12, Font.BOLD, Ui.INK));
+        qrCopy.add(Box.createVerticalStrut(5));
+        qrCopy.add(Ui.label("Replace payment_qr.png with your QR image.", 10, Font.PLAIN, Ui.MUTED));
+        qrCopy.add(Box.createVerticalStrut(10));
+        qrCopy.add(Ui.label("Payment reference number", 10, Font.BOLD, Ui.MUTED));
+        qrReference.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        qrCopy.add(qrReference);
+        qrPanel.add(qrCopy);
+        paymentDetails.add(qrPanel, "qr");
+
+        JPanel cardPanel = Ui.card(new Color(244, 244, 236), 16, true);
+        cardPanel.setLayout(new GridBagLayout());
+        cardPanel.setBorder(new javax.swing.border.EmptyBorder(12, 14, 12, 14));
+        GridBagConstraints cardGbc = new GridBagConstraints();
+        cardGbc.gridx = 0; cardGbc.gridy = 0; cardGbc.gridwidth = 2; cardGbc.weightx = 1;
+        cardGbc.fill = GridBagConstraints.HORIZONTAL; cardGbc.insets = new Insets(0, 0, 4, 0);
+        cardPanel.add(Ui.label("Card details", 12, Font.BOLD, Ui.INK), cardGbc);
+        addCardField(cardPanel, cardGbc, "Name on card", cardholderName, 2);
+        addCardField(cardPanel, cardGbc, "Card number", cardNumber, 2);
+        JPanel shortFields = new JPanel(new GridLayout(1, 2, 8, 0));
+        shortFields.setOpaque(false);
+        shortFields.add(labeledField("Expiry (MM/YY)", cardExpiry));
+        shortFields.add(labeledField("CVV", cardCvv));
+        cardGbc.gridx = 0; cardGbc.gridy++; cardGbc.gridwidth = 2;
+        cardGbc.insets = new Insets(6, 0, 0, 0);
+        cardPanel.add(shortFields, cardGbc);
+        paymentDetails.add(cardPanel, "card");
+    }
+
+    private JPanel paymentInfoPanel(String text) {
+        JPanel panel = Ui.card(new Color(244, 244, 236), 16, true);
+        panel.setLayout(new GridBagLayout());
+        panel.setBorder(new javax.swing.border.EmptyBorder(18, 20, 18, 20));
+        panel.add(Ui.label(text, 11, Font.PLAIN, Ui.MUTED));
+        return panel;
+    }
+
+    private void addCardField(JPanel panel, GridBagConstraints gbc, String label, JComponent field, int width) {
+        gbc.gridy++;
+        gbc.gridwidth = width;
+        gbc.insets = new Insets(5, gbc.gridx == 1 ? 6 : 0, 3, 0);
+        panel.add(Ui.label(label, 10, Font.BOLD, Ui.MUTED), gbc);
+        gbc.gridy++;
+        gbc.insets = new Insets(0, gbc.gridx == 1 ? 6 : 0, 0, 0);
+        field.setPreferredSize(new Dimension(100, 30));
+        panel.add(field, gbc);
+        if (width == 2) gbc.gridx = 0;
+    }
+
+    private JPanel labeledField(String label, JComponent field) {
+        JPanel panel = Ui.verticalBox();
+        panel.add(Ui.label(label, 10, Font.BOLD, Ui.MUTED));
+        panel.add(Box.createVerticalStrut(3));
+        field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        panel.add(field);
+        return panel;
+    }
+
+    private JLabel createQrPreview() {
+        JLabel preview = new JLabel("<html><center>QR IMAGE<br>PLACEHOLDER<br><small>payment_qr.png</small></center></html>", SwingConstants.CENTER);
+        preview.setPreferredSize(new Dimension(150, 150));
+        preview.setOpaque(true);
+        preview.setBackground(Color.WHITE);
+        preview.setForeground(Ui.MUTED);
+        preview.setBorder(BorderFactory.createDashedBorder(Ui.SAGE, 2, 5));
+        java.net.URL url = getClass().getResource("/Gui_Images/payment_qr.png");
+        ImageIcon source = url == null ? null : new ImageIcon(url);
+        if (source == null) {
+            java.io.File developmentFile = new java.io.File("src/Gui_Images/payment_qr.png");
+            if (developmentFile.isFile()) source = new ImageIcon(developmentFile.getAbsolutePath());
+        }
+        if (source != null && source.getIconWidth() > 0) {
+            preview.setText("");
+            preview.setIcon(new ImageIcon(source.getImage().getScaledInstance(142, 142, Image.SCALE_SMOOTH)));
+        }
+        return preview;
+    }
+
+    private void showSelectedPaymentDetails() {
+        String selected = String.valueOf(payment.getSelectedItem());
+        paymentDetailsLayout.show(paymentDetails, selected.startsWith("GCash") ? "qr" : selected.startsWith("Card") ? "card" : "cash");
+    }
+
+    private void addFormField(JPanel form, GridBagConstraints gbc, String title, JComponent field) {
+        gbc.gridy++;
+        gbc.insets = new Insets(7, 0, 3, 0);
+        form.add(Ui.label(title, 10, Font.BOLD, Ui.MUTED), gbc);
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        field.setPreferredSize(new Dimension(100, field instanceof JScrollPane ? 43 : 30));
+        form.add(field, gbc);
+    }
+
+    private void showCheckout() {
+        refresh();
+        if (visibleItems.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Add at least one product before checking out.", "Cart", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        updateReceipt();
+        checkoutLayout.show(checkoutViews, "checkout");
+    }
+
+    public void refresh() {
+        visibleItems = store.getCart(user.getId());
+        model.setRowCount(0);
+        double total = 0;
+        for (CartItem item : visibleItems) {
+            total += item.getSubtotal();
+            model.addRow(new Object[]{loadProductThumbnail(item.getProduct().getImagePath()),
+                    item.getProduct().getName(), String.format("₱%,.2f", item.getProduct().getPrice()),
+                    item.getQuantity(), String.format("₱%,.2f", item.getSubtotal())});
+        }
+        summary.setText(visibleItems.isEmpty() ? "Your cart is empty" : String.format("Total: ₱%,.2f", total));
+        updateReceipt();
+    }
+
+    private ImageIcon loadProductThumbnail(String path) {
+        if (path == null || path.trim().isEmpty()) return null;
+        ImageIcon original;
+        if (path.startsWith("/")) {
+            java.net.URL url = getClass().getResource(path);
+            if (url == null) return null;
+            original = new ImageIcon(url);
+        } else {
+            java.io.File file = new java.io.File(path);
+            if (!file.isFile()) return null;
+            original = new ImageIcon(path);
+        }
+        int sourceWidth = original.getIconWidth();
+        int sourceHeight = original.getIconHeight();
+        if (sourceWidth <= 0 || sourceHeight <= 0) return null;
+        double scale = Math.min(64.0 / sourceWidth, 56.0 / sourceHeight);
+        int width = Math.max(1, (int) Math.round(sourceWidth * scale));
+        int height = Math.max(1, (int) Math.round(sourceHeight * scale));
+        return new ImageIcon(original.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH));
+    }
+
+    private void removeSelected() {
+        int row = table.getSelectedRow();
+        if (row < 0 || row >= visibleItems.size()) {
+            JOptionPane.showMessageDialog(this, "Select an item to remove.", "Cart", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        store.removeFromCart(user.getId(), visibleItems.get(row).getProduct().getId());
+        refresh();
+    }
+
+    private void updateReceipt() {
+        if (visibleItems == null) return;
+        StringBuilder text = new StringBuilder();
+        text.append("       HIRAYA CLOTHING\n");
+        text.append("          QUEUETEES\n");
+        text.append("--------------------------------\n");
+        text.append(java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy  h:mm a"))).append("\n");
+        text.append("Customer: ").append(fullName.getText().trim().isEmpty() ? "—" : abbreviate(fullName.getText().trim(), 21)).append("\n");
+        text.append("Contact:  ").append(contact.getText().trim().isEmpty() ? "—" : abbreviate(contact.getText().trim(), 21)).append("\n");
+        text.append("--------------------------------\n");
+        double total = 0;
+        for (CartItem item : visibleItems) {
+            total += item.getSubtotal();
+            text.append(String.format("%-19s x%-2d %8s\n", abbreviate(item.getProduct().getName(), 19), item.getQuantity(),
+                    String.format("₱%,.2f", item.getSubtotal())));
+        }
+        text.append("--------------------------------\n");
+        text.append(String.format("%-23s %8s\n", "SUBTOTAL", String.format("₱%,.2f", total)));
+        text.append(String.format("%-23s %8s\n", "TOTAL", String.format("₱%,.2f", total)));
+        text.append("\nPayment: ").append(paymentDisplay());
+        receipt.setText(text.toString());
+        receipt.setCaretPosition(0);
+    }
+
+    private String abbreviate(String value, int max) {
+        return value.length() <= max ? value : value.substring(0, max - 1) + "…";
+    }
+
+    private String paymentDisplay() {
+        String selected = String.valueOf(payment.getSelectedItem());
+        if (selected.startsWith("Card")) {
+            String digits = cardNumber.getText().replaceAll("[^0-9]", "");
+            return digits.length() >= 4 ? "Card ending " + digits.substring(digits.length() - 4) : selected;
+        }
+        if (selected.startsWith("GCash") && !qrReference.getText().trim().isEmpty()) {
+            return "GCash ref. " + qrReference.getText().trim();
+        }
+        return selected;
+    }
+
+    private void validatePaymentDetails() {
+        String selected = String.valueOf(payment.getSelectedItem());
+        if (selected.startsWith("GCash")) {
+            if (!qrReference.getText().trim().matches("[A-Za-z0-9-]{6,24}")) {
+                throw new IllegalArgumentException("Enter the 6–24 character GCash reference number.");
+            }
+        } else if (selected.startsWith("Card")) {
+            String digits = cardNumber.getText().replaceAll("[^0-9]", "");
+            String expiry = cardExpiry.getText().trim();
+            char[] cvvChars = cardCvv.getPassword();
+            String cvv = new String(cvvChars);
+            java.util.Arrays.fill(cvvChars, '\0');
+            if (cardholderName.getText().trim().isEmpty()) throw new IllegalArgumentException("Name on card is required.");
+            if (!digits.matches("\\d{13,19}")) throw new IllegalArgumentException("Enter a valid 13–19 digit card number.");
+            if (!expiry.matches("(0[1-9]|1[0-2])/\\d{2}")) throw new IllegalArgumentException("Enter the expiry as MM/YY.");
+            if (!cvv.matches("\\d{3,4}")) throw new IllegalArgumentException("Enter a valid 3 or 4 digit CVV.");
+        }
+    }
+
+    private void placeOrder() {
+        try {
+            validatePaymentDetails();
+            String savedPayment = paymentDisplay();
+            CheckoutDetails details = new CheckoutDetails(fullName.getText().trim(), user.getEmail(), contact.getText().trim(),
+                    "Delivery", address.getText().trim(),
+                    savedPayment, notes.getText().trim());
+            Order order = store.checkout(user.getId(), details);
+            JOptionPane.showMessageDialog(this, "Order confirmed. Your queue number is Q-" + String.format("%03d", order.getQueueNumber()) + ".",
+                    "Order placed", JOptionPane.INFORMATION_MESSAGE);
+            refresh();
+            cardNumber.setText("");
+            cardExpiry.setText("");
+            cardCvv.setText("");
+            qrReference.setText("");
+            checkoutLayout.show(checkoutViews, "cart");
+            openTracking.run();
+        } catch (RuntimeException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Unable to place order", JOptionPane.WARNING_MESSAGE);
+        }
     }
 
     /** Styling owned by this panel so the screen can be configured independently. */
@@ -98,6 +518,7 @@ public final class CartPanel extends JPanel {
         static JPanel toolbar(String placeholder, String action) {
             JPanel toolbar = new JPanel(new BorderLayout(12, 0));
             toolbar.setOpaque(false);
+            toolbar.setAlignmentX(Component.LEFT_ALIGNMENT);
             toolbar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
             JTextField search = new JTextField(placeholder);
             search.setFont(font(11, Font.PLAIN));
@@ -193,7 +614,9 @@ public final class CartPanel extends JPanel {
             table.setBackground(PAPER);
             table.setSelectionBackground(new Color(222, 229, 217));
             table.setRowHeight(38);
-            table.setShowGrid(false);
+            table.setShowGrid(true);
+            table.setGridColor(LINE);
+            table.setIntercellSpacing(new Dimension(1, 1));
             table.setFillsViewportHeight(true);
             javax.swing.table.JTableHeader header = table.getTableHeader();
             header.setFont(font(10, Font.BOLD));
@@ -246,5 +669,3 @@ public final class CartPanel extends JPanel {
     }
 
 }
-
-

@@ -7,6 +7,7 @@ import java.util.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import service.AuthService;
+import model.User;
 
 /** All customer shop navigation and pages. */
 public final class CustomerDashboardPanel extends JPanel {
@@ -14,18 +15,26 @@ public final class CustomerDashboardPanel extends JPanel {
     private final JPanel content = new JPanel(cardLayout);
     private final Map<String, CustomerNavButton> navigation = new LinkedHashMap<>();
     private final AuthService authService;
+    private final ShopPanel shopPanel;
+    private final CartPanel cartPanel;
+    private final OrderTrackingPanel trackingPanel;
+    private final OrderHistoryPanel historyPanel;
 
-    public CustomerDashboardPanel(AuthService authService) {
+    public CustomerDashboardPanel(AuthService authService, User user) {
         this.authService = authService;
+        this.shopPanel = new ShopPanel(user, () -> showPanel("cart"));
+        this.cartPanel = new CartPanel(user, () -> showPanel("tracking"));
+        this.trackingPanel = new OrderTrackingPanel(user);
+        this.historyPanel = new OrderHistoryPanel(user);
         setLayout(new BorderLayout());
         add(createHeader(), BorderLayout.NORTH);
         content.setOpaque(false);
-        content.setBorder(new EmptyBorder(18, 42, 24, 42));
+        content.setBorder(new EmptyBorder(30, 36, 30, 36));
         add(content);
-        content.add(new ShopPanel(() -> showPanel("cart")), "shop");
-        content.add(new CartPanel(), "cart");
-        content.add(new OrderTrackingPanel(), "tracking");
-        content.add(new OrderHistoryPanel(), "history");
+        content.add(shopPanel, "shop");
+        content.add(cartPanel, "cart");
+        content.add(trackingPanel, "tracking");
+        content.add(historyPanel, "history");
         content.add(new CustomerProfilePanel(), "profile");
         setOpaque(false);
         showPanel("shop");
@@ -42,9 +51,19 @@ public final class CustomerDashboardPanel extends JPanel {
     private JPanel createHeader() {
         JPanel header = new JPanel(new BorderLayout(20, 0));
         header.setBackground(new Color(250, 250, 244));
-        header.setBorder(new EmptyBorder(15, 42, 14, 42));
-        header.setPreferredSize(new Dimension(1500, 72));
-        header.add(Ui.label("QUEUETEES", 19, Font.BOLD, Ui.INK), BorderLayout.WEST);
+        header.setBorder(new EmptyBorder(10, 36, 10, 36));
+        header.setPreferredSize(new Dimension(0, 84));
+
+        JPanel brand = Ui.verticalBox();
+        brand.setPreferredSize(new Dimension(210, 64));
+        JLabel logo = Ui.logo(110, 40);
+        logo.setAlignmentX(Component.CENTER_ALIGNMENT);
+        brand.add(logo);
+        JLabel brandName = Ui.label("QUEUETEES: A Queuing Management System", 9, Font.BOLD, Ui.INK);
+        brandName.setAlignmentX(Component.CENTER_ALIGNMENT);
+        brandName.setHorizontalAlignment(SwingConstants.CENTER);
+        brand.add(brandName);
+        header.add(brand, BorderLayout.WEST);
         JPanel nav = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
         nav.setOpaque(false);
         addNavigation(nav, "Shop", "shop");
@@ -54,11 +73,16 @@ public final class CustomerDashboardPanel extends JPanel {
         addNavigation(nav, "Account", "profile");
         header.add(nav);
         OutlineButton logout = new OutlineButton("Log Out", Ui.INK, Ui.INK);
-        logout.setFont(Ui.font(11, Font.BOLD));
-        logout.setPreferredSize(new Dimension(92, 36));
+        logout.setFont(Ui.font(10, Font.BOLD));
+        logout.setPreferredSize(new Dimension(86, 34));
+        logout.setMinimumSize(new Dimension(86, 34));
+        logout.setMaximumSize(new Dimension(86, 34));
         logout.setBgColor(new Color(145, 155, 145, 90));
         logout.addActionListener(e -> Ui.confirmLogout(header, authService));
-        header.add(logout, BorderLayout.EAST);
+        JPanel logoutWrap = new JPanel(new GridBagLayout());
+        logoutWrap.setOpaque(false);
+        logoutWrap.add(logout);
+        header.add(logoutWrap, BorderLayout.EAST);
         return header;
     }
 
@@ -68,12 +92,20 @@ public final class CustomerDashboardPanel extends JPanel {
         parent.add(button);
     }
     private void showPanel(String key) { cardLayout.show(content, key);
+        if ("shop".equals(key)) shopPanel.refresh();
+        if ("cart".equals(key)) cartPanel.refresh();
+        if ("tracking".equals(key)) trackingPanel.refresh();
+        if ("history".equals(key)) historyPanel.refresh();
         navigation.forEach((name, button) -> button.setSelectedState(name.equals(key)));
     }
 
     private static final class CustomerNavButton extends JButton {
-        private boolean selected;
+        private boolean selected, hovered;
+        private float highlight;
+        private float targetHighlight;
+        private final javax.swing.Timer transitionTimer;
         CustomerNavButton(String title) { super(title);
+            transitionTimer = new javax.swing.Timer(16, e -> animateHighlight());
             setFont(Ui.font(11, Font.PLAIN));
             setForeground(Ui.MUTED);
             setBorder(new EmptyBorder(8, 11, 8, 11));
@@ -82,14 +114,36 @@ public final class CustomerDashboardPanel extends JPanel {
             setBorderPainted(false);
             setFocusPainted(false);
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override public void mouseEntered(java.awt.event.MouseEvent e) {
+                    hovered = true;
+                    setHighlightTarget(selected ? 1f : 0.42f);
+                }
+                @Override public void mouseExited(java.awt.event.MouseEvent e) {
+                    hovered = false;
+                    setHighlightTarget(selected ? 1f : 0f);
+                }
+            });
         }
         void setSelectedState(boolean value) { selected = value;
             setFont(Ui.font(11, value ? Font.BOLD : Font.PLAIN));
             setForeground(value ? Ui.INK : Ui.MUTED);
+            setHighlightTarget(value ? 1f : (hovered ? 0.42f : 0f));
+        }
+        private void setHighlightTarget(float value) {
+            targetHighlight = value;
+            transitionTimer.start();
+        }
+        private void animateHighlight() {
+            highlight += (targetHighlight - highlight) * 0.28f;
+            if (Math.abs(targetHighlight - highlight) < 0.02f) {
+                highlight = targetHighlight;
+                transitionTimer.stop();
+            }
             repaint();
         }
-        @Override protected void paintComponent(Graphics g) { if (selected) { Graphics2D g2 = (Graphics2D) g.create();
-                g2.setColor(new Color(218, 224, 211));
+        @Override protected void paintComponent(Graphics g) { if (highlight > 0f) { Graphics2D g2 = (Graphics2D) g.create();
+                g2.setColor(new Color(218, 224, 211, Math.round(255 * highlight)));
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
                 g2.dispose();
             } super.paintComponent(g);
@@ -113,6 +167,18 @@ public final class CustomerDashboardPanel extends JPanel {
             label.setFont(font(size, style));
             label.setForeground(color);
             return label;
+        }
+        static JLabel logo(int width, int height) {
+            JLabel logo = new JLabel();
+            java.net.URL url = CustomerDashboardPanel.class.getResource("/Gui_Images/hirayalogo2.png");
+            if (url != null) {
+                Image source = new ImageIcon(url).getImage();
+                logo.setIcon(new ImageIcon(source.getScaledInstance(width, height, Image.SCALE_SMOOTH)));
+            }
+            logo.setPreferredSize(new Dimension(width, height));
+            logo.setMinimumSize(new Dimension(width, height));
+            logo.setMaximumSize(new Dimension(width, height));
+            return logo;
         }
         static void addLeft(JPanel parent, JComponent child) { child.setAlignmentX(Component.LEFT_ALIGNMENT);
             parent.add(child);
@@ -177,6 +243,7 @@ public final class CustomerDashboardPanel extends JPanel {
         static JPanel toolbar(String placeholder, String action) {
             JPanel toolbar = new JPanel(new BorderLayout(12, 0));
             toolbar.setOpaque(false);
+            toolbar.setAlignmentX(Component.LEFT_ALIGNMENT);
             toolbar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
             JTextField search = new JTextField(placeholder);
             search.setFont(font(11, Font.PLAIN));
@@ -272,7 +339,9 @@ public final class CustomerDashboardPanel extends JPanel {
             table.setBackground(PAPER);
             table.setSelectionBackground(new Color(222, 229, 217));
             table.setRowHeight(38);
-            table.setShowGrid(false);
+            table.setShowGrid(true);
+            table.setGridColor(LINE);
+            table.setIntercellSpacing(new Dimension(1, 1));
             table.setFillsViewportHeight(true);
             javax.swing.table.JTableHeader header = table.getTableHeader();
             header.setFont(font(10, Font.BOLD));
@@ -325,5 +394,3 @@ public final class CustomerDashboardPanel extends JPanel {
     }
 
 }
-
-

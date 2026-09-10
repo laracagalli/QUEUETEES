@@ -31,40 +31,71 @@ public class EmailAuthFrame extends JFrame {
 
         setTitle("Email Authentication");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setMinimumSize(new Dimension(900, 650));
         setSize(1100, 733);
         setLocationRelativeTo(null);
-        setResizable(false);
+        setResizable(true);
 
-        JPanel backgroundPanel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
+        JPanel root = new JPanel(new BorderLayout()) {
+            @Override protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
-                java.net.URL imageUrl = getClass().getResource("/Gui_Images/emailauth2.png");
-                if (imageUrl != null) {
-                    ImageIcon image = new ImageIcon(imageUrl);
-                    g.drawImage(image.getImage(), 0, 0, getWidth(), getHeight(), this);
-                }
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setPaint(new GradientPaint(0, 0, CREAM, 0, getHeight(), SAGE));
+                g2.fillRect(0, 0, getWidth(), getHeight());
+                g2.dispose();
             }
         };
-        backgroundPanel.setLayout(null);
-        setContentPane(backgroundPanel);
+        root.setOpaque(false);
+        setContentPane(root);
+        root.add(createBrandPanel(), BorderLayout.WEST);
 
-        int fieldWidth = 52;
-        int fieldHeight = 55;
-        int gap = 6;
-        int totalWidth = 6 * fieldWidth + 5 * gap;
-        int startX = (1100 - totalWidth) / 2 - 5;
-        int y = 320;
+        JPanel formArea = new JPanel(new GridBagLayout());
+        formArea.setOpaque(false);
+        formArea.setBorder(new javax.swing.border.EmptyBorder(34, 42, 34, 42));
+
+        JPanel card = roundedPanel(PAPER, 28);
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBorder(new javax.swing.border.EmptyBorder(38, 44, 36, 44));
+        card.setPreferredSize(new Dimension(570, 520));
+
+        JLabel eyebrow = label("EMAIL VERIFICATION", 10, Font.BOLD, FOREST);
+        eyebrow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(eyebrow);
+        card.add(Box.createVerticalStrut(7));
+        JLabel title = label("Check your inbox", 27, Font.BOLD, INK);
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(title);
+        card.add(Box.createVerticalStrut(9));
+        JLabel description = label("Enter the six-digit code sent to", 11, Font.PLAIN, MUTED);
+        description.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(description);
+        card.add(Box.createVerticalStrut(3));
+        JLabel email = label(user.getEmail(), 11, Font.BOLD, FOREST);
+        email.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(email);
+        card.add(Box.createVerticalStrut(25));
+
+        timerLabel = label("Time remaining: 05:00", 12, Font.PLAIN, MUTED);
+        timerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        card.add(timerLabel);
+        card.add(Box.createVerticalStrut(12));
+
+        JPanel codeRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
+        codeRow.setOpaque(false);
+        codeRow.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         for (int i = 0; i < codeFields.length; i++) {
             final int index = i;
             JTextField field = new JTextField();
-            field.setBounds(startX + i * (fieldWidth + gap), y, fieldWidth, fieldHeight);
-            field.setFont(new Font("Fira Code", Font.BOLD, 26));
+            field.setPreferredSize(new Dimension(54, 58));
+            field.setFont(font(25, Font.BOLD));
             field.setHorizontalAlignment(JTextField.CENTER);
-            field.setBackground(Color.WHITE);
-            field.setForeground(Color.BLACK);
-            field.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2, true));
+            field.setBackground(new Color(248, 248, 242));
+            field.setForeground(INK);
+            field.setCaretColor(FOREST);
+            field.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(LINE, 2, true),
+                    new javax.swing.border.EmptyBorder(4, 4, 4, 4)));
             field.setOpaque(true);
             field.setDocument(new OneDigitDocument());
 
@@ -81,70 +112,128 @@ public class EmailAuthFrame extends JFrame {
             });
 
             codeFields[i] = field;
-            backgroundPanel.add(field);
+            codeRow.add(field);
         }
+        card.add(codeRow);
+        card.add(Box.createVerticalStrut(16));
 
-        // =========================
-        // TIMER LABEL
-        // =========================
-        timerLabel = new JLabel("Time remaining: 05:00", SwingConstants.CENTER);
-        // Moved up to y=280 to sit above the text fields
-        timerLabel.setBounds(390, 280, 310, 20);
-        timerLabel.setForeground(Color.BLACK);
-        timerLabel.setFont(new Font("Fira Code", Font.PLAIN, 14));
-        backgroundPanel.add(timerLabel);
-
-        JLabel resendCode = new JLabel("<html><u>Resend Code</u></html>", SwingConstants.CENTER);
-        resendCode.setBounds(390, 430, 310, 30);
-        resendCode.setForeground(Color.BLACK);
-        resendCode.setFont(new Font("Fira Code", Font.PLAIN, 15));
-        resendCode.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        resendCode.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                generateTemporaryCode();
-                clearCodeFields();
-                codeFields[0].requestFocusInWindow();
-            }
-
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                resendCode.setForeground(Color.LIGHT_GRAY);
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                resendCode.setForeground(Color.BLACK);
-            }
+        JButton resendCode = new JButton("Resend verification code");
+        resendCode.setFont(font(11, Font.BOLD));
+        resendCode.setForeground(FOREST);
+        resendCode.setOpaque(false);
+        resendCode.setContentAreaFilled(false);
+        resendCode.setBorderPainted(false);
+        resendCode.setFocusPainted(false);
+        resendCode.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        resendCode.setAlignmentX(Component.CENTER_ALIGNMENT);
+        resendCode.addActionListener(e -> {
+            generateTemporaryCode();
+            clearCodeFields();
+            codeFields[0].requestFocusInWindow();
         });
-        backgroundPanel.add(resendCode);
+        card.add(resendCode);
+        card.add(Box.createVerticalStrut(19));
 
-        RoundedButton enterButton = new RoundedButton("Enter", Color.BLACK, Color.WHITE);
-        enterButton.setBounds(360, 480, 360, 45);
-        enterButton.setFont(new Font("Fira Code", Font.BOLD, 17));
-        enterButton.setHoverColor(new Color(50, 50, 50));
+        RoundedButton enterButton = new RoundedButton("Verify Email", INK, Color.WHITE);
+        enterButton.setFont(font(13, Font.BOLD));
+        enterButton.setHoverColor(new Color(74, 91, 74));
+        enterButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        enterButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+        enterButton.setPreferredSize(new Dimension(480, 44));
         enterButton.addActionListener(e -> verifyCode());
-        backgroundPanel.add(enterButton);
+        card.add(enterButton);
+        card.add(Box.createVerticalStrut(10));
 
-        OutlineButton backButton = new OutlineButton("Back", Color.BLACK, Color.BLACK);
-        backButton.setBounds(360, 535, 360, 45);
-        backButton.setFont(new Font("Fira Code", Font.BOLD, 17));
-        backButton.setBgColor(new Color(0, 0, 0, 40));
+        OutlineButton backButton = new OutlineButton("Back to Login", FOREST, FOREST);
+        backButton.setFont(font(12, Font.BOLD));
+        backButton.setBgColor(new Color(145, 155, 145, 75));
+        backButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        backButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+        backButton.setPreferredSize(new Dimension(480, 44));
         backButton.addActionListener(e -> {
             if (countdownTimer != null)
                 countdownTimer.stop();
             dispose();
             new LoginFrame(authService).setVisible(true);
         });
-        backgroundPanel.add(backButton);
+        card.add(backButton);
+        formArea.add(card);
+        root.add(formArea);
 
         getRootPane().setDefaultButton(enterButton);
+
+        addWindowListener(new WindowAdapter() {
+            @Override public void windowClosed(WindowEvent e) {
+                if (countdownTimer != null) countdownTimer.stop();
+            }
+        });
 
         SwingUtilities.invokeLater(() -> {
             generateTemporaryCode();
             codeFields[0].requestFocusInWindow();
         });
     }
+
+    private JPanel createBrandPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(FOREST);
+        panel.setPreferredSize(new Dimension(350, 0));
+        JPanel brand = new JPanel();
+        brand.setOpaque(false);
+        brand.setLayout(new BoxLayout(brand, BoxLayout.Y_AXIS));
+        java.net.URL logoUrl = getClass().getResource("/Gui_Images/hirayalogo2.png");
+        JLabel logo = new JLabel();
+        if (logoUrl != null) {
+            Image image = new ImageIcon(logoUrl).getImage().getScaledInstance(245, 98, Image.SCALE_SMOOTH);
+            logo.setIcon(new ImageIcon(image));
+        }
+        logo.setAlignmentX(Component.CENTER_ALIGNMENT);
+        brand.add(logo);
+        brand.add(Box.createVerticalStrut(12));
+        JLabel name = label("QUEUETEES", 22, Font.BOLD, Color.WHITE);
+        name.setAlignmentX(Component.CENTER_ALIGNMENT);
+        brand.add(name);
+        brand.add(Box.createVerticalStrut(7));
+        JLabel tagline = label("QUEUE WITH EASE", 10, Font.PLAIN, new Color(221, 230, 216));
+        tagline.setAlignmentX(Component.CENTER_ALIGNMENT);
+        brand.add(tagline);
+        panel.add(brand);
+        return panel;
+    }
+
+    private static JPanel roundedPanel(Color color, int radius) {
+        JPanel panel = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(color);
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+                g2.setColor(LINE);
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        panel.setOpaque(false);
+        return panel;
+    }
+
+    private static Font font(int size, int style) { return new Font("Fira Code", style, size); }
+
+    private static JLabel label(String text, int size, int style, Color color) {
+        JLabel label = new JLabel(text);
+        label.setFont(font(size, style));
+        label.setForeground(color);
+        return label;
+    }
+
+    private static final Color INK = new Color(28, 31, 27);
+    private static final Color MUTED = new Color(99, 106, 96);
+    private static final Color FOREST = new Color(55, 70, 56);
+    private static final Color SAGE = new Color(145, 155, 145);
+    private static final Color CREAM = new Color(241, 241, 232);
+    private static final Color PAPER = new Color(252, 252, 247);
+    private static final Color LINE = new Color(218, 220, 209);
 
     // =========================
     // TIMER METHODS
@@ -162,7 +251,7 @@ public class EmailAuthFrame extends JFrame {
             if (timeLeft <= 0) {
                 countdownTimer.stop();
                 timerLabel.setText("OTP Expired. Please resend.");
-                timerLabel.setForeground(Color.RED);
+                timerLabel.setForeground(new Color(164, 56, 56));
                 currentOtp = null; // Erase OTP so they can't force it through
             } else {
                 updateTimerLabel();
@@ -176,7 +265,7 @@ public class EmailAuthFrame extends JFrame {
         int minutes = timeLeft / 60;
         int seconds = timeLeft % 60;
         timerLabel.setText(String.format("Time remaining: %02d:%02d", minutes, seconds));
-        timerLabel.setForeground(Color.BLACK);
+        timerLabel.setForeground(MUTED);
     }
 
     private void generateTemporaryCode() {
@@ -248,7 +337,7 @@ public class EmailAuthFrame extends JFrame {
                 JOptionPane.INFORMATION_MESSAGE);
 
         dispose();
-        new CustomerFrame(authService).setVisible(true);
+        new CustomerFrame(authService, user).setVisible(true);
     }
 
     private String getEnteredCode() {

@@ -2,9 +2,18 @@ package gui.staff;
 
 import java.awt.*;
 import javax.swing.*;
+import model.Order;
+import model.OrderStatus;
+import service.StoreService;
 
 /** Staff page for the live queue summary. */
 public final class QueueStatusPanel extends JPanel {
+    private final StoreService store = StoreService.getInstance();
+    private final JLabel confirmedValue = Ui.label("0", 24, Font.BOLD, Ui.FOREST);
+    private final JLabel preparingValue = Ui.label("0", 24, Font.BOLD, Ui.FOREST);
+    private final JLabel readyValue = Ui.label("0", 24, Font.BOLD, Ui.FOREST);
+    private final JLabel flowMessage = Ui.label("", 12, Font.PLAIN, Ui.MUTED);
+
     public QueueStatusPanel() {
         setOpaque(false);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -17,14 +26,45 @@ public final class QueueStatusPanel extends JPanel {
         JPanel metrics = new JPanel(new GridLayout(1, 3, 15, 0));
         metrics.setOpaque(false);
         metrics.setAlignmentX(Component.LEFT_ALIGNMENT);
-        metrics.add(Ui.metricCard("—", "Now serving"));
-        metrics.add(Ui.metricCard("—", "Waiting"));
-        metrics.add(Ui.metricCard("—", "Completed"));
+        metrics.add(metricCard(confirmedValue, "Waiting"));
+        metrics.add(metricCard(preparingValue, "Now preparing"));
+        metrics.add(metricCard(readyValue, "Ready for pickup"));
         metrics.setMaximumSize(new Dimension(Integer.MAX_VALUE, 115));
         metrics.setPreferredSize(new Dimension(1000, 115));
         add(metrics);
         add(Box.createVerticalStrut(18));
-        add(Ui.emptyState("Live queue", "Queue information appears when confirmed orders are available."));
+        JPanel flow = Ui.card(Ui.PAPER, 22, true);
+        flow.setLayout(new GridBagLayout());
+        flow.add(flowMessage);
+        flow.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        flow.setPreferredSize(new Dimension(1000, 390));
+        add(flow);
+        refresh();
+    }
+
+    private JPanel metricCard(JLabel value, String caption) {
+        JPanel panel = Ui.card(Ui.PAPER, 20, true);
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(new javax.swing.border.EmptyBorder(17, 19, 15, 19));
+        panel.add(value);
+        panel.add(Box.createVerticalStrut(6));
+        panel.add(Ui.label(caption, 11, Font.PLAIN, Ui.MUTED));
+        return panel;
+    }
+
+    public void refresh() {
+        int confirmed = 0, preparing = 0, ready = 0;
+        for (Order order : store.getActiveOrders()) {
+            if (order.getStatus() == OrderStatus.CONFIRMED) confirmed++;
+            else if (order.getStatus() == OrderStatus.PREPARING) preparing++;
+            else if (order.getStatus() == OrderStatus.READY_FOR_PICKUP) ready++;
+        }
+        confirmedValue.setText(String.valueOf(confirmed));
+        preparingValue.setText(String.valueOf(preparing));
+        readyValue.setText(String.valueOf(ready));
+        flowMessage.setText(confirmed + preparing + ready == 0
+                ? "The live queue is empty."
+                : "Confirmed  →  Preparing  →  Ready for pickup  →  Completed");
     }
 
     /** Styling owned by this panel so the screen can be configured independently. */
@@ -101,13 +141,14 @@ public final class QueueStatusPanel extends JPanel {
             detail.setAlignmentX(Component.CENTER_ALIGNMENT);
             center.add(detail);
             panel.add(center);
-            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 205));
-            panel.setPreferredSize(new Dimension(1000, 205));
+            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+            panel.setPreferredSize(new Dimension(1000, 390));
             return panel;
         }
         static JPanel toolbar(String placeholder, String action) {
             JPanel toolbar = new JPanel(new BorderLayout(12, 0));
             toolbar.setOpaque(false);
+            toolbar.setAlignmentX(Component.LEFT_ALIGNMENT);
             toolbar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
             JTextField search = new JTextField(placeholder);
             search.setFont(font(11, Font.PLAIN));
@@ -149,8 +190,8 @@ public final class QueueStatusPanel extends JPanel {
                 wrap.add(button);
                 panel.add(wrap, BorderLayout.SOUTH);
             }
-            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 350));
-            panel.setPreferredSize(new Dimension(1000, 350));
+            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+            panel.setPreferredSize(new Dimension(1000, 520));
             return panel;
         }
         static JPanel productCard(String imagePath) {
@@ -203,7 +244,9 @@ public final class QueueStatusPanel extends JPanel {
             table.setBackground(PAPER);
             table.setSelectionBackground(new Color(222, 229, 217));
             table.setRowHeight(38);
-            table.setShowGrid(false);
+            table.setShowGrid(true);
+            table.setGridColor(LINE);
+            table.setIntercellSpacing(new Dimension(1, 1));
             table.setFillsViewportHeight(true);
             javax.swing.table.JTableHeader header = table.getTableHeader();
             header.setFont(font(10, Font.BOLD));
@@ -256,5 +299,3 @@ public final class QueueStatusPanel extends JPanel {
     }
 
 }
-
-

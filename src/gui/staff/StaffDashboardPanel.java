@@ -13,19 +13,23 @@ public final class StaffDashboardPanel extends JPanel {
     private final JPanel content = new JPanel(cardLayout);
     private final Map<String, Ui.NavButton> navigation = new LinkedHashMap<>();
     private final AuthService authService;
+    private final OrderQueuePanel queuePanel = new OrderQueuePanel();
+    private final CompletedOrdersPanel completedPanel = new CompletedOrdersPanel();
+    private final OrderDetailsPanel detailsPanel = new OrderDetailsPanel();
+    private final QueueStatusPanel statusPanel = new QueueStatusPanel();
 
     public StaffDashboardPanel(AuthService authService) {
         this.authService = authService;
         setLayout(new BorderLayout());
         add(createSidebar(), BorderLayout.WEST);
         content.setOpaque(false);
-        content.setBorder(new EmptyBorder(18, 22, 22, 22));
+        content.setBorder(new EmptyBorder(30, 36, 30, 36));
         add(content);
         content.add(new StaffOverviewPanel(() -> showPanel("queue")), "overview");
-        content.add(new OrderQueuePanel(), "queue");
-        content.add(new OrderDetailsPanel(), "orders");
-        content.add(new CompletedOrdersPanel(), "completed");
-        content.add(new QueueStatusPanel(), "status");
+        content.add(queuePanel, "queue");
+        content.add(detailsPanel, "orders");
+        content.add(completedPanel, "completed");
+        content.add(statusPanel, "status");
         content.add(new StaffProfilePanel(), "profile");
         setOpaque(false);
         showPanel("overview");
@@ -42,12 +46,16 @@ public final class StaffDashboardPanel extends JPanel {
     private JPanel createSidebar() {
         JPanel sidebar = new JPanel();
         sidebar.setBackground(Ui.FOREST);
-        sidebar.setPreferredSize(new Dimension(218, 733));
+        sidebar.setPreferredSize(new Dimension(230, 0));
         sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
-        sidebar.setBorder(new EmptyBorder(25, 20, 20, 20));
-        Ui.addLeft(sidebar, Ui.label("QUEUETEES", 20, Font.BOLD, Color.WHITE));
-        Ui.addLeft(sidebar, Ui.label("QUEUE WITH EASE", 10, Font.PLAIN, new Color(213, 220, 207)));
-        sidebar.add(Box.createVerticalStrut(28));
+        sidebar.setBorder(new EmptyBorder(24, 22, 22, 22));
+
+        JLabel logo = Ui.logo(168, 68);
+        logo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sidebar.add(logo);
+        sidebar.add(Box.createVerticalStrut(8));
+        Ui.addLeft(sidebar, Ui.label("QUEUETEES: A Queuing Management System", 8, Font.BOLD, Color.WHITE));
+        sidebar.add(Box.createVerticalStrut(30));
         addNavigation(sidebar, "Overview", "overview");
         addNavigation(sidebar, "Order Queue", "queue");
         addNavigation(sidebar, "Order Details", "orders");
@@ -58,7 +66,8 @@ public final class StaffDashboardPanel extends JPanel {
         Ui.addLeft(sidebar, Ui.label("STAFF  •  ONLINE", 10, Font.BOLD, new Color(221, 230, 216)));
         sidebar.add(Box.createVerticalStrut(14));
         RoundedButton logout = Ui.lightButton("Log Out");
-        logout.setMaximumSize(new Dimension(178, 40));
+        logout.setPreferredSize(new Dimension(186, 40));
+        logout.setMaximumSize(new Dimension(186, 40));
         logout.setAlignmentX(Component.LEFT_ALIGNMENT);
         logout.addActionListener(e -> Ui.confirmLogout(sidebar, authService));
         sidebar.add(logout);
@@ -66,14 +75,20 @@ public final class StaffDashboardPanel extends JPanel {
     }
 
     private void addNavigation(JPanel sidebar, String title, String key) { Ui.NavButton button = Ui.navButton(title);
-        button.setMaximumSize(new Dimension(178, 40));
+        button.setPreferredSize(new Dimension(186, 36));
+        button.setMinimumSize(new Dimension(186, 36));
+        button.setMaximumSize(new Dimension(186, 36));
         button.setAlignmentX(Component.LEFT_ALIGNMENT);
         button.addActionListener(e -> showPanel(key));
         navigation.put(key, button);
         sidebar.add(button);
-        sidebar.add(Box.createVerticalStrut(7));
+        sidebar.add(Box.createVerticalStrut(5));
     }
     private void showPanel(String key) { cardLayout.show(content, key);
+        if ("queue".equals(key)) queuePanel.refresh();
+        if ("orders".equals(key)) detailsPanel.refresh();
+        if ("completed".equals(key)) completedPanel.refresh();
+        if ("status".equals(key)) statusPanel.refresh();
         navigation.forEach((name, button) -> button.setSelectedState(name.equals(key)));
     }
 
@@ -94,6 +109,18 @@ public final class StaffDashboardPanel extends JPanel {
             label.setFont(font(size, style));
             label.setForeground(color);
             return label;
+        }
+        static JLabel logo(int width, int height) {
+            JLabel logo = new JLabel();
+            java.net.URL url = StaffDashboardPanel.class.getResource("/Gui_Images/hirayalogo2.png");
+            if (url != null) {
+                Image source = new ImageIcon(url).getImage();
+                logo.setIcon(new ImageIcon(source.getScaledInstance(width, height, Image.SCALE_SMOOTH)));
+            }
+            logo.setPreferredSize(new Dimension(width, height));
+            logo.setMinimumSize(new Dimension(width, height));
+            logo.setMaximumSize(new Dimension(width, height));
+            return logo;
         }
         static void addLeft(JPanel parent, JComponent child) { child.setAlignmentX(Component.LEFT_ALIGNMENT);
             parent.add(child);
@@ -151,13 +178,14 @@ public final class StaffDashboardPanel extends JPanel {
             detail.setAlignmentX(Component.CENTER_ALIGNMENT);
             center.add(detail);
             panel.add(center);
-            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 205));
-            panel.setPreferredSize(new Dimension(1000, 205));
+            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+            panel.setPreferredSize(new Dimension(1000, 390));
             return panel;
         }
         static JPanel toolbar(String placeholder, String action) {
             JPanel toolbar = new JPanel(new BorderLayout(12, 0));
             toolbar.setOpaque(false);
+            toolbar.setAlignmentX(Component.LEFT_ALIGNMENT);
             toolbar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
             JTextField search = new JTextField(placeholder);
             search.setFont(font(11, Font.PLAIN));
@@ -199,8 +227,8 @@ public final class StaffDashboardPanel extends JPanel {
                 wrap.add(button);
                 panel.add(wrap, BorderLayout.SOUTH);
             }
-            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 350));
-            panel.setPreferredSize(new Dimension(1000, 350));
+            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+            panel.setPreferredSize(new Dimension(1000, 520));
             return panel;
         }
         static JPanel productCard(String imagePath) {
@@ -253,7 +281,9 @@ public final class StaffDashboardPanel extends JPanel {
             table.setBackground(PAPER);
             table.setSelectionBackground(new Color(222, 229, 217));
             table.setRowHeight(38);
-            table.setShowGrid(false);
+            table.setShowGrid(true);
+            table.setGridColor(LINE);
+            table.setIntercellSpacing(new Dimension(1, 1));
             table.setFillsViewportHeight(true);
             javax.swing.table.JTableHeader header = table.getTableHeader();
             header.setFont(font(10, Font.BOLD));
@@ -267,8 +297,12 @@ public final class StaffDashboardPanel extends JPanel {
         }
         static final class NavButton extends JButton {
             private boolean selected, hovered;
+            private float highlight;
+            private float targetHighlight;
+            private final javax.swing.Timer transitionTimer;
             NavButton(String title) {
                 super(title);
+                transitionTimer = new javax.swing.Timer(16, e -> animateHighlight());
                 setFont(font(12, Font.PLAIN));
                 setForeground(new Color(224, 230, 219));
                 setHorizontalAlignment(LEFT);
@@ -280,10 +314,10 @@ public final class StaffDashboardPanel extends JPanel {
                 setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
                 addMouseListener(new java.awt.event.MouseAdapter() {
                     @Override public void mouseEntered(java.awt.event.MouseEvent e) { hovered = true;
-                        repaint();
+                        setHighlightTarget(selected ? 1f : 0.58f);
                     }
                     @Override public void mouseExited(java.awt.event.MouseEvent e) { hovered = false;
-                        repaint();
+                        setHighlightTarget(selected ? 1f : 0f);
                     }
                 });
             }
@@ -291,12 +325,24 @@ public final class StaffDashboardPanel extends JPanel {
                 selected = value;
                 setFont(font(12, value ? Font.BOLD : Font.PLAIN));
                 setForeground(value ? Color.WHITE : new Color(224, 230, 219));
+                setHighlightTarget(value ? 1f : (hovered ? 0.58f : 0f));
+            }
+            private void setHighlightTarget(float value) {
+                targetHighlight = value;
+                transitionTimer.start();
+            }
+            private void animateHighlight() {
+                highlight += (targetHighlight - highlight) * 0.28f;
+                if (Math.abs(targetHighlight - highlight) < 0.02f) {
+                    highlight = targetHighlight;
+                    transitionTimer.stop();
+                }
                 repaint();
             }
             @Override protected void paintComponent(Graphics g) {
-                if (selected || hovered) {
+                if (highlight > 0f) {
                     Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setColor(new Color(255, 255, 255, selected ? 34 : 20));
+                    g2.setColor(new Color(255, 255, 255, Math.round(34 * highlight)));
                     g2.fillRoundRect(0, 0, getWidth(), getHeight(), 14, 14);
                     g2.dispose();
                 }
@@ -306,5 +352,3 @@ public final class StaffDashboardPanel extends JPanel {
     }
 
 }
-
-

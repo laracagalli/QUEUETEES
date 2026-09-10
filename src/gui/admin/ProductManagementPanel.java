@@ -1,10 +1,24 @@
 package gui.admin;
 
 import java.awt.*;
+import java.io.File;
+import java.util.List;
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import model.Product;
+import service.StoreService;
 
 /** Administrator page for product catalog and inventory maintenance. */
 public final class ProductManagementPanel extends JPanel {
+    private final StoreService store = StoreService.getInstance();
+    private final DefaultTableModel model = new DefaultTableModel(
+            new String[]{"Product", "Category", "Subcategory", "Price", "Stock", "Picture", "Status"}, 0) {
+        @Override public boolean isCellEditable(int row, int column) { return false; }
+    };
+    private final JTable table = new JTable(model);
+    private final JLabel emptyLabel = Ui.label("", 11, Font.PLAIN, Ui.MUTED);
+    private final JTextField search = new JTextField();
+
     public ProductManagementPanel() {
         setOpaque(false);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -14,9 +28,100 @@ public final class ProductManagementPanel extends JPanel {
         add(Box.createVerticalStrut(5));
         Ui.addLeft(this, Ui.label("Maintain the catalog and monitor availability.", 11, Font.PLAIN, Ui.MUTED));
         add(Box.createVerticalStrut(18));
-        add(Ui.toolbar("Search products", "Add Product"));
+        add(createToolbar());
         add(Box.createVerticalStrut(16));
-        add(Ui.tableCard(new String[]{"Product", "Category", "Subcategory", "Price", "Stock", "Status"}, "No products have been added to the catalog yet.", "Edit Selected"));
+        add(createTableCard());
+        refresh();
+    }
+
+    private JPanel createToolbar() {
+        JPanel toolbar = new JPanel(new BorderLayout(12, 0));
+        toolbar.setOpaque(false);
+        toolbar.setAlignmentX(Component.LEFT_ALIGNMENT);
+        toolbar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        search.setFont(Ui.font(11, Font.PLAIN));
+        search.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Ui.LINE), new javax.swing.border.EmptyBorder(0, 13, 0, 13)));
+        search.setToolTipText("Search products");
+        search.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { refresh(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { refresh(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { refresh(); }
+        });
+        toolbar.add(search);
+        gui.RoundedButton add = Ui.primaryButton("Add Product");
+        add.setPreferredSize(new Dimension(140, 40));
+        add.addActionListener(e -> showProductDialog());
+        toolbar.add(add, BorderLayout.EAST);
+        return toolbar;
+    }
+
+    private JPanel createTableCard() {
+        JPanel card = Ui.card(Ui.PAPER, 22, true);
+        card.setLayout(new BorderLayout());
+        Ui.styleTable(table);
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(null);
+        scroll.getViewport().setBackground(Ui.PAPER);
+        card.add(scroll);
+        emptyLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        emptyLabel.setBorder(new javax.swing.border.EmptyBorder(12, 8, 12, 8));
+        card.add(emptyLabel, BorderLayout.NORTH);
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        card.setPreferredSize(new Dimension(1000, 520));
+        return card;
+    }
+
+    private void showProductDialog() {
+        JTextField name = new JTextField();
+        JComboBox<String> category = new JComboBox<>(new String[]{"Women", "Men", "Kids", "Accessories"});
+        JTextField subcategory = new JTextField("Tops");
+        JTextField price = new JTextField();
+        JTextField stock = new JTextField();
+        JTextField imagePath = new JTextField();
+        JButton browse = new JButton("Browse picture...");
+        browse.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser();
+            chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Images", "png", "jpg", "jpeg", "gif"));
+            if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+                imagePath.setText(chooser.getSelectedFile().getAbsolutePath());
+            }
+        });
+        JPanel picture = new JPanel(new BorderLayout(6, 0));
+        picture.add(imagePath);
+        picture.add(browse, BorderLayout.EAST);
+        JPanel form = new JPanel(new GridLayout(0, 2, 8, 8));
+        form.add(new JLabel("Product name")); form.add(name);
+        form.add(new JLabel("Category")); form.add(category);
+        form.add(new JLabel("Subcategory")); form.add(subcategory);
+        form.add(new JLabel("Price")); form.add(price);
+        form.add(new JLabel("Stock")); form.add(stock);
+        form.add(new JLabel("Product picture")); form.add(picture);
+        int result = JOptionPane.showConfirmDialog(this, form, "Add catalog product", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result != JOptionPane.OK_OPTION) return;
+        try {
+            store.addProduct(name.getText(), String.valueOf(category.getSelectedItem()), subcategory.getText(),
+                    Double.parseDouble(price.getText().trim()), Integer.parseInt(stock.getText().trim()), imagePath.getText());
+            refresh();
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Enter a valid numeric price and stock.", "Invalid product", JOptionPane.WARNING_MESSAGE);
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Invalid product", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    public void refresh() {
+        String query = search.getText().trim().toLowerCase();
+        model.setRowCount(0);
+        List<Product> products = store.getProducts();
+        for (Product product : products) {
+            String haystack = (product.getName() + " " + product.getCategory() + " " + product.getSubcategory()).toLowerCase();
+            if (!haystack.contains(query)) continue;
+            String picture = product.getImagePath().isEmpty() ? "None" : new File(product.getImagePath()).getName();
+            model.addRow(new Object[]{product.getName(), product.getCategory(), product.getSubcategory(),
+                    String.format("₱%,.2f", product.getPrice()), product.getStock(), picture,
+                    product.isAvailable() ? "Available" : "Out of stock"});
+        }
+        emptyLabel.setText(model.getRowCount() == 0 ? "No matching products are available." : model.getRowCount() + " product(s) in the catalog");
     }
 
     /** Styling owned by this panel so the screen can be configured independently. */
@@ -93,13 +198,14 @@ public final class ProductManagementPanel extends JPanel {
             detail.setAlignmentX(Component.CENTER_ALIGNMENT);
             center.add(detail);
             panel.add(center);
-            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 205));
-            panel.setPreferredSize(new Dimension(1000, 205));
+            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+            panel.setPreferredSize(new Dimension(1000, 390));
             return panel;
         }
         static JPanel toolbar(String placeholder, String action) {
             JPanel toolbar = new JPanel(new BorderLayout(12, 0));
             toolbar.setOpaque(false);
+            toolbar.setAlignmentX(Component.LEFT_ALIGNMENT);
             toolbar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
             JTextField search = new JTextField(placeholder);
             search.setFont(font(11, Font.PLAIN));
@@ -141,8 +247,8 @@ public final class ProductManagementPanel extends JPanel {
                 wrap.add(button);
                 panel.add(wrap, BorderLayout.SOUTH);
             }
-            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 350));
-            panel.setPreferredSize(new Dimension(1000, 350));
+            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+            panel.setPreferredSize(new Dimension(1000, 520));
             return panel;
         }
         static JPanel productCard(String imagePath) {
@@ -195,7 +301,9 @@ public final class ProductManagementPanel extends JPanel {
             table.setBackground(PAPER);
             table.setSelectionBackground(new Color(222, 229, 217));
             table.setRowHeight(38);
-            table.setShowGrid(false);
+            table.setShowGrid(true);
+            table.setGridColor(LINE);
+            table.setIntercellSpacing(new Dimension(1, 1));
             table.setFillsViewportHeight(true);
             javax.swing.table.JTableHeader header = table.getTableHeader();
             header.setFont(font(10, Font.BOLD));
@@ -248,5 +356,3 @@ public final class ProductManagementPanel extends JPanel {
     }
 
 }
-
-

@@ -1,11 +1,27 @@
 package gui.customer;
 
 import java.awt.*;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import model.Order;
+import model.OrderStatus;
+import model.User;
+import service.StoreService;
 
 /** Customer order and queue-ticket tracking page. */
 public final class OrderTrackingPanel extends JPanel {
-    public OrderTrackingPanel() {
+    private final StoreService store = StoreService.getInstance();
+    private final User user;
+    private final DefaultTableModel model = new DefaultTableModel(new String[]{"Queue no.", "Placed", "Items", "Total", "Status"}, 0) {
+        @Override public boolean isCellEditable(int row, int column) { return false; }
+    };
+    private final JTable table = new JTable(model);
+    private final JLabel message = Ui.label("", 11, Font.PLAIN, Ui.MUTED);
+
+    public OrderTrackingPanel(User user) {
+        this.user = user;
         setOpaque(false);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         Ui.addLeft(this, Ui.label("QUEUE TRACKING", 10, Font.BOLD, Ui.FOREST));
@@ -14,7 +30,36 @@ public final class OrderTrackingPanel extends JPanel {
         add(Box.createVerticalStrut(5));
         Ui.addLeft(this, Ui.label("Your queue number appears after checkout confirmation.", 11, Font.PLAIN, Ui.MUTED));
         add(Box.createVerticalStrut(18));
-        add(Ui.emptyState("No active ticket", "Complete checkout to receive a queue number."));
+        add(createTableCard());
+        refresh();
+    }
+
+    private JPanel createTableCard() {
+        JPanel card = Ui.card(Ui.PAPER, 22, true);
+        card.setLayout(new BorderLayout());
+        Ui.styleTable(table);
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(null);
+        card.add(scroll);
+        message.setHorizontalAlignment(SwingConstants.CENTER);
+        message.setBorder(new javax.swing.border.EmptyBorder(12, 8, 12, 8));
+        card.add(message, BorderLayout.NORTH);
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 350));
+        card.setPreferredSize(new Dimension(1000, 350));
+        return card;
+    }
+
+    public void refresh() {
+        model.setRowCount(0);
+        List<Order> orders = store.getOrdersForCustomer(user.getId());
+        for (Order order : orders) {
+            if (order.getStatus() == OrderStatus.COMPLETED) continue;
+            model.addRow(new Object[]{"Q-" + String.format("%03d", order.getQueueNumber()),
+                    order.getPlacedAt().format(DateTimeFormatter.ofPattern("MMM d, h:mm a")), order.getItemCount(),
+                    String.format("₱%,.2f", order.getTotal()), order.getStatus().getLabel()});
+        }
+        message.setText(model.getRowCount() == 0 ? "No active ticket. Complete checkout to receive a queue number."
+                : "Your live queue status updates when staff advances the order.");
     }
 
     /** Styling owned by this panel so the screen can be configured independently. */
@@ -98,6 +143,7 @@ public final class OrderTrackingPanel extends JPanel {
         static JPanel toolbar(String placeholder, String action) {
             JPanel toolbar = new JPanel(new BorderLayout(12, 0));
             toolbar.setOpaque(false);
+            toolbar.setAlignmentX(Component.LEFT_ALIGNMENT);
             toolbar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
             JTextField search = new JTextField(placeholder);
             search.setFont(font(11, Font.PLAIN));
@@ -193,7 +239,9 @@ public final class OrderTrackingPanel extends JPanel {
             table.setBackground(PAPER);
             table.setSelectionBackground(new Color(222, 229, 217));
             table.setRowHeight(38);
-            table.setShowGrid(false);
+            table.setShowGrid(true);
+            table.setGridColor(LINE);
+            table.setIntercellSpacing(new Dimension(1, 1));
             table.setFillsViewportHeight(true);
             javax.swing.table.JTableHeader header = table.getTableHeader();
             header.setFont(font(10, Font.BOLD));
@@ -246,4 +294,3 @@ public final class OrderTrackingPanel extends JPanel {
     }
 
 }
-
