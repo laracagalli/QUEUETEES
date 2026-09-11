@@ -66,4 +66,55 @@ public final class PasswordUtil {
             spec.clearPassword();
         }
     }
+        
+    public static String getPasswordValidationMessage(String password) {
+
+        if (password == null || password.length() < 8) {
+            return "Use at least 8 characters";
+        }
+
+        if (password.length() > 16) {
+            return "Maximum of 16 characters";
+        }
+
+        boolean hasUpper = false;
+        boolean hasLower = false;
+        boolean hasNumber = false;
+        boolean hasSpecial = false;
+
+        for (char c : password.toCharArray()) {
+
+            if (Character.isUpperCase(c)) {
+                hasUpper = true;
+
+            } else if (Character.isLowerCase(c)) {
+                hasLower = true;
+
+            } else if (Character.isDigit(c)) {
+                hasNumber = true;
+
+            } else if (!Character.isWhitespace(c)) {
+                hasSpecial = true;
+            }
+        }
+
+        if (!hasUpper) {
+            return "Add at least 1 uppercase letter";
+        }
+
+        if (!hasLower) {
+            return "Add at least 1 lowercase letter";
+        }
+
+        if (!hasNumber) {
+            return "Add at least 1 number";
+        }
+
+        if (!hasSpecial) {
+            return "Add at least 1 special character";
+        }
+
+        return null;
+    }
+
 }

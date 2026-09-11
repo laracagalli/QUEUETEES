@@ -10,6 +10,7 @@ import javax.swing.event.DocumentListener;
 import com.toedter.calendar.JDateChooser;
 import service.AuthService;
 import service.RegistrationResult;
+import service.PasswordUtil;
 
 public class SignupFrame extends JFrame implements ActionListener {
 
@@ -25,6 +26,7 @@ public class SignupFrame extends JFrame implements ActionListener {
     private final JPasswordField pass;
     private final JCheckBox showpass;
 
+    private final JLabel addressError;
     private final JLabel emailError;
     private final JLabel fullnameError;
     private final JLabel passError;
@@ -181,6 +183,13 @@ public class SignupFrame extends JFrame implements ActionListener {
         leftPanel.add(addressLbl);
 
         address = new JTextField();
+        addressError = new JLabel("");
+        addressError.setBounds(30, 316, 490, 14);
+        addressError.setFont(errorFont);
+        addressError.setForeground(Color.RED);
+        addressError.setVisible(false);
+        leftPanel.add(addressError);
+
         address.setBounds(30, 280, 490, 36);
         address.setFont(fieldFont);
         address.setBackground(fieldBg);
@@ -194,12 +203,29 @@ public class SignupFrame extends JFrame implements ActionListener {
         contactLbl.setFont(labelFont);
         leftPanel.add(contactLbl);
 
+        JLabel countryCode = new JLabel("+63");
+        countryCode.setBounds(30, 346, 48, 36);
+        countryCode.setFont(fieldFont);
+        countryCode.setHorizontalAlignment(SwingConstants.CENTER);
+        countryCode.setOpaque(true);
+        countryCode.setBackground(new Color(210, 210, 210));
+        countryCode.setForeground(Color.DARK_GRAY);
+        leftPanel.add(countryCode);
+
         contactnum = new JTextField();
-        contactnum.setBounds(30, 346, 230, 36);
+        contactnum.setBounds(78, 346, 182, 36);
         contactnum.setFont(fieldFont);
         contactnum.setBackground(fieldBg);
-        contactnum.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-        contactnum.setDocument(new LimitedDocument(11, true, "Contact number", this::clearPassword));
+        contactnum.setBorder(
+                BorderFactory.createEmptyBorder(5, 10, 5, 10));
+
+        contactnum.setDocument(
+                new LimitedDocument(
+                        10,
+                        true,
+                        "Contact number",
+                        this::clearPassword));
+
         leftPanel.add(contactnum);
 
         contactError = new JLabel("");
@@ -293,6 +319,7 @@ public class SignupFrame extends JFrame implements ActionListener {
             @Override public void removeUpdate(DocumentEvent e) { checkSignupRealTime(); }
             @Override public void changedUpdate(DocumentEvent e) { checkSignupRealTime(); }
         };
+        address.getDocument().addDocumentListener(liveValidation);
         email.getDocument().addDocumentListener(liveValidation);
         fullname.getDocument().addDocumentListener(liveValidation);
         pass.getDocument().addDocumentListener(liveValidation);
@@ -466,10 +493,22 @@ public class SignupFrame extends JFrame implements ActionListener {
     // =========================
 
     private void checkSignupRealTime() {
+        String addressTxt = address.getText().trim();
         String emailTxt = email.getText().trim();
         String fullnameTxt = fullname.getText().trim();
         String passTxt = new String(pass.getPassword());
         String contactTxt = contactnum.getText().trim();
+
+        if (!addressTxt.isEmpty()
+        && !addressTxt.matches("^[a-zA-Z0-9\\s,.-]+$")) {
+
+            addressError.setText("Invalid special characters");
+            addressError.setVisible(true);
+
+        } else {
+
+            addressError.setVisible(false);
+        }
 
         if (!emailTxt.isEmpty() && !emailTxt.contains("@")) {
             emailError.setText("Invalid email (missing @)");
@@ -481,13 +520,24 @@ public class SignupFrame extends JFrame implements ActionListener {
             fullnameError.setVisible(true);
         } else { fullnameError.setVisible(false); }
 
-        if (passTxt.length() > 0 && passTxt.length() < 6) {
-            passError.setText("Minimum 6 characters");
-            passError.setVisible(true);
-        } else { passError.setVisible(false); }
+        if (!passTxt.isEmpty()) {
+            String passwordMessage =
+                    PasswordUtil.getPasswordValidationMessage(passTxt);
+            if (passwordMessage != null) {
+                passError.setForeground(Color.RED);
+                passError.setText(passwordMessage);
+                passError.setVisible(true);
+            } else {
+                passError.setForeground(new Color(34, 139, 34));
+                passError.setText("Strong password");
+                passError.setVisible(true);
+            }
+        } else {
+            passError.setVisible(false);
+        }
 
-        if (contactTxt.length() > 0 && contactTxt.length() < 11) {
-            contactError.setText("Must be 11 digits");
+        if (contactTxt.length() > 0 && contactTxt.length() < 10) {
+            contactError.setText("Must be 10 digits");
             contactError.setVisible(true);
         } else { contactError.setVisible(false); }
 

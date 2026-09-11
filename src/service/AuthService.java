@@ -134,6 +134,16 @@ public class AuthService {
                         "That username is already taken.");
             }
 
+            String passwordMessage =
+                    PasswordUtil.getPasswordValidationMessage(password);
+
+            if (passwordMessage != null) {
+
+                return RegistrationResult.failure(
+                        AuthStatus.WEAK_PASSWORD,
+                        passwordMessage + ".");
+            }
+
             // Gender check
             if (gender == null || gender.isEmpty()) {
                 return RegistrationResult.failure(
