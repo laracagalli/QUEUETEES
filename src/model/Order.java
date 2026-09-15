@@ -14,6 +14,7 @@ public final class Order {
     private final LocalDateTime placedAt;
     private final CheckoutDetails checkoutDetails;
     private OrderStatus status;
+    private LocalDateTime completedAt;
 
     public Order(int id, int queueNumber, int customerId, String customerName,
                  List<CartItem> items, LocalDateTime placedAt, CheckoutDetails checkoutDetails) {
@@ -23,7 +24,11 @@ public final class Order {
         this.customerName = customerName;
         this.items = new ArrayList<>();
         for (CartItem item : items) {
-            this.items.add(new CartItem(item.getProduct(), item.getQuantity()));
+            // Preserve purchased names and prices for history and printed reports.
+            Product product = item.getProduct();
+            Product purchased = new Product(product.getId(), product.getName(), product.getCategory(),
+                    product.getSubcategory(), product.getPrice(), product.getStock(), product.getImagePath());
+            this.items.add(new CartItem(purchased, item.getQuantity()));
         }
         this.placedAt = placedAt;
         this.checkoutDetails = checkoutDetails;
@@ -38,7 +43,13 @@ public final class Order {
     public LocalDateTime getPlacedAt() { return placedAt; }
     public CheckoutDetails getCheckoutDetails() { return checkoutDetails; }
     public OrderStatus getStatus() { return status; }
-    public void setStatus(OrderStatus status) { this.status = status; }
+    public LocalDateTime getCompletedAt() { return completedAt; }
+    public void setStatus(OrderStatus status) {
+        if (status == null) throw new IllegalArgumentException("Order status is required.");
+        if (status == OrderStatus.COMPLETED && this.status != OrderStatus.COMPLETED)
+            completedAt = LocalDateTime.now();
+        this.status = status;
+    }
     public int getItemCount() { return items.stream().mapToInt(CartItem::getQuantity).sum(); }
     public double getTotal() { return items.stream().mapToDouble(CartItem::getSubtotal).sum(); }
 }

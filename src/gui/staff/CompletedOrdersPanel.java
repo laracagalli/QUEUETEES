@@ -9,24 +9,131 @@ import service.StoreService;
 
 /** Staff page containing completed order records. */
 public final class CompletedOrdersPanel extends JPanel {
+    private final java.util.List<Order> rowOrders = new java.util.ArrayList<>();
     private final StoreService store = StoreService.getInstance();
-    private final DefaultTableModel model = new DefaultTableModel(new String[]{"Queue no.", "Customer", "Placed", "Items", "Total"}, 0) {
+    private final DefaultTableModel model = new DefaultTableModel(new String[]{"Queue no.", "Customer", "Completed", "Items", "Total"}, 0) {
         @Override public boolean isCellEditable(int row, int column) { return false; }
     };
     private final JTable table = new JTable(model);
     private final JLabel message = Ui.label("", 11, Font.PLAIN, Ui.MUTED);
+    private final model.User staff;
+    private final JCheckBox allDates = new JCheckBox("All dates", true);
+    private final JSpinner from = new JSpinner(new SpinnerDateModel());
+    private final JSpinner to = new JSpinner(new SpinnerDateModel());
+    private final JButton print = StaffStyles.button("Preview / print report");
+    private final JPanel content = new JPanel();
+    private JPanel preview;
 
     public CompletedOrdersPanel() {
+        this(null);
+    }
+
+    public CompletedOrdersPanel(model.User staff) {
+        this.staff = staff;
         setOpaque(false);
-        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        Ui.addLeft(this, Ui.label("ORDERS", 10, Font.BOLD, Ui.FOREST));
-        add(Box.createVerticalStrut(4));
-        Ui.addLeft(this, Ui.label("Completed orders", 25, Font.BOLD, Ui.INK));
-        add(Box.createVerticalStrut(5));
-        Ui.addLeft(this, Ui.label("A record of orders completed by the staff team.", 11, Font.PLAIN, Ui.MUTED));
-        add(Box.createVerticalStrut(18));
-        add(createTableCard());
+        setLayout(new BorderLayout());
+        content.setOpaque(false);
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        Ui.addLeft(content, Ui.label("ORDERS", 10, Font.BOLD, Ui.FOREST));
+        content.add(Box.createVerticalStrut(4));
+        Ui.addLeft(content, Ui.label("Completed orders", 25, Font.BOLD, Ui.INK));
+        content.add(Box.createVerticalStrut(5));
+        Ui.addLeft(content, Ui.label("A record of orders completed by the staff team.", 11, Font.PLAIN, Ui.MUTED));
+        content.add(Box.createVerticalStrut(18));
+        content.add(StaffOrderActions.search(table));
+        content.add(dateFilters());
+        content.add(createTableCard());
+        add(content, BorderLayout.CENTER);
+        table.getRowSorter().addRowSorterListener(e -> updateCount());
         refresh();
+    }
+
+    private JPanel dateFilters() {
+        JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        filters.setOpaque(false);
+        filters.setAlignmentX(Component.LEFT_ALIGNMENT);
+        filters.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        allDates.setOpaque(false);
+        for (JSpinner spinner : new JSpinner[]{from, to}) {
+            spinner.setEditor(new JSpinner.DateEditor(spinner, "yyyy-MM-dd"));
+            spinner.setPreferredSize(new Dimension(125, 30));
+            spinner.setEnabled(false);
+            spinner.addChangeListener(e -> refresh());
+        }
+        from.getAccessibleContext().setAccessibleName("Completion date from");
+        to.getAccessibleContext().setAccessibleName("Completion date through");
+        allDates.addActionListener(e -> {
+            from.setEnabled(!allDates.isSelected());
+            to.setEnabled(!allDates.isSelected());
+            refresh();
+        });
+        filters.add(allDates);
+        filters.add(new JLabel("Completed from")); filters.add(from);
+        filters.add(new JLabel("through")); filters.add(to);
+        return filters;
+    }
+
+    private java.time.LocalDate date(JSpinner spinner) {
+        return ((java.util.Date) spinner.getValue()).toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+    }
+
+    private void updateCount() {
+        boolean valid = allDates.isSelected() || !date(from).isAfter(date(to));
+        message.setText(!valid ? "Choose a start date on or before the end date."
+                : table.getRowCount() + " completed order(s) shown - report includes these rows in this order");
+        print.setEnabled(valid && table.getRowCount() > 0 && staff != null);
+        print.setToolTipText(staff == null ? "Sign in as staff to print a report."
+                : !valid ? "Correct the completion-date range first."
+                : table.getRowCount() == 0 ? "Complete an order or change the filters to create a report."
+                : "Open a report preview of the completed orders shown here.");
+    }
+
+    private void printReport() {
+        try {
+            if (!allDates.isSelected()) { from.commitEdit(); to.commitEdit(); }
+            refresh();
+            if (!print.isEnabled()) {
+                StaffStyles.showMessage(this, print.getToolTipText(), "Report unavailable", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            java.util.List<Order> snapshot = new java.util.ArrayList<>();
+            for (int row = 0; row < table.getRowCount(); row++)
+                snapshot.add(rowOrders.get(table.convertRowIndexToModel(row)));
+            String scope = allDates.isSelected() ? "All completion dates" : date(from) + " through " + date(to) + " (inclusive)";
+            JTextField search = findSearch(this);
+            if (search != null && !search.getText().trim().isEmpty()) scope += "; search: " + search.getText().trim();
+            JPanel nextPreview = ReportPreview.create(this, new CompletedOrdersReport(snapshot, staff, scope), this::closePreview);
+            preview = nextPreview;
+            remove(content);
+            add(preview, BorderLayout.CENTER);
+            revalidate();
+            repaint();
+        } catch (java.text.ParseException ex) {
+            StaffStyles.showMessage(this, "Enter valid dates in yyyy-MM-dd format.", "Report dates", JOptionPane.WARNING_MESSAGE);
+        } catch (RuntimeException ex) {
+            ex.printStackTrace();
+            StaffStyles.showMessage(this, "Could not open the report preview: " + ex.getMessage(), "Print report", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void closePreview() {
+        if (preview != null) remove(preview);
+        preview = null;
+        add(content, BorderLayout.CENTER);
+        refresh();
+        revalidate();
+        repaint();
+    }
+
+    private JTextField findSearch(Container parent) {
+        for (Component child : parent.getComponents()) {
+            if (child instanceof JTextField && Boolean.TRUE.equals(((JTextField) child).getClientProperty("searchField"))) return (JTextField) child;
+            if (child instanceof Container) {
+                JTextField found = findSearch((Container) child);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 
     private JPanel createTableCard() {
@@ -34,24 +141,51 @@ public final class CompletedOrdersPanel extends JPanel {
         card.setLayout(new BorderLayout());
         Ui.styleTable(table);
         JScrollPane scroll = new JScrollPane(table);
+        scroll.setColumnHeaderView(table.getTableHeader());
         scroll.setBorder(null);
         card.add(scroll);
         message.setHorizontalAlignment(SwingConstants.CENTER);
         message.setBorder(new javax.swing.border.EmptyBorder(12, 8, 12, 8));
         card.add(message, BorderLayout.NORTH);
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        actions.setOpaque(false);
+        actions.add(StaffOrderActions.detailsButton(this, table, () -> {
+            int row = table.getSelectedRow();
+            return row < 0 ? null : rowOrders.get(table.convertRowIndexToModel(row));
+        }, this::refresh));
+        print.addActionListener(e -> printReport());
+        actions.add(print);
+        card.add(actions, BorderLayout.SOUTH);
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         card.setPreferredSize(new Dimension(1000, 520));
         return card;
     }
 
     public void refresh() {
+        // A report is a stable snapshot; leave it visible during the dashboard's timer ticks.
+        if (preview != null) return;
+        int selectedRow = table.getSelectedRow();
+        Order selected = selectedRow < 0 ? null : rowOrders.get(table.convertRowIndexToModel(selectedRow));
         model.setRowCount(0);
+        rowOrders.clear();
         for (Order order : store.getCompletedOrders()) {
+            java.time.LocalDate completed = order.getCompletedAt().toLocalDate();
+            if (!allDates.isSelected() && (completed.isBefore(date(from)) || completed.isAfter(date(to)))) continue;
+            rowOrders.add(order);
             model.addRow(new Object[]{"Q-" + String.format("%03d", order.getQueueNumber()), order.getCustomerName(),
-                    order.getPlacedAt().format(DateTimeFormatter.ofPattern("MMM d, h:mm a")), order.getItemCount(),
+                    order.getCompletedAt().format(DateTimeFormatter.ofPattern("MMM d, h:mm a")), order.getItemCount(),
                     String.format("₱%,.2f", order.getTotal())});
         }
-        message.setText(model.getRowCount() == 0 ? "No completed orders are available yet." : model.getRowCount() + " completed order(s)");
+        if (selected != null) {
+            for (int i = 0; i < rowOrders.size(); i++) {
+                if (rowOrders.get(i).getId() == selected.getId()) {
+                    int view = table.convertRowIndexToView(i);
+                    if (view >= 0) table.setRowSelectionInterval(view, view);
+                    break;
+                }
+            }
+        }
+        updateCount();
     }
 
     /** Styling owned by this panel so the screen can be configured independently. */
@@ -64,7 +198,7 @@ public final class CompletedOrdersPanel extends JPanel {
         static final Color PAPER = new Color(252, 252, 247);
         static final Color LINE = new Color(218, 220, 209);
 
-        static Font font(int size, int style) { return new Font("Fira Code", style, size);
+        static Font font(int size, int style) { return new Font("Segoe UI", style, size);
         }
         static JLabel label(String value, int size, int style, Color color) {
             JLabel label = new JLabel(value);
@@ -160,6 +294,7 @@ public final class CompletedOrdersPanel extends JPanel {
             JTable table = new JTable(model);
             styleTable(table);
             JScrollPane scroll = new JScrollPane(table);
+        scroll.setColumnHeaderView(table.getTableHeader());
 
             scroll.setBorder(null);
             scroll.getViewport().setBackground(PAPER);
@@ -203,22 +338,15 @@ public final class CompletedOrdersPanel extends JPanel {
             return panel;
         }
         static gui.RoundedButton primaryButton(String title) {
-            gui.RoundedButton button = new gui.RoundedButton(title, INK, Color.WHITE);
-            button.setFont(font(11, Font.BOLD));
-            button.setHoverColor(new Color(74, 91, 74));
-            button.setPreferredSize(new Dimension(135, 38));
-            return button;
+            return StaffStyles.button(title);
         }
         static gui.RoundedButton lightButton(String title) {
-            gui.RoundedButton button = new gui.RoundedButton(title, CREAM, INK);
-            button.setFont(font(11, Font.BOLD));
-            button.setHoverColor(new Color(218, 225, 211));
-            return button;
+            return StaffStyles.lightButton(title);
         }
         static NavButton navButton(String title) { return new NavButton(title);
         }
         static void confirmLogout(Component parent, service.AuthService authService) {
-            int choice = JOptionPane.showConfirmDialog(parent, "Log out of QueueTees?", "Confirm Log Out", JOptionPane.YES_NO_OPTION);
+            int choice = StaffStyles.confirm(parent, "Log out of QueueTees?", "Confirm Log Out", JOptionPane.YES_NO_OPTION);
             if (choice == JOptionPane.YES_OPTION) {
                 Window window = SwingUtilities.getWindowAncestor(parent);
                 if (window != null) window.dispose();

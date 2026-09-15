@@ -14,23 +14,28 @@ public final class StaffDashboardPanel extends JPanel {
     private final Map<String, Ui.NavButton> navigation = new LinkedHashMap<>();
     private final AuthService authService;
     private final OrderQueuePanel queuePanel = new OrderQueuePanel();
-    private final CompletedOrdersPanel completedPanel = new CompletedOrdersPanel();
+    private final CompletedOrdersPanel completedPanel;
     private final OrderDetailsPanel detailsPanel = new OrderDetailsPanel();
     private final QueueStatusPanel statusPanel = new QueueStatusPanel();
 
-    public StaffDashboardPanel(AuthService authService) {
+    private final StaffOverviewPanel overviewPanel = new StaffOverviewPanel(() -> showPanel("queue"));
+    private final javax.swing.Timer refreshTimer = new javax.swing.Timer(2000, e -> refreshVisiblePanel());
+    private String currentPanel = "overview";
+
+    public StaffDashboardPanel(AuthService authService, model.User user) {
         this.authService = authService;
+        completedPanel = new CompletedOrdersPanel(user);
         setLayout(new BorderLayout());
         add(createSidebar(), BorderLayout.WEST);
         content.setOpaque(false);
         content.setBorder(new EmptyBorder(30, 36, 30, 36));
         add(content);
-        content.add(new StaffOverviewPanel(() -> showPanel("queue")), "overview");
+        content.add(overviewPanel, "overview");
         content.add(queuePanel, "queue");
         content.add(detailsPanel, "orders");
         content.add(completedPanel, "completed");
         content.add(statusPanel, "status");
-        content.add(new StaffProfilePanel(), "profile");
+        content.add(new StaffProfilePanel(user), "profile");
         setOpaque(false);
         showPanel("overview");
     }
@@ -84,12 +89,35 @@ public final class StaffDashboardPanel extends JPanel {
         sidebar.add(button);
         sidebar.add(Box.createVerticalStrut(5));
     }
-    private void showPanel(String key) { cardLayout.show(content, key);
+    @Override public void addNotify() {
+        super.addNotify();
+        refreshTimer.start();
+    }
+
+    @Override public void removeNotify() {
+        refreshTimer.stop();
+        super.removeNotify();
+    }
+
+    private void refreshVisiblePanel() {
+        for (Window window : Window.getWindows())
+            if (window instanceof JDialog && window.isShowing() && ((JDialog) window).isModal()) return;
+        refreshPanel(currentPanel);
+    }
+
+    private void showPanel(String key) {
+        currentPanel = key;
+        cardLayout.show(content, key);
+        refreshPanel(key);
+        navigation.forEach((name, button) -> button.setSelectedState(name.equals(key)));
+    }
+
+    private void refreshPanel(String key) {
+        if ("overview".equals(key)) overviewPanel.refresh();
         if ("queue".equals(key)) queuePanel.refresh();
         if ("orders".equals(key)) detailsPanel.refresh();
         if ("completed".equals(key)) completedPanel.refresh();
         if ("status".equals(key)) statusPanel.refresh();
-        navigation.forEach((name, button) -> button.setSelectedState(name.equals(key)));
     }
 
     /** Styling owned by this panel so the screen can be configured independently. */
@@ -253,11 +281,7 @@ public final class StaffDashboardPanel extends JPanel {
             return panel;
         }
         static gui.RoundedButton primaryButton(String title) {
-            gui.RoundedButton button = new gui.RoundedButton(title, INK, Color.WHITE);
-            button.setFont(font(11, Font.BOLD));
-            button.setHoverColor(new Color(74, 91, 74));
-            button.setPreferredSize(new Dimension(135, 38));
-            return button;
+            return StaffStyles.button(title);
         }
         static gui.RoundedButton lightButton(String title) {
             gui.RoundedButton button = new gui.RoundedButton(title, CREAM, INK);
@@ -268,7 +292,7 @@ public final class StaffDashboardPanel extends JPanel {
         static NavButton navButton(String title) { return new NavButton(title);
         }
         static void confirmLogout(Component parent, service.AuthService authService) {
-            int choice = JOptionPane.showConfirmDialog(parent, "Log out of QueueTees?", "Confirm Log Out", JOptionPane.YES_NO_OPTION);
+            int choice = StaffStyles.confirm(parent, "Log out of QueueTees?", "Confirm Log Out", JOptionPane.YES_NO_OPTION);
             if (choice == JOptionPane.YES_OPTION) {
                 Window window = SwingUtilities.getWindowAncestor(parent);
                 if (window != null) window.dispose();
@@ -350,5 +374,4 @@ public final class StaffDashboardPanel extends JPanel {
             }
         }
     }
-
 }

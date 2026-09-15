@@ -36,6 +36,9 @@ public final class CartPanel extends JPanel {
     private final JTextField cardExpiry = new JTextField();
     private final JPasswordField cardCvv = new JPasswordField();
     private final JTextField qrReference = new JTextField();
+    private final JLabel fullNameError = Ui.label("", 10, Font.PLAIN, new Color(170, 35, 35));
+    private final JLabel contactError = Ui.label("", 10, Font.PLAIN, new Color(170, 35, 35));
+    private final JLabel referenceError = Ui.label("", 10, Font.PLAIN, new Color(170, 35, 35));
     private List<CartItem> visibleItems;
 
     public CartPanel(User user, Runnable openTracking) {
@@ -49,7 +52,16 @@ public final class CartPanel extends JPanel {
         add(Box.createVerticalStrut(5));
         Ui.addLeft(this, Ui.label("Review selected products before checkout.", 11, Font.PLAIN, Ui.MUTED));
         add(Box.createVerticalStrut(18));
-        fullName.setText(user.getUsername());
+        CheckoutValidation.restrict(fullName, 36, "[A-Za-z ]*",
+                "Use letters and spaces only (maximum 36 characters).", fullNameError::setText);
+        CheckoutValidation.restrict(contact, 10, "[0-9]*",
+                "Numbers only; enter 10 digits after +63.", contactError::setText);
+        CheckoutValidation.restrict(qrReference, 24, "[0-9]*",
+                "Numbers only (maximum 24 digits).", referenceError::setText);
+        // Usernames are not verified full names and may contain digits or punctuation.
+        fullName.setToolTipText("Full name: letters and spaces, up to 36 characters");
+        contact.setToolTipText("Enter 10 digits after +63, without a leading country code");
+        qrReference.setToolTipText("Enter the 6-24 digit payment reference number");
         email.setText(user.getEmail());
         email.setEditable(false);
         checkoutViews.setOpaque(false);
@@ -119,9 +131,18 @@ public final class CartPanel extends JPanel {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 0, 0);
-        addFormField(form, gbc, "Full name", fullName);
+        addFormField(form, gbc, "Full name", validatedField(fullName, fullNameError));
         addFormField(form, gbc, "Email", email);
-        addFormField(form, gbc, "Contact number", contact);
+        JPanel phone = new JPanel(new BorderLayout(8, 0));
+        phone.setOpaque(false);
+        JLabel countryCode = Ui.label("+63", 12, Font.BOLD, Ui.INK);
+        countryCode.setHorizontalAlignment(SwingConstants.CENTER);
+        countryCode.setPreferredSize(new Dimension(45, 30));
+        countryCode.setOpaque(true);
+        countryCode.setBackground(Ui.CREAM);
+        phone.add(countryCode, BorderLayout.WEST);
+        phone.add(contact, BorderLayout.CENTER);
+        addFormField(form, gbc, "Contact number", validatedField(phone, contactError));
         address.setLineWrap(true); address.setWrapStyleWord(true);
         addFormField(form, gbc, "Delivery address", new JScrollPane(address));
         addFormField(form, gbc, "Payment method", payment);
@@ -214,7 +235,7 @@ public final class CartPanel extends JPanel {
         qrCopy.add(Box.createVerticalStrut(10));
         qrCopy.add(Ui.label("Payment reference number", 10, Font.BOLD, Ui.MUTED));
         qrReference.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        qrCopy.add(qrReference);
+        qrCopy.add(validatedField(qrReference, referenceError));
         qrPanel.add(qrCopy);
         paymentDetails.add(qrPanel, "qr");
 
@@ -297,8 +318,34 @@ public final class CartPanel extends JPanel {
         form.add(Ui.label(title, 10, Font.BOLD, Ui.MUTED), gbc);
         gbc.gridy++;
         gbc.insets = new Insets(0, 0, 0, 0);
-        field.setPreferredSize(new Dimension(100, field instanceof JScrollPane ? 43 : 30));
+        field.setPreferredSize(new Dimension(100, Boolean.TRUE.equals(field.getClientProperty("validatedField")) ? 50
+                : field instanceof JScrollPane ? 43 : 30));
         form.add(field, gbc);
+    }
+
+    private JPanel validatedField(JComponent field, JLabel error) {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 3));
+        wrapper.setOpaque(false);
+        wrapper.putClientProperty("validatedField", true);
+        wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+        error.setPreferredSize(new Dimension(100, 17));
+        wrapper.add(field, BorderLayout.CENTER);
+        wrapper.add(error, BorderLayout.SOUTH);
+        wrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+        return wrapper;
+    }
+
+    private void validateCustomerDetails() {
+        fullNameError.setText(CheckoutValidation.nameError(fullName.getText()));
+        contactError.setText(CheckoutValidation.contactError(contact.getText()));
+        if (!fullNameError.getText().isEmpty()) {
+            fullName.requestFocusInWindow();
+            throw new IllegalArgumentException(fullNameError.getText());
+        }
+        if (!contactError.getText().isEmpty()) {
+            contact.requestFocusInWindow();
+            throw new IllegalArgumentException(contactError.getText());
+        }
     }
 
     private void showCheckout() {
@@ -364,7 +411,7 @@ public final class CartPanel extends JPanel {
         text.append("--------------------------------\n");
         text.append(java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy  h:mm a"))).append("\n");
         text.append("Customer: ").append(fullName.getText().trim().isEmpty() ? "—" : abbreviate(fullName.getText().trim(), 21)).append("\n");
-        text.append("Contact:  ").append(contact.getText().trim().isEmpty() ? "—" : abbreviate(contact.getText().trim(), 21)).append("\n");
+        text.append("Contact:  ").append(contact.getText().isEmpty() ? "—" : "+63" + contact.getText()).append("\n");
         text.append("--------------------------------\n");
         double total = 0;
         for (CartItem item : visibleItems) {
@@ -399,8 +446,10 @@ public final class CartPanel extends JPanel {
     private void validatePaymentDetails() {
         String selected = String.valueOf(payment.getSelectedItem());
         if (selected.startsWith("GCash")) {
-            if (!qrReference.getText().trim().matches("[A-Za-z0-9-]{6,24}")) {
-                throw new IllegalArgumentException("Enter the 6–24 character GCash reference number.");
+            referenceError.setText(CheckoutValidation.referenceError(qrReference.getText()));
+            if (!referenceError.getText().isEmpty()) {
+                qrReference.requestFocusInWindow();
+                throw new IllegalArgumentException(referenceError.getText());
             }
         } else if (selected.startsWith("Card")) {
             String digits = cardNumber.getText().replaceAll("[^0-9]", "");
@@ -417,9 +466,10 @@ public final class CartPanel extends JPanel {
 
     private void placeOrder() {
         try {
+            validateCustomerDetails();
             validatePaymentDetails();
             String savedPayment = paymentDisplay();
-            CheckoutDetails details = new CheckoutDetails(fullName.getText().trim(), user.getEmail(), contact.getText().trim(),
+            CheckoutDetails details = new CheckoutDetails(fullName.getText().trim(), user.getEmail(), "+63" + contact.getText(),
                     "Delivery", address.getText().trim(),
                     savedPayment, notes.getText().trim());
             Order order = store.checkout(user.getId(), details);

@@ -5,7 +5,7 @@ import javax.swing.*;
 
 /** Staff account/profile page. */
 public final class StaffProfilePanel extends JPanel {
-    public StaffProfilePanel() {
+    public StaffProfilePanel(model.User user) {
         setOpaque(false);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         Ui.addLeft(this, Ui.label("ACCOUNT", 10, Font.BOLD, Ui.FOREST));
@@ -14,7 +14,22 @@ public final class StaffProfilePanel extends JPanel {
         add(Box.createVerticalStrut(5));
         Ui.addLeft(this, Ui.label("Review the signed-in staff account.", 11, Font.PLAIN, Ui.MUTED));
         add(Box.createVerticalStrut(18));
-        add(Ui.emptyState("Staff profile", "Profile information loads from the authenticated user record."));
+        JPanel profile = Ui.card(Ui.PAPER, 22, true);
+        profile.setLayout(new GridLayout(0, 2, 20, 20));
+        profile.setBorder(new javax.swing.border.EmptyBorder(25, 25, 25, 25));
+        String[][] fields = {{"Username", user.getUsername()}, {"Email", user.getEmail()},
+                {"Role", user.getRole().name()}, {"Account status", user.getStatus().name()},
+                {"Email verified", user.isEmailVerified() ? "Yes" : "No"}};
+        for (String[] field : fields) {
+            profile.add(Ui.label(field[0], 12, Font.BOLD, Ui.MUTED));
+            JTextField value = new JTextField(field[1]);
+            StaffStyles.readOnly(value);
+            value.setBorder(null);
+            value.setOpaque(false);
+            profile.add(value);
+        }
+        profile.setMaximumSize(new Dimension(Integer.MAX_VALUE, 300));
+        add(profile);
     }
 
     /** Styling owned by this panel so the screen can be configured independently. */
@@ -27,7 +42,7 @@ public final class StaffProfilePanel extends JPanel {
         static final Color PAPER = new Color(252, 252, 247);
         static final Color LINE = new Color(218, 220, 209);
 
-        static Font font(int size, int style) { return new Font("Fira Code", style, size);
+        static Font font(int size, int style) { return new Font("Segoe UI", style, size);
         }
         static JLabel label(String value, int size, int style, Color color) {
             JLabel label = new JLabel(value);
@@ -166,22 +181,15 @@ public final class StaffProfilePanel extends JPanel {
             return panel;
         }
         static gui.RoundedButton primaryButton(String title) {
-            gui.RoundedButton button = new gui.RoundedButton(title, INK, Color.WHITE);
-            button.setFont(font(11, Font.BOLD));
-            button.setHoverColor(new Color(74, 91, 74));
-            button.setPreferredSize(new Dimension(135, 38));
-            return button;
+            return StaffStyles.button(title);
         }
         static gui.RoundedButton lightButton(String title) {
-            gui.RoundedButton button = new gui.RoundedButton(title, CREAM, INK);
-            button.setFont(font(11, Font.BOLD));
-            button.setHoverColor(new Color(218, 225, 211));
-            return button;
+            return StaffStyles.lightButton(title);
         }
         static NavButton navButton(String title) { return new NavButton(title);
         }
         static void confirmLogout(Component parent, service.AuthService authService) {
-            int choice = JOptionPane.showConfirmDialog(parent, "Log out of QueueTees?", "Confirm Log Out", JOptionPane.YES_NO_OPTION);
+            int choice = StaffStyles.confirm(parent, "Log out of QueueTees?", "Confirm Log Out", JOptionPane.YES_NO_OPTION);
             if (choice == JOptionPane.YES_OPTION) {
                 Window window = SwingUtilities.getWindowAncestor(parent);
                 if (window != null) window.dispose();

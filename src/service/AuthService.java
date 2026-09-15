@@ -10,10 +10,14 @@ import repository.UserRepository;
 
 public class AuthService {
     private final UserRepository userRepository;
+    private final PasswordResetService passwordResetService;
 
     public AuthService(UserRepository userRepository) {
         this.userRepository = userRepository;
+        this.passwordResetService = new PasswordResetService(userRepository, backend.EmailService::sendPasswordResetEmail);
     }
+
+    public PasswordResetService passwordResets() { return passwordResetService; }
 
     public LoginResult login(String identifier, char[] passwordChars) {
         String cleanIdentifier = identifier == null ? "" : identifier.trim();

@@ -4,7 +4,7 @@ public class User {
     private final int id;
     private final String username;
     private final String email;
-    private final String passwordHash;
+    private volatile String passwordHash;
     private final UserRole role;
     private boolean emailVerified;
     private AccountStatus status;
@@ -39,6 +39,10 @@ public class User {
 
     public String getPasswordHash() {
         return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = java.util.Objects.requireNonNull(passwordHash);
     }
 
     public UserRole getRole() {

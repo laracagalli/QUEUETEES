@@ -62,7 +62,10 @@ public class RoundedButton extends JButton {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        g2.setColor(hovered ? hoverColor : bgColor);
+        Color fill = isEnabled() && (hovered || getModel().isRollover()) ? hoverColor : bgColor;
+        if (isEnabled() && getModel().isPressed()) fill = fill.darker();
+        if (!isEnabled()) g2.setComposite(AlphaComposite.SrcOver.derive(0.45f));
+        g2.setColor(fill);
         g2.fillRoundRect(0, 0, getWidth(), getHeight(), getHeight(), getHeight());
 
         g2.setColor(textColor);
@@ -71,6 +74,12 @@ public class RoundedButton extends JButton {
         int x = (getWidth() - fm.stringWidth(getText())) / 2;
         int y = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
         g2.drawString(getText(), x, y);
+
+        if (isFocusOwner() && isEnabled()) {
+            g2.setColor(textColor);
+            g2.setStroke(new BasicStroke(1f));
+            g2.drawRoundRect(4, 4, getWidth() - 9, getHeight() - 9, getHeight() - 9, getHeight() - 9);
+        }
 
         g2.dispose();
     }

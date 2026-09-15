@@ -1,6 +1,5 @@
 package gui.customer;
 
-import gui.OutlineButton;
 import gui.RoundedButton;
 import java.awt.*;
 import java.util.*;
@@ -72,12 +71,12 @@ public final class CustomerDashboardPanel extends JPanel {
         addNavigation(nav, "Order History", "history");
         addNavigation(nav, "Account", "profile");
         header.add(nav);
-        OutlineButton logout = new OutlineButton("Log Out", Ui.INK, Ui.INK);
+        RoundedButton logout = new RoundedButton("Log Out", Ui.INK, Color.WHITE);
         logout.setFont(Ui.font(10, Font.BOLD));
         logout.setPreferredSize(new Dimension(86, 34));
         logout.setMinimumSize(new Dimension(86, 34));
         logout.setMaximumSize(new Dimension(86, 34));
-        logout.setBgColor(new Color(145, 155, 145, 90));
+        logout.setHoverColor(new Color(65, 65, 65));
         logout.addActionListener(e -> Ui.confirmLogout(header, authService));
         JPanel logoutWrap = new JPanel(new GridBagLayout());
         logoutWrap.setOpaque(false);

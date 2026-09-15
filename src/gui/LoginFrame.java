@@ -141,9 +141,11 @@ public class LoginFrame extends JFrame implements ActionListener {
         forgotPass.setCursor(new Cursor(Cursor.HAND_CURSOR));
         forgotPass.addMouseListener(new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) {
-                JOptionPane.showMessageDialog(LoginFrame.this,
-                    "Password reset is not available yet.", "QueueTees",
-                    JOptionPane.INFORMATION_MESSAGE);
+                JDialog dialog = new JDialog(LoginFrame.this, "Forgot Password", true);
+                dialog.setContentPane(new ForgotPasswordPanel(authService.passwordResets(), dialog::dispose));
+                dialog.setSize(1080, 760);
+                dialog.setLocationRelativeTo(LoginFrame.this);
+                dialog.setVisible(true);
             }
             @Override public void mouseEntered(MouseEvent e) { forgotPass.setForeground(Color.GRAY); }
             @Override public void mouseExited(MouseEvent e) { forgotPass.setForeground(Color.DARK_GRAY); }
@@ -372,7 +374,7 @@ public class LoginFrame extends JFrame implements ActionListener {
 
         switch (user.getRole()) {
             case ADMIN:   new AdminFrame(authService).setVisible(true);    break;
-            case STAFF:   new StaffFrame(authService).setVisible(true);    break;
+            case STAFF:   new StaffFrame(authService, user).setVisible(true);    break;
             case CUSTOMER: new CustomerFrame(authService, user).setVisible(true); break;
             default:
                 Toolkit.getDefaultToolkit().beep();

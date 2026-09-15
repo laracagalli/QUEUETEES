@@ -7,6 +7,16 @@ import javax.swing.border.EmptyBorder;
 
 /** Staff landing page and operational summary. */
 public final class StaffOverviewPanel extends JPanel {
+    private final JPanel metrics = new JPanel(new GridLayout(1, 4, 15, 0));
+    private final javax.swing.table.DefaultTableModel recentModel = new javax.swing.table.DefaultTableModel(
+            new String[]{"Queue no.", "Customer", "Placed", "Status"}, 0) {
+        @Override public boolean isCellEditable(int row, int column) { return false; }
+    };
+    private final JTable activity = StaffQueuePresentation.table(recentModel, "Your orders will appear here",
+            "Once a customer checks out, review their order from the queue.");
+    private final JLabel nextOrder = StaffStyles.label("", 17, true, Color.WHITE);
+    private java.util.List<model.Order> recentOrders = new java.util.ArrayList<>();
+
     public StaffOverviewPanel(Runnable openQueue) {
         setOpaque(false);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -20,7 +30,7 @@ public final class StaffOverviewPanel extends JPanel {
         hero.setLayout(new BorderLayout(20, 0));
         hero.setBorder(new EmptyBorder(22, 25, 22, 25));
         JPanel copy = Ui.verticalBox();
-        copy.add(Ui.label("Ready for the next order?", 17, Font.BOLD, Color.WHITE));
+        copy.add(nextOrder);
         copy.add(Box.createVerticalStrut(8));
         copy.add(Ui.label("Open the queue to review the next confirmed order.", 11, Font.PLAIN, new Color(220, 227, 216)));
         hero.add(copy);
@@ -37,17 +47,69 @@ public final class StaffOverviewPanel extends JPanel {
         hero.setPreferredSize(new Dimension(1000, 110));
         add(hero);
         add(Box.createVerticalStrut(17));
-        JPanel metrics = new JPanel(new GridLayout(1, 3, 15, 0));
         metrics.setOpaque(false);
         metrics.setAlignmentX(Component.LEFT_ALIGNMENT);
-        metrics.add(Ui.metricCard("—", "Waiting"));
-        metrics.add(Ui.metricCard("—", "Processing"));
-        metrics.add(Ui.metricCard("—", "Completed today"));
         metrics.setMaximumSize(new Dimension(Integer.MAX_VALUE, 108));
         metrics.setPreferredSize(new Dimension(1000, 108));
         add(metrics);
         add(Box.createVerticalStrut(17));
-        add(Ui.emptyState("Recent activity", "No operational activity is available yet."));
+        JPanel recent = Ui.card(Ui.PAPER, 22, true);
+        recent.setLayout(new BorderLayout());
+        recent.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        recent.setPreferredSize(new Dimension(1000, 320));
+        JPanel heading = new JPanel(new BorderLayout());
+        heading.setOpaque(false);
+        heading.setBorder(new EmptyBorder(16, 18, 16, 18));
+        heading.add(StaffStyles.label("Recent orders", 17, true, Ui.INK));
+        heading.add(StaffStyles.label("Latest 10 orders / newest first", 11, false, Ui.MUTED), BorderLayout.EAST);
+        recent.add(heading, BorderLayout.NORTH);
+        Ui.styleTable(activity);
+        activity.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        StaffQueuePresentation.style(activity, 3, false);
+        JScrollPane scroll = new JScrollPane(activity);
+        scroll.setColumnHeaderView(activity.getTableHeader());
+        scroll.setBorder(null);
+        recent.add(scroll);
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 16, 10));
+        actions.setOpaque(false);
+        actions.add(StaffOrderActions.detailsButton(this, activity, () -> {
+            int row = activity.getSelectedRow();
+            return row < 0 ? null : recentOrders.get(activity.convertRowIndexToModel(row));
+        }, this::refresh));
+        recent.add(actions, BorderLayout.SOUTH);
+        add(recent);
+        refresh();
+    }
+
+    public void refresh() {
+        java.util.List<model.Order> orders = service.StoreService.getInstance().getOrders();
+        long waiting = orders.stream().filter(o -> o.getStatus() == model.OrderStatus.CONFIRMED).count();
+        long processing = orders.stream().filter(o -> o.getStatus() == model.OrderStatus.PREPARING).count();
+        long ready = orders.stream().filter(o -> o.getStatus() == model.OrderStatus.READY_FOR_PICKUP).count();
+        long completed = orders.stream().filter(o -> o.getCompletedAt() != null
+                && o.getCompletedAt().toLocalDate().equals(java.time.LocalDate.now())).count();
+        metrics.removeAll();
+        metrics.add(Ui.metricCard(String.valueOf(waiting), "Waiting"));
+        metrics.add(Ui.metricCard(String.valueOf(processing), "Preparing"));
+        metrics.add(Ui.metricCard(String.valueOf(ready), "Ready for pickup"));
+        metrics.add(Ui.metricCard(String.valueOf(completed), "Completed today"));
+        metrics.revalidate();
+        metrics.repaint();
+        model.Order next = orders.stream().filter(o -> o.getStatus() == model.OrderStatus.CONFIRMED)
+                .min(java.util.Comparator.comparingInt(model.Order::getQueueNumber)).orElse(null);
+        nextOrder.setText(next == null ? "No orders waiting to start" : String.format("Next to prepare: Q-%03d  /  Waiting #1", next.getQueueNumber()));
+        int selected = activity.getSelectedRow();
+        Integer selectedId = selected < 0 ? null : recentOrders.get(selected).getId();
+        recentModel.setRowCount(0);
+        recentOrders = orders.stream().sorted(java.util.Comparator.comparingInt(model.Order::getQueueNumber).reversed())
+                .limit(10).collect(java.util.stream.Collectors.toList());
+        for (model.Order order : recentOrders) {
+            recentModel.addRow(new Object[]{String.format("Q-%03d", order.getQueueNumber()), order.getCustomerName(),
+                    order.getPlacedAt().format(java.time.format.DateTimeFormatter.ofPattern("MMM d, h:mm a")), order.getStatus().getLabel()});
+        }
+        if (selectedId != null) for (int i = 0; i < recentOrders.size(); i++) {
+            if (recentOrders.get(i).getId() == selectedId) { activity.setRowSelectionInterval(i, i); break; }
+        }
     }
 
     /** Styling owned by this panel so the screen can be configured independently. */
@@ -60,7 +122,7 @@ public final class StaffOverviewPanel extends JPanel {
         static final Color PAPER = new Color(252, 252, 247);
         static final Color LINE = new Color(218, 220, 209);
 
-        static Font font(int size, int style) { return new Font("Fira Code", style, size);
+        static Font font(int size, int style) { return new Font("Segoe UI", style, size);
         }
         static JLabel label(String value, int size, int style, Color color) {
             JLabel label = new JLabel(value);
@@ -199,22 +261,15 @@ public final class StaffOverviewPanel extends JPanel {
             return panel;
         }
         static gui.RoundedButton primaryButton(String title) {
-            gui.RoundedButton button = new gui.RoundedButton(title, INK, Color.WHITE);
-            button.setFont(font(11, Font.BOLD));
-            button.setHoverColor(new Color(74, 91, 74));
-            button.setPreferredSize(new Dimension(135, 38));
-            return button;
+            return StaffStyles.button(title);
         }
         static gui.RoundedButton lightButton(String title) {
-            gui.RoundedButton button = new gui.RoundedButton(title, CREAM, INK);
-            button.setFont(font(11, Font.BOLD));
-            button.setHoverColor(new Color(218, 225, 211));
-            return button;
+            return StaffStyles.lightButton(title);
         }
         static NavButton navButton(String title) { return new NavButton(title);
         }
         static void confirmLogout(Component parent, service.AuthService authService) {
-            int choice = JOptionPane.showConfirmDialog(parent, "Log out of QueueTees?", "Confirm Log Out", JOptionPane.YES_NO_OPTION);
+            int choice = StaffStyles.confirm(parent, "Log out of QueueTees?", "Confirm Log Out", JOptionPane.YES_NO_OPTION);
             if (choice == JOptionPane.YES_OPTION) {
                 Window window = SwingUtilities.getWindowAncestor(parent);
                 if (window != null) window.dispose();

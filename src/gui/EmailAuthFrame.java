@@ -19,6 +19,7 @@ public class EmailAuthFrame extends JFrame {
     private final JTextField[] codeFields = new JTextField[6];
     private final SecureRandom random = new SecureRandom();
     private String currentOtp;
+    private boolean sendingCode;
 
     // Timer variables
     private JLabel timerLabel;
@@ -269,26 +270,29 @@ public class EmailAuthFrame extends JFrame {
     }
 
     private void generateTemporaryCode() {
-        currentOtp = String.valueOf(100000 + random.nextInt(900000));
-
-        JOptionPane.showMessageDialog(
-                this,
-                "Sending verification code to " + user.getEmail() + "...\nThis may take a few seconds.",
-                "Email Verification",
-                JOptionPane.INFORMATION_MESSAGE);
-
-        new Thread(() -> {
-            EmailService.sendOtpEmail(user.getEmail(), currentOtp);
-
-            SwingUtilities.invokeLater(() -> {
-                startCountdown(); // Start timer exactly when the email is sent
-                JOptionPane.showMessageDialog(
-                        this,
-                        "OTP sent successfully! Please check your inbox.",
-                        "Email Verification",
-                        JOptionPane.INFORMATION_MESSAGE);
-            });
-        }).start();
+        if (sendingCode) return;
+        sendingCode = true;
+        String candidate = String.valueOf(100000 + random.nextInt(900000));
+        timerLabel.setText("Sending verification code...");
+        new SwingWorker<Void, Void>() {
+            @Override protected Void doInBackground() throws Exception {
+                EmailService.sendOtpEmail(user.getEmail(), candidate);
+                return null;
+            }
+            @Override protected void done() {
+                sendingCode = false;
+                if (!isDisplayable()) return;
+                try {
+                    get(); currentOtp = candidate; startCountdown();
+                    codeFields[0].requestFocusInWindow();
+                } catch (Exception ex) {
+                    timerLabel.setText("Email could not be sent. Please try again.");
+                    JOptionPane.showMessageDialog(EmailAuthFrame.this,
+                            "Could not send the code. Check the SMTP configuration and connection.",
+                            "Email Verification", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
     }
 
     private void verifyCode() {

@@ -146,6 +146,20 @@ public final class StoreService {
     public synchronized Order advanceOrder(int orderId) {
         Order order = orders.stream().filter(item -> item.getId() == orderId).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Order was not found."));
+        return advanceOrder(orderId, order.getStatus());
+    }
+
+    public synchronized Order advanceOrder(int orderId, OrderStatus expectedStatus) {
+        Order order = orders.stream().filter(item -> item.getId() == orderId).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Order was not found."));
+        if (order.getStatus() != expectedStatus)
+            throw new IllegalStateException("This order has changed. Review its current status and try again.");
+        if (order.getStatus() == OrderStatus.COMPLETED)
+            throw new IllegalStateException("This order is already completed.");
+        // Start preparation in arrival order; ready orders can await collection independently.
+        if (order.getStatus() == OrderStatus.CONFIRMED && orders.stream().anyMatch(earlier ->
+                earlier.getStatus() == OrderStatus.CONFIRMED && earlier.getQueueNumber() < order.getQueueNumber()))
+            throw new IllegalStateException("Start the earliest waiting order first.");
         switch (order.getStatus()) {
             case CONFIRMED: order.setStatus(OrderStatus.PREPARING); break;
             case PREPARING: order.setStatus(OrderStatus.READY_FOR_PICKUP); break;
