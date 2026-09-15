@@ -1,4 +1,7 @@
-package gui;
+package gui.auth;
+
+import gui.components.RoundedButton;
+import gui.components.OutlineButton;
 
 import backend.EmailService;
 import java.awt.*;

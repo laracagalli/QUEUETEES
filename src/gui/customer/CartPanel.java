@@ -97,9 +97,9 @@ public final class CartPanel extends JPanel {
         actions.add(summary, BorderLayout.WEST);
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         buttons.setOpaque(false);
-        gui.RoundedButton remove = Ui.lightButton("Remove Selected");
+        gui.components.RoundedButton remove = Ui.lightButton("Remove Selected");
         remove.addActionListener(e -> removeSelected());
-        gui.RoundedButton checkout = Ui.primaryButton("Check Out");
+        gui.components.RoundedButton checkout = Ui.primaryButton("Check Out");
         checkout.addActionListener(e -> showCheckout());
         buttons.add(remove);
         buttons.add(checkout);
@@ -188,10 +188,10 @@ public final class CartPanel extends JPanel {
         receiptActions.setBorder(new javax.swing.border.CompoundBorder(
                 BorderFactory.createMatteBorder(1, 0, 0, 0, Ui.LINE),
                 new javax.swing.border.EmptyBorder(18, 0, 0, 0)));
-        gui.RoundedButton placeOrder = Ui.primaryButton("Place Order");
+        gui.components.RoundedButton placeOrder = Ui.primaryButton("Place Order");
         placeOrder.setPreferredSize(new Dimension(300, 44));
         placeOrder.addActionListener(e -> placeOrder());
-        gui.OutlineButton back = new gui.OutlineButton("Back to Cart", Ui.FOREST, Ui.FOREST);
+        gui.components.OutlineButton back = new gui.components.OutlineButton("Back to Cart", Ui.FOREST, Ui.FOREST);
         back.setFont(Ui.font(11, Font.BOLD));
         back.setBgColor(new Color(222, 229, 217));
         back.setPreferredSize(new Dimension(300, 42));
@@ -576,7 +576,7 @@ public final class CartPanel extends JPanel {
             search.setBackground(PAPER);
             search.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(LINE), new javax.swing.border.EmptyBorder(0, 13, 0, 13)));
             toolbar.add(search);
-            if (action != null) { gui.RoundedButton button = primaryButton(action);
+            if (action != null) { gui.components.RoundedButton button = primaryButton(action);
                 button.setPreferredSize(new Dimension(140, 40));
                 toolbar.add(button, BorderLayout.EAST);
                 }
@@ -603,7 +603,7 @@ public final class CartPanel extends JPanel {
             panel.add(empty, BorderLayout.NORTH);
 
             if (action != null) {
-                gui.RoundedButton button = primaryButton(action);
+                gui.components.RoundedButton button = primaryButton(action);
                 button.setEnabled(false);
                 JPanel wrap = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
                 wrap.setOpaque(false);
@@ -635,15 +635,15 @@ public final class CartPanel extends JPanel {
             panel.add(caption, BorderLayout.SOUTH);
             return panel;
         }
-        static gui.RoundedButton primaryButton(String title) {
-            gui.RoundedButton button = new gui.RoundedButton(title, INK, Color.WHITE);
+        static gui.components.RoundedButton primaryButton(String title) {
+            gui.components.RoundedButton button = new gui.components.RoundedButton(title, INK, Color.WHITE);
             button.setFont(font(11, Font.BOLD));
             button.setHoverColor(new Color(74, 91, 74));
             button.setPreferredSize(new Dimension(135, 38));
             return button;
         }
-        static gui.RoundedButton lightButton(String title) {
-            gui.RoundedButton button = new gui.RoundedButton(title, CREAM, INK);
+        static gui.components.RoundedButton lightButton(String title) {
+            gui.components.RoundedButton button = new gui.components.RoundedButton(title, CREAM, INK);
             button.setFont(font(11, Font.BOLD));
             button.setHoverColor(new Color(218, 225, 211));
             return button;
@@ -655,7 +655,7 @@ public final class CartPanel extends JPanel {
             if (choice == JOptionPane.YES_OPTION) {
                 Window window = SwingUtilities.getWindowAncestor(parent);
                 if (window != null) window.dispose();
-                new gui.LoginFrame(authService).setVisible(true);
+                new gui.auth.LoginFrame(authService).setVisible(true);
             }
         }
         static void styleTable(JTable table) {

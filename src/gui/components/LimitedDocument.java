@@ -1,4 +1,4 @@
-package gui;
+package gui.components;
 
 import java.awt.Toolkit;
 import javax.swing.JOptionPane;

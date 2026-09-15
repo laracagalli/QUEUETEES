@@ -35,20 +35,20 @@ public class PasswordResetTest {
         });
         try { delivery.request(user.getEmail()); throw new AssertionError(); } catch(Exception expected) {}
         String retry = delivery.request(user.getEmail()); delivery.verify(retry,code.get());
-        final gui.ForgotPasswordPanel[] ui = new gui.ForgotPasswordPanel[1];
+        final gui.auth.ForgotPasswordPanel[] ui = new gui.auth.ForgotPasswordPanel[1];
         PasswordResetService uiService = new PasswordResetService(repo,(email,value)->code.set(value));
         javax.swing.SwingUtilities.invokeAndWait(()->{
-            ui[0] = new gui.ForgotPasswordPanel(uiService,()->{});
+            ui[0] = new gui.auth.ForgotPasswordPanel(uiService,()->{});
             ((javax.swing.JTextField)get(ui[0],"email")).setText(user.getEmail());
             ((javax.swing.JButton)get(ui[0],"action")).doClick();
         });
         waitStage(ui[0],1);
         javax.swing.SwingUtilities.invokeAndWait(()->{
-            gui.VerificationCodeInput input = (gui.VerificationCodeInput)get(ui[0],"code");
+            gui.components.VerificationCodeInput input = (gui.components.VerificationCodeInput)get(ui[0],"code");
             ((javax.swing.JTextField)input.getComponent(0)).setText(code.get());
         });
         javax.swing.SwingUtilities.invokeAndWait(()->{
-            if(!((gui.VerificationCodeInput)get(ui[0],"code")).getText().equals(code.get())) throw new AssertionError("Paste failed");
+            if(!((gui.components.VerificationCodeInput)get(ui[0],"code")).getText().equals(code.get())) throw new AssertionError("Paste failed");
             ui[0].setSize(1053,710);layout(ui[0]);
             java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(1053,710,java.awt.image.BufferedImage.TYPE_INT_RGB);
             java.awt.Graphics2D g=image.createGraphics();ui[0].printAll(g);g.dispose();
@@ -57,7 +57,7 @@ public class PasswordResetTest {
         });
         waitStage(ui[0],2);
         javax.swing.SwingUtilities.invokeAndWait(()->{
-            gui.ForgotPasswordPanel panel = new gui.ForgotPasswordPanel(reset,()->{});
+            gui.auth.ForgotPasswordPanel panel = new gui.auth.ForgotPasswordPanel(reset,()->{});
             panel.setSize(1080,720); layout(panel);
             java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(1080,720,java.awt.image.BufferedImage.TYPE_INT_RGB);
             java.awt.Graphics2D g=image.createGraphics();panel.printAll(g);g.dispose();
@@ -66,7 +66,7 @@ public class PasswordResetTest {
         System.out.println("Password reset checks passed");
     }
     static Object get(Object target,String name) {try {java.lang.reflect.Field f=target.getClass().getDeclaredField(name);f.setAccessible(true);return f.get(target);}catch(Exception e){throw new RuntimeException(e);}}
-    static void waitStage(gui.ForgotPasswordPanel ui,int expected) throws Exception {
+    static void waitStage(gui.auth.ForgotPasswordPanel ui,int expected) throws Exception {
         for(int i=0;i<100;i++) {final boolean[] ready={false};javax.swing.SwingUtilities.invokeAndWait(()->ready[0]=get(ui,"stage").equals(expected));if(ready[0])return;Thread.sleep(20);}
         throw new AssertionError("UI did not advance to " + expected);
     }

@@ -48,7 +48,7 @@ public final class ProductManagementPanel extends JPanel {
             public void changedUpdate(javax.swing.event.DocumentEvent e) { refresh(); }
         });
         toolbar.add(search);
-        gui.RoundedButton add = Ui.primaryButton("Add Product");
+        gui.components.RoundedButton add = Ui.primaryButton("Add Product");
         add.setPreferredSize(new Dimension(140, 40));
         add.addActionListener(e -> showProductDialog());
         toolbar.add(add, BorderLayout.EAST);
@@ -213,7 +213,7 @@ public final class ProductManagementPanel extends JPanel {
             search.setBackground(PAPER);
             search.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(LINE), new javax.swing.border.EmptyBorder(0, 13, 0, 13)));
             toolbar.add(search);
-            if (action != null) { gui.RoundedButton button = primaryButton(action);
+            if (action != null) { gui.components.RoundedButton button = primaryButton(action);
                 button.setPreferredSize(new Dimension(140, 40));
                 toolbar.add(button, BorderLayout.EAST);
                 }
@@ -240,7 +240,7 @@ public final class ProductManagementPanel extends JPanel {
             panel.add(empty, BorderLayout.NORTH);
 
             if (action != null) {
-                gui.RoundedButton button = primaryButton(action);
+                gui.components.RoundedButton button = primaryButton(action);
                 button.setEnabled(false);
                 JPanel wrap = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
                 wrap.setOpaque(false);
@@ -272,15 +272,15 @@ public final class ProductManagementPanel extends JPanel {
             panel.add(caption, BorderLayout.SOUTH);
             return panel;
         }
-        static gui.RoundedButton primaryButton(String title) {
-            gui.RoundedButton button = new gui.RoundedButton(title, INK, Color.WHITE);
+        static gui.components.RoundedButton primaryButton(String title) {
+            gui.components.RoundedButton button = new gui.components.RoundedButton(title, INK, Color.WHITE);
             button.setFont(font(11, Font.BOLD));
             button.setHoverColor(new Color(74, 91, 74));
             button.setPreferredSize(new Dimension(135, 38));
             return button;
         }
-        static gui.RoundedButton lightButton(String title) {
-            gui.RoundedButton button = new gui.RoundedButton(title, CREAM, INK);
+        static gui.components.RoundedButton lightButton(String title) {
+            gui.components.RoundedButton button = new gui.components.RoundedButton(title, CREAM, INK);
             button.setFont(font(11, Font.BOLD));
             button.setHoverColor(new Color(218, 225, 211));
             return button;
@@ -292,7 +292,7 @@ public final class ProductManagementPanel extends JPanel {
             if (choice == JOptionPane.YES_OPTION) {
                 Window window = SwingUtilities.getWindowAncestor(parent);
                 if (window != null) window.dispose();
-                new gui.LoginFrame(authService).setVisible(true);
+                new gui.auth.LoginFrame(authService).setVisible(true);
             }
         }
         static void styleTable(JTable table) {

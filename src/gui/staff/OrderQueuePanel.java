@@ -19,7 +19,7 @@ public final class OrderQueuePanel extends JPanel {
     private final JTable table = StaffQueuePresentation.table(model, "No active orders yet", "Customer orders will appear here after checkout.");
     private final JLabel message = Ui.label("", 11, Font.PLAIN, Ui.MUTED);
     private List<Order> visibleOrders;
-    private final gui.RoundedButton advance = Ui.primaryButton("Advance selected");
+    private final gui.components.RoundedButton advance = Ui.primaryButton("Advance selected");
     private final JButton selectNext = StaffStyles.lightButton("Select next waiting");
 
     private final JPanel metrics = new JPanel(new GridLayout(1, 3, 14, 0));
@@ -326,7 +326,7 @@ public final class OrderQueuePanel extends JPanel {
             search.setBackground(PAPER);
             search.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(LINE), new javax.swing.border.EmptyBorder(0, 13, 0, 13)));
             toolbar.add(search);
-            if (action != null) { gui.RoundedButton button = primaryButton(action);
+            if (action != null) { gui.components.RoundedButton button = primaryButton(action);
                 button.setPreferredSize(new Dimension(140, 40));
                 toolbar.add(button, BorderLayout.EAST);
                 }
@@ -354,7 +354,7 @@ public final class OrderQueuePanel extends JPanel {
             panel.add(empty, BorderLayout.NORTH);
 
             if (action != null) {
-                gui.RoundedButton button = primaryButton(action);
+                gui.components.RoundedButton button = primaryButton(action);
                 button.setEnabled(false);
                 JPanel wrap = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
                 wrap.setOpaque(false);
@@ -386,10 +386,10 @@ public final class OrderQueuePanel extends JPanel {
             panel.add(caption, BorderLayout.SOUTH);
             return panel;
         }
-        static gui.RoundedButton primaryButton(String title) {
+        static gui.components.RoundedButton primaryButton(String title) {
             return StaffStyles.button(title);
         }
-        static gui.RoundedButton lightButton(String title) {
+        static gui.components.RoundedButton lightButton(String title) {
             return StaffStyles.lightButton(title);
         }
         static NavButton navButton(String title) { return new NavButton(title);
@@ -399,7 +399,7 @@ public final class OrderQueuePanel extends JPanel {
             if (choice == JOptionPane.YES_OPTION) {
                 Window window = SwingUtilities.getWindowAncestor(parent);
                 if (window != null) window.dispose();
-                new gui.LoginFrame(authService).setVisible(true);
+                new gui.auth.LoginFrame(authService).setVisible(true);
             }
         }
         static void styleTable(JTable table) {

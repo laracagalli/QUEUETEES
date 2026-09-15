@@ -12,17 +12,17 @@ final class StaffStyles {
     static final Color LINE = new Color(218, 220, 209);
     private StaffStyles() { }
 
-    static gui.RoundedButton button(String text) {
+    static gui.components.RoundedButton button(String text) {
         return button(text, false);
     }
 
-    static gui.RoundedButton lightButton(String text) {
+    static gui.components.RoundedButton lightButton(String text) {
         return button(text, true);
     }
 
-    private static gui.RoundedButton button(String text, boolean light) {
+    private static gui.components.RoundedButton button(String text, boolean light) {
         Color ink = new Color(28, 31, 27);
-        gui.RoundedButton button = new gui.RoundedButton(text, light ? Color.WHITE : ink, light ? ink : Color.WHITE);
+        gui.components.RoundedButton button = new gui.components.RoundedButton(text, light ? Color.WHITE : ink, light ? ink : Color.WHITE);
         button.setHoverColor(light ? new Color(228, 228, 228) : new Color(65, 65, 65));
         button.setFont(new Font("Segoe UI", Font.BOLD, 12));
         button.setPreferredSize(new Dimension(Math.max(130, text.length() * 8 + 28), 38));
@@ -45,8 +45,8 @@ final class StaffStyles {
     }
 
     private static int dialog(Component parent, String message, String title, int messageType, boolean confirmation) {
-        gui.RoundedButton accept = button(confirmation ? "Yes" : "OK");
-        gui.RoundedButton cancel = lightButton("Cancel");
+        gui.components.RoundedButton accept = button(confirmation ? "Yes" : "OK");
+        gui.components.RoundedButton cancel = lightButton("Cancel");
         Object[] options = confirmation ? new Object[]{cancel, accept} : new Object[]{accept};
         JOptionPane pane = new JOptionPane(message, messageType, JOptionPane.DEFAULT_OPTION, null, options, accept);
         JDialog dialog = pane.createDialog(parent, title);

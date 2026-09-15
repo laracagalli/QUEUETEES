@@ -1,4 +1,4 @@
-import gui.LoginFrame;
+import gui.auth.LoginFrame;
 import javax.swing.SwingUtilities;
 import model.AccountStatus;
 import model.User;

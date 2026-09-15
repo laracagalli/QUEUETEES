@@ -1,4 +1,7 @@
-package gui;
+package gui.auth;
+
+import gui.components.RoundedButton;
+import gui.components.VerificationCodeInput;
 
 import java.awt.*;
 import javax.swing.*;

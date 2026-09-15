@@ -1,4 +1,8 @@
-package gui;
+package gui.auth;
+
+import gui.components.RoundedButton;
+import gui.components.OutlineButton;
+import gui.components.LimitedDocument;
 
 import java.awt.*;
 import java.awt.event.*;
