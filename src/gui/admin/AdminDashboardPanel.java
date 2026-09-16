@@ -6,6 +6,7 @@ import java.util.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import service.AuthService;
+import service.StoreService;
 
 /** All administrator navigation and pages. */
 public final class AdminDashboardPanel extends JPanel {
@@ -13,35 +14,50 @@ public final class AdminDashboardPanel extends JPanel {
     private final JPanel content = new JPanel(cardLayout);
     private final Map<String, Ui.NavButton> navigation = new LinkedHashMap<>();
     private final AuthService authService;
+    private final model.User currentUser;
     private final ProductManagementPanel productPanel;
     private final SalesReportsPanel salesPanel;
     private final AdminOrdersPanel queuePanel;
     private final StaffApprovalsPanel staffPanel;
 
-    public AdminDashboardPanel(AuthService authService) { this(authService,null); }
+    // Dynamic Metric Labels
+    private final JLabel pendingMetricLabel = Ui.label("—", 24, Font.BOLD, Ui.FOREST);
+    private final JLabel staffMetricLabel = Ui.label("—", 24, Font.BOLD, Ui.FOREST);
+    private final JLabel stockMetricLabel = Ui.label("—", 24, Font.BOLD, Ui.FOREST);
+
+    public AdminDashboardPanel(AuthService authService) {
+        this(authService, null);
+    }
+
     public AdminDashboardPanel(AuthService authService, model.User user) {
-        productPanel=new ProductManagementPanel(user);
-        salesPanel=new SalesReportsPanel(user);
-        queuePanel=new AdminOrdersPanel(false,user);
         this.authService = authService;
+        this.currentUser = user;
+        this.productPanel = new ProductManagementPanel(user);
+        this.salesPanel = new SalesReportsPanel(user);
+        this.queuePanel = new AdminOrdersPanel(false, user);
+
         setLayout(new BorderLayout());
         add(createSidebar(), BorderLayout.WEST);
+
         content.setOpaque(false);
         content.setBorder(new EmptyBorder(30, 36, 30, 36));
         add(content);
+
         content.add(createDashboardPanel(), "overview");
-        staffPanel = new StaffApprovalsPanel(authService, user);
+        this.staffPanel = new StaffApprovalsPanel(authService, user);
         content.add(staffPanel, "staff");
         content.add(productPanel, "products");
-        content.add(new CustomerManagementPanel(), "customers");
+        content.add(new CustomerManagementPanel(authService, user), "customers");
         content.add(queuePanel, "queue");
         content.add(salesPanel, "reports");
         content.add(createProfilePanel(user), "profile");
+
         setOpaque(false);
         showPanel("overview");
     }
 
-    @Override protected void paintComponent(Graphics g) {
+    @Override
+    protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setPaint(new GradientPaint(0, 0, Ui.CREAM, 0, getHeight(), Ui.SAGE));
@@ -93,12 +109,52 @@ public final class AdminDashboardPanel extends JPanel {
         sidebar.add(Box.createVerticalStrut(5));
     }
 
-    private void showPanel(String key) { cardLayout.show(content, key);
-        if ("staff".equals(key)) staffPanel.refresh();
-        if ("products".equals(key)) productPanel.refresh();
-        if ("reports".equals(key)) salesPanel.refresh();
-        if ("queue".equals(key)) queuePanel.refresh();
+    private void showPanel(String key) {
+        cardLayout.show(content, key);
+        if ("overview".equals(key))
+            refreshOverview();
+        if ("staff".equals(key))
+            staffPanel.refresh();
+        if ("products".equals(key))
+            productPanel.refresh();
+        if ("reports".equals(key))
+            salesPanel.refresh();
+        if ("queue".equals(key))
+            queuePanel.refresh();
         navigation.forEach((name, button) -> button.setSelectedState(name.equals(key)));
+    }
+
+    private void refreshOverview() {
+        // Calculate Pending Orders (Confirmed or Preparing)
+        try {
+            long pending = StoreService.getInstance().getOrders().stream()
+                    .filter(o -> o.getStatus() == model.OrderStatus.CONFIRMED
+                            || o.getStatus() == model.OrderStatus.PREPARING)
+                    .count();
+            pendingMetricLabel.setText(String.valueOf(pending));
+        } catch (Exception e) {
+            pendingMetricLabel.setText("—");
+        }
+
+        // Calculate Pending Staff Approvals
+        try {
+            long staffCount = authService != null ? authService.getStaffApplications(currentUser).stream()
+                    .filter(u -> u.getStatus() == model.AccountStatus.PENDING_APPROVAL)
+                    .count() : 0;
+            staffMetricLabel.setText(String.valueOf(staffCount));
+        } catch (Exception e) {
+            staffMetricLabel.setText("—");
+        }
+
+        // Calculate Low Stock Items (Stock threshold <= 5)
+        try {
+            long lowStock = StoreService.getInstance().getProducts().stream()
+                    .filter(p -> p.getStock() <= 5)
+                    .count();
+            stockMetricLabel.setText(String.valueOf(lowStock));
+        } catch (Exception e) {
+            stockMetricLabel.setText("—");
+        }
     }
 
     private JPanel createDashboardPanel() {
@@ -109,7 +165,8 @@ public final class AdminDashboardPanel extends JPanel {
         JPanel copy = Ui.verticalBox();
         copy.add(Ui.label("Order queue overview", 17, Font.BOLD, Color.WHITE));
         copy.add(Box.createVerticalStrut(8));
-        copy.add(Ui.label("Operational summaries appear when data is connected.", 11, Font.PLAIN, new Color(220, 227, 216)));
+        copy.add(Ui.label("Operational summaries appear when data is connected.", 11, Font.PLAIN,
+                new Color(220, 227, 216)));
         hero.add(copy);
         RoundedButton open = Ui.lightButton("View Queue");
         open.setPreferredSize(new Dimension(130, 36));
@@ -124,12 +181,16 @@ public final class AdminDashboardPanel extends JPanel {
         hero.setPreferredSize(new Dimension(1000, 110));
         page.add(hero);
         page.add(Box.createVerticalStrut(17));
+
         JPanel metrics = new JPanel(new GridLayout(1, 3, 15, 0));
         metrics.setOpaque(false);
         metrics.setAlignmentX(Component.LEFT_ALIGNMENT);
-        metrics.add(Ui.metricCard("—", "Pending orders"));
-        metrics.add(Ui.metricCard("—", "Staff approvals"));
-        metrics.add(Ui.metricCard("—", "Low-stock items"));
+
+        // Add dynamic metric cards
+        metrics.add(Ui.metricCard(pendingMetricLabel, "Pending orders"));
+        metrics.add(Ui.metricCard(staffMetricLabel, "Staff approvals"));
+        metrics.add(Ui.metricCard(stockMetricLabel, "Low-stock items"));
+
         metrics.setMaximumSize(new Dimension(Integer.MAX_VALUE, 108));
         metrics.setPreferredSize(new Dimension(1000, 108));
         page.add(metrics);
@@ -138,18 +199,15 @@ public final class AdminDashboardPanel extends JPanel {
         return page;
     }
 
-    private JPanel createQueuePanel() {
-        JPanel page = Ui.page("ORDERS", "Order queue monitoring", "Monitor confirmed orders as they move through the queue.");
-        page.add(Ui.tableCard(new String[]{"Queue no.", "Customer", "Placed", "Items", "Total", "Status"}, "The order queue is currently empty.", null));
-        return page;
-    }
-
-    private JPanel createProfilePanel(model.User user) { JPanel page = Ui.page("ACCOUNT", "My account", "Review the signed-in administrator account.");
+    private JPanel createProfilePanel(model.User user) {
+        JPanel page = Ui.page("ACCOUNT", "My account", "Review the signed-in administrator account.");
         page.add(new gui.components.ProfileCard(user));
         return page;
     }
 
-    /** Styling owned by this panel so the screen can be configured independently. */
+    /**
+     * Styling owned by this panel so the screen can be configured independently.
+     */
     private static final class Ui {
         static final Color INK = new Color(28, 31, 27);
         static final Color MUTED = new Color(99, 106, 96);
@@ -159,14 +217,17 @@ public final class AdminDashboardPanel extends JPanel {
         static final Color PAPER = new Color(252, 252, 247);
         static final Color LINE = new Color(218, 220, 209);
 
-        static Font font(int size, int style) { return new Font("Fira Code", style, size);
+        static Font font(int size, int style) {
+            return new Font("Fira Code", style, size);
         }
+
         static JLabel label(String value, int size, int style, Color color) {
             JLabel label = new JLabel(value);
             label.setFont(font(size, style));
             label.setForeground(color);
             return label;
         }
+
         static JLabel logo(int width, int height) {
             JLabel logo = new JLabel();
             java.net.URL url = AdminDashboardPanel.class.getResource("/Gui_Images/hirayalogo2.png");
@@ -179,14 +240,16 @@ public final class AdminDashboardPanel extends JPanel {
             logo.setMaximumSize(new Dimension(width, height));
             return logo;
         }
-        static void addLeft(JPanel parent, JComponent child) { child.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        static void addLeft(JPanel parent, JComponent child) {
+            child.setAlignmentX(Component.LEFT_ALIGNMENT);
             parent.add(child);
         }
+
         static JPanel verticalBox() {
             JPanel panel = new JPanel();
             panel.setOpaque(false);
             panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-
             return panel;
         }
 
@@ -198,38 +261,41 @@ public final class AdminDashboardPanel extends JPanel {
             panel.add(Box.createVerticalStrut(5));
             addLeft(panel, label(description, 11, Font.PLAIN, MUTED));
             panel.add(Box.createVerticalStrut(18));
-
             return panel;
         }
+
         static JPanel card(Color color, int radius, boolean outlined) {
             JPanel panel = new JPanel() {
-                @Override protected void paintComponent(Graphics g) {
+                @Override
+                protected void paintComponent(Graphics g) {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                     g2.setColor(color);
                     g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
-                    if (outlined) { g2.setColor(LINE);
+                    if (outlined) {
+                        g2.setColor(LINE);
                         g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
                     }
                     g2.dispose();
                     super.paintComponent(g);
                 }
             };
-
             panel.setOpaque(false);
             panel.setAlignmentX(Component.LEFT_ALIGNMENT);
             return panel;
         }
-        static JPanel metricCard(String value, String caption) {
+
+        // Updated to accept a JLabel reference rather than a hardcoded String
+        static JPanel metricCard(JLabel valueLabel, String caption) {
             JPanel panel = card(PAPER, 20, true);
             panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
             panel.setBorder(new javax.swing.border.EmptyBorder(17, 19, 15, 19));
-            panel.add(label(value, 24, Font.BOLD, FOREST));
+            panel.add(valueLabel);
             panel.add(Box.createVerticalStrut(6));
             panel.add(label(caption, 11, Font.PLAIN, MUTED));
-
             return panel;
         }
+
         static JPanel emptyState(String title, String message) {
             JPanel panel = card(PAPER, 22, true);
             panel.setLayout(new GridBagLayout());
@@ -242,7 +308,6 @@ public final class AdminDashboardPanel extends JPanel {
             heading.setAlignmentX(Component.CENTER_ALIGNMENT);
             center.add(heading);
             center.add(Box.createVerticalStrut(6));
-
             JLabel detail = label(message, 11, Font.PLAIN, MUTED);
             detail.setAlignmentX(Component.CENTER_ALIGNMENT);
             center.add(detail);
@@ -251,76 +316,7 @@ public final class AdminDashboardPanel extends JPanel {
             panel.setPreferredSize(new Dimension(1000, 390));
             return panel;
         }
-        static JPanel toolbar(String placeholder, String action) {
-            JPanel toolbar = new JPanel(new BorderLayout(12, 0));
-            toolbar.setOpaque(false);
-            toolbar.setAlignmentX(Component.LEFT_ALIGNMENT);
-            toolbar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-            JTextField search = new JTextField(placeholder);
-            search.setFont(font(11, Font.PLAIN));
-            search.setForeground(MUTED);
-            search.setBackground(PAPER);
-            search.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(LINE), new javax.swing.border.EmptyBorder(0, 13, 0, 13)));
-            toolbar.add(search);
-            if (action != null) { gui.components.RoundedButton button = primaryButton(action);
-                button.setPreferredSize(new Dimension(140, 40));
-                toolbar.add(button, BorderLayout.EAST);
-                }
-            return toolbar;
-        }
-        static JPanel tableCard(String[] columns, String emptyMessage, String action) {
-            JPanel panel = card(PAPER, 22, true);
-            panel.setLayout(new BorderLayout());
-            panel.setBorder(new javax.swing.border.EmptyBorder(0, 0, action == null ? 0 : 12, 0));
-            javax.swing.table.DefaultTableModel model = new javax.swing.table.DefaultTableModel(columns, 0) {
-                @Override public boolean isCellEditable(int row, int column) { return false;
-                }
-            };
-            JTable table = new JTable(model);
-            styleTable(table);
-            JScrollPane scroll = new JScrollPane(table);
 
-            scroll.setBorder(null);
-            scroll.getViewport().setBackground(PAPER);
-            panel.add(scroll);
-            JLabel empty = label(emptyMessage, 11, Font.PLAIN, MUTED);
-            empty.setHorizontalAlignment(SwingConstants.CENTER);
-            empty.setBorder(new javax.swing.border.EmptyBorder(12, 8, 12, 8));
-            panel.add(empty, BorderLayout.NORTH);
-
-            if (action != null) {
-                gui.components.RoundedButton button = primaryButton(action);
-                button.setEnabled(false);
-                JPanel wrap = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
-                wrap.setOpaque(false);
-                wrap.add(button);
-                panel.add(wrap, BorderLayout.SOUTH);
-            }
-            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
-            panel.setPreferredSize(new Dimension(1000, 520));
-            return panel;
-        }
-        static JPanel productCard(String imagePath) {
-            JPanel panel = card(PAPER, 22, true);
-            panel.setLayout(new BorderLayout());
-            JLabel image = new JLabel(imagePath == null ? "Catalog data will appear here" : "", SwingConstants.CENTER);
-            image.setOpaque(true);
-            image.setBackground(new Color(229, 230, 220));
-            image.setForeground(MUTED);
-            image.setFont(font(10, Font.PLAIN));
-            if (imagePath != null) {
-                java.net.URL url = Ui.class.getResource(imagePath);
-                if (url != null) image.setIcon(new ImageIcon(new ImageIcon(url).getImage().getScaledInstance(260, 245, Image.SCALE_SMOOTH)));
-            }
-            panel.add(image);
-            JPanel caption = verticalBox();
-            caption.setBorder(new javax.swing.border.EmptyBorder(12, 15, 13, 15));
-            caption.add(label("Catalog item", 13, Font.BOLD, INK));
-            caption.add(Box.createVerticalStrut(4));
-            caption.add(label("Details load from the product catalog", 9, Font.PLAIN, MUTED));
-            panel.add(caption, BorderLayout.SOUTH);
-            return panel;
-        }
         static gui.components.RoundedButton primaryButton(String title) {
             gui.components.RoundedButton button = new gui.components.RoundedButton(title, INK, Color.WHITE);
             button.setFont(font(11, Font.BOLD));
@@ -328,47 +324,35 @@ public final class AdminDashboardPanel extends JPanel {
             button.setPreferredSize(new Dimension(135, 38));
             return button;
         }
+
         static gui.components.RoundedButton lightButton(String title) {
             gui.components.RoundedButton button = new gui.components.RoundedButton(title, CREAM, INK);
             button.setFont(font(11, Font.BOLD));
             button.setHoverColor(new Color(218, 225, 211));
             return button;
         }
-        static NavButton navButton(String title) { return new NavButton(title);
+
+        static NavButton navButton(String title) {
+            return new NavButton(title);
         }
+
         static void confirmLogout(Component parent, service.AuthService authService) {
-            int choice = JOptionPane.showConfirmDialog(parent, "Log out of QueueTees?", "Confirm Log Out", JOptionPane.YES_NO_OPTION);
+            int choice = JOptionPane.showConfirmDialog(parent, "Log out of QueueTees?", "Confirm Log Out",
+                    JOptionPane.YES_NO_OPTION);
             if (choice == JOptionPane.YES_OPTION) {
                 Window window = SwingUtilities.getWindowAncestor(parent);
-                if (window != null) window.dispose();
+                if (window != null)
+                    window.dispose();
                 new gui.auth.LoginFrame(authService).setVisible(true);
             }
         }
-        static void styleTable(JTable table) {
-            table.setFont(font(11, Font.PLAIN));
-            table.setForeground(INK);
-            table.setBackground(PAPER);
-            table.setSelectionBackground(new Color(222, 229, 217));
-            table.setRowHeight(38);
-            table.setShowGrid(true);
-            table.setGridColor(LINE);
-            table.setIntercellSpacing(new Dimension(1, 1));
-            table.setFillsViewportHeight(true);
-            javax.swing.table.JTableHeader header = table.getTableHeader();
-            header.setFont(font(10, Font.BOLD));
-            header.setForeground(MUTED);
-            header.setBackground(new Color(238, 239, 230));
-            header.setPreferredSize(new Dimension(0, 38));
-            header.setReorderingAllowed(false);
-            javax.swing.table.DefaultTableCellRenderer renderer = new javax.swing.table.DefaultTableCellRenderer();
-            renderer.setBorder(new javax.swing.border.EmptyBorder(0, 12, 0, 12));
-            table.setDefaultRenderer(Object.class, renderer);
-        }
+
         static final class NavButton extends JButton {
             private boolean selected, hovered;
             private float highlight;
             private float targetHighlight;
             private final javax.swing.Timer transitionTimer;
+
             NavButton(String title) {
                 super(title);
                 transitionTimer = new javax.swing.Timer(16, e -> animateHighlight());
@@ -382,24 +366,32 @@ public final class AdminDashboardPanel extends JPanel {
                 setFocusPainted(false);
                 setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
                 addMouseListener(new java.awt.event.MouseAdapter() {
-                    @Override public void mouseEntered(java.awt.event.MouseEvent e) { hovered = true;
+                    @Override
+                    public void mouseEntered(java.awt.event.MouseEvent e) {
+                        hovered = true;
                         setHighlightTarget(selected ? 1f : 0.58f);
                     }
-                    @Override public void mouseExited(java.awt.event.MouseEvent e) { hovered = false;
+
+                    @Override
+                    public void mouseExited(java.awt.event.MouseEvent e) {
+                        hovered = false;
                         setHighlightTarget(selected ? 1f : 0f);
                     }
                 });
             }
+
             void setSelectedState(boolean value) {
                 selected = value;
                 setFont(font(12, value ? Font.BOLD : Font.PLAIN));
                 setForeground(value ? Color.WHITE : new Color(224, 230, 219));
                 setHighlightTarget(value ? 1f : (hovered ? 0.58f : 0f));
             }
+
             private void setHighlightTarget(float value) {
                 targetHighlight = value;
                 transitionTimer.start();
             }
+
             private void animateHighlight() {
                 highlight += (targetHighlight - highlight) * 0.28f;
                 if (Math.abs(targetHighlight - highlight) < 0.02f) {
@@ -408,7 +400,9 @@ public final class AdminDashboardPanel extends JPanel {
                 }
                 repaint();
             }
-            @Override protected void paintComponent(Graphics g) {
+
+            @Override
+            protected void paintComponent(Graphics g) {
                 if (highlight > 0f) {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setColor(new Color(255, 255, 255, Math.round(34 * highlight)));
@@ -419,5 +413,4 @@ public final class AdminDashboardPanel extends JPanel {
             }
         }
     }
-
 }

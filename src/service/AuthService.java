@@ -14,10 +14,13 @@ public class AuthService {
 
     public AuthService(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.passwordResetService = new PasswordResetService(userRepository, backend.EmailService::sendPasswordResetEmail);
+        this.passwordResetService = new PasswordResetService(userRepository,
+                backend.EmailService::sendPasswordResetEmail);
     }
 
-    public PasswordResetService passwordResets() { return passwordResetService; }
+    public PasswordResetService passwordResets() {
+        return passwordResetService;
+    }
 
     public LoginResult login(String identifier, char[] passwordChars) {
         String cleanIdentifier = identifier == null ? "" : identifier.trim();
@@ -96,13 +99,15 @@ public class AuthService {
     public RegistrationResult registerCustomer(
             String email, String fullname, String username, char[] passwordChars,
             String address, String contactnum, String gender, LocalDate birthday) {
-        return register(email, fullname, username, passwordChars, address, contactnum, gender, birthday, UserRole.CUSTOMER);
+        return register(email, fullname, username, passwordChars, address, contactnum, gender, birthday,
+                UserRole.CUSTOMER);
     }
 
     public RegistrationResult registerStaff(
             String email, String fullname, String username, char[] passwordChars,
             String address, String contactnum, String gender, LocalDate birthday) {
-        return register(email, fullname, username, passwordChars, address, contactnum, gender, birthday, UserRole.STAFF);
+        return register(email, fullname, username, passwordChars, address, contactnum, gender, birthday,
+                UserRole.STAFF);
     }
 
     private void requireAdministrator(User actor) {
@@ -114,6 +119,16 @@ public class AuthService {
     public java.util.List<User> getStaffApplications(User actor) {
         requireAdministrator(actor);
         return userRepository.findAll().stream().filter(u -> u.getRole() == UserRole.STAFF)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    // ==========================================
+    // NEW METHOD: Fetch customers for Admin UI
+    // ==========================================
+    public java.util.List<User> getCustomers(User actor) {
+        requireAdministrator(actor);
+        return userRepository.findAll().stream()
+                .filter(u -> u.getRole() == UserRole.CUSTOMER)
                 .collect(java.util.stream.Collectors.toList());
     }
 
@@ -142,64 +157,38 @@ public class AuthService {
         String password = passwordChars == null ? "" : new String(passwordChars);
 
         try {
-            // Empty fields check
-            if (cleanEmail.isEmpty() || cleanUsername.isEmpty()
-                    || cleanFullname.isEmpty() || password.isEmpty()) {
-                return RegistrationResult.failure(
-                        AuthStatus.EMPTY_FIELDS,
-                        "Please fill in all required fields.");
+            if (cleanEmail.isEmpty() || cleanUsername.isEmpty() || cleanFullname.isEmpty() || password.isEmpty()) {
+                return RegistrationResult.failure(AuthStatus.EMPTY_FIELDS, "Please fill in all required fields.");
             }
 
-            // Basic email format check
             if (!cleanEmail.contains("@") || !cleanEmail.contains(".")) {
-                return RegistrationResult.failure(
-                        AuthStatus.INVALID_EMAIL,
-                        "Please enter a valid email address.");
+                return RegistrationResult.failure(AuthStatus.INVALID_EMAIL, "Please enter a valid email address.");
             }
 
-            // Duplicate email check
             if (userRepository.findByEmailOrUsername(cleanEmail).isPresent()) {
-                return RegistrationResult.failure(
-                        AuthStatus.DUPLICATE_EMAIL,
-                        "That email is already registered.");
+                return RegistrationResult.failure(AuthStatus.DUPLICATE_EMAIL, "That email is already registered.");
             }
 
-            // Duplicate username check
             if (userRepository.findByEmailOrUsername(cleanUsername).isPresent()) {
-                return RegistrationResult.failure(
-                        AuthStatus.DUPLICATE_USERNAME,
-                        "That username is already taken.");
+                return RegistrationResult.failure(AuthStatus.DUPLICATE_USERNAME, "That username is already taken.");
             }
 
-            String passwordMessage =
-                    PasswordUtil.getPasswordValidationMessage(password);
-
+            String passwordMessage = PasswordUtil.getPasswordValidationMessage(password);
             if (passwordMessage != null) {
-
-                return RegistrationResult.failure(
-                        AuthStatus.WEAK_PASSWORD,
-                        passwordMessage + ".");
+                return RegistrationResult.failure(AuthStatus.WEAK_PASSWORD, passwordMessage + ".");
             }
 
-            // Gender check
             if (gender == null || gender.isEmpty()) {
-                return RegistrationResult.failure(
-                        AuthStatus.EMPTY_FIELDS,
-                        "Please select a gender.");
+                return RegistrationResult.failure(AuthStatus.EMPTY_FIELDS, "Please select a gender.");
             }
 
-            // Birthday check
             if (birthday == null) {
-                return RegistrationResult.failure(
-                        AuthStatus.EMPTY_FIELDS,
-                        "Please enter your birthday.");
+                return RegistrationResult.failure(AuthStatus.EMPTY_FIELDS, "Please enter your birthday.");
             }
 
-            // Age check — must be at least 18
             int age = Period.between(birthday, LocalDate.now()).getYears();
             if (age < 18) {
-                return RegistrationResult.failure(
-                        AuthStatus.EMPTY_FIELDS,
+                return RegistrationResult.failure(AuthStatus.EMPTY_FIELDS,
                         "You must be at least 18 years old to register.");
             }
 
@@ -222,7 +211,6 @@ public class AuthService {
                     contactnum == null ? "" : contactnum.trim(), gender, birthday);
 
             userRepository.save(newUser);
-
             return RegistrationResult.success(newUser);
 
         } finally {

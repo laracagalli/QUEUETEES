@@ -5,19 +5,86 @@ import javax.swing.*;
 
 /** Administrator page for registered customer accounts. */
 public final class CustomerManagementPanel extends JPanel {
-    public CustomerManagementPanel() {
-        setOpaque(false);setLayout(new BoxLayout(this,BoxLayout.Y_AXIS));
-        Ui.addLeft(this,Ui.label("CUSTOMERS",10,Font.BOLD,Ui.FOREST));add(Box.createVerticalStrut(4));
-        Ui.addLeft(this,Ui.label("Customer accounts",25,Font.BOLD,Ui.INK));add(Box.createVerticalStrut(5));
-        Ui.addLeft(this,Ui.label("View registered customers and their access status.",11,Font.PLAIN,Ui.MUTED));add(Box.createVerticalStrut(18));
-        add(AdminUi.metrics("—", "Total customers", "—", "Active accounts", "—", "Unverified accounts"));add(Box.createVerticalStrut(16));
-        JTable table=new JTable(new javax.swing.table.DefaultTableModel(new String[]{"Customer", "Email", "Contact", "Joined", "Status"},0){public boolean isCellEditable(int r,int c){return false;}});
-        AdminUi.style(table);add(AdminUi.filters(table,"All statuses", "Active", "Unverified", "Suspended"));add(Box.createVerticalStrut(16));
-        JPanel card=AdminUi.tableCard(table,"Account records");
-        card.add(AdminUi.label("Account records are not connected yet.",11,false),BorderLayout.SOUTH);add(card);
+
+    // Updated constructor to require AuthService and the current Admin user
+    public CustomerManagementPanel(service.AuthService authService, model.User adminUser) {
+        setOpaque(false);
+        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        Ui.addLeft(this, Ui.label("CUSTOMERS", 10, Font.BOLD, Ui.FOREST));
+        add(Box.createVerticalStrut(4));
+        Ui.addLeft(this, Ui.label("Customer accounts", 25, Font.BOLD, Ui.INK));
+        add(Box.createVerticalStrut(5));
+        Ui.addLeft(this, Ui.label("View registered customers and their access status.", 11, Font.PLAIN, Ui.MUTED));
+        add(Box.createVerticalStrut(18));
+
+        // ==========================================
+        // FETCH DATA AND CALCULATE METRICS
+        // ==========================================
+        java.util.List<model.User> customers = authService.getCustomers(adminUser);
+
+        long activeCount = customers.stream()
+                .filter(u -> u.getStatus() == model.AccountStatus.ACTIVE && u.isEmailVerified())
+                .count();
+
+        long unverifiedCount = customers.stream()
+                .filter(u -> !u.isEmailVerified())
+                .count();
+
+        // Dynamically inject values into the top metric cards
+        add(AdminUi.metrics(
+                String.valueOf(customers.size()), "Total customers",
+                String.valueOf(activeCount), "Active accounts",
+                String.valueOf(unverifiedCount), "Unverified accounts"));
+
+        add(Box.createVerticalStrut(16));
+
+        // ==========================================
+        // BUILD DYNAMIC TABLE MODEL
+        // ==========================================
+        javax.swing.table.DefaultTableModel model = new javax.swing.table.DefaultTableModel(
+                new String[] { "Customer", "Email", "Contact", "Joined", "Status" }, 0) {
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
+        };
+
+        // Note: Assuming 'joined' date relies on a generic format; adjusting to pull
+        // from User model
+        for (model.User u : customers) {
+            String statusDisplay = u.getStatus() != null ? u.getStatus().name() : "UNKNOWN";
+
+            // Safe check using strings to avoid any enum constant mismatch errors
+            if (!u.isEmailVerified() && "ACTIVE".equalsIgnoreCase(String.valueOf(u.getStatus()))) {
+                statusDisplay = "UNVERIFIED";
+            }
+
+            String name = (u.getFullName() == null || u.getFullName().isEmpty()) ? u.getUsername() : u.getFullName();
+            String contact = (u.getContactNumber() == null || u.getContactNumber().isEmpty()) ? "N/A"
+                    : u.getContactNumber();
+            String joinedDate = u.getRegisteredAt() != null ? u.getRegisteredAt().toLocalDate().toString() : "Unknown";
+
+            model.addRow(new Object[] {
+                    name,
+                    u.getEmail(),
+                    contact,
+                    joinedDate,
+                    statusDisplay
+            });
+        }
+
+        JTable table = new JTable(model);
+        AdminUi.style(table);
+        add(AdminUi.filters(table, "All statuses", "Active", "Unverified", "Suspended"));
+        add(Box.createVerticalStrut(16));
+
+        // Removed the hardcoded empty state label here
+        JPanel card = AdminUi.tableCard(table, "Account records");
+        add(card);
     }
 
-    /** Styling owned by this panel so the screen can be configured independently. */
+    /**
+     * Styling owned by this panel so the screen can be configured independently.
+     */
     private static final class Ui {
         static final Color INK = new Color(28, 31, 27);
         static final Color MUTED = new Color(99, 106, 96);
@@ -27,17 +94,22 @@ public final class CustomerManagementPanel extends JPanel {
         static final Color PAPER = new Color(252, 252, 247);
         static final Color LINE = new Color(218, 220, 209);
 
-        static Font font(int size, int style) { return new Font("Fira Code", style, size);
+        static Font font(int size, int style) {
+            return new Font("Fira Code", style, size);
         }
+
         static JLabel label(String value, int size, int style, Color color) {
             JLabel label = new JLabel(value);
             label.setFont(font(size, style));
             label.setForeground(color);
             return label;
         }
-        static void addLeft(JPanel parent, JComponent child) { child.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        static void addLeft(JPanel parent, JComponent child) {
+            child.setAlignmentX(Component.LEFT_ALIGNMENT);
             parent.add(child);
         }
+
         static JPanel verticalBox() {
             JPanel panel = new JPanel();
             panel.setOpaque(false);
@@ -45,14 +117,17 @@ public final class CustomerManagementPanel extends JPanel {
 
             return panel;
         }
+
         static JPanel card(Color color, int radius, boolean outlined) {
             JPanel panel = new JPanel() {
-                @Override protected void paintComponent(Graphics g) {
+                @Override
+                protected void paintComponent(Graphics g) {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                     g2.setColor(color);
                     g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
-                    if (outlined) { g2.setColor(LINE);
+                    if (outlined) {
+                        g2.setColor(LINE);
                         g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
                     }
                     g2.dispose();
@@ -64,6 +139,7 @@ public final class CustomerManagementPanel extends JPanel {
             panel.setAlignmentX(Component.LEFT_ALIGNMENT);
             return panel;
         }
+
         static JPanel metricCard(String value, String caption) {
             JPanel panel = card(PAPER, 20, true);
             panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
@@ -74,6 +150,7 @@ public final class CustomerManagementPanel extends JPanel {
 
             return panel;
         }
+
         static JPanel emptyState(String title, String message) {
             JPanel panel = card(PAPER, 22, true);
             panel.setLayout(new GridBagLayout());
@@ -95,6 +172,7 @@ public final class CustomerManagementPanel extends JPanel {
             panel.setPreferredSize(new Dimension(1000, 390));
             return panel;
         }
+
         static JPanel toolbar(String placeholder, String action) {
             JPanel toolbar = new JPanel(new BorderLayout(12, 0));
             toolbar.setOpaque(false);
@@ -104,20 +182,25 @@ public final class CustomerManagementPanel extends JPanel {
             search.setFont(font(11, Font.PLAIN));
             search.setForeground(MUTED);
             search.setBackground(PAPER);
-            search.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(LINE), new javax.swing.border.EmptyBorder(0, 13, 0, 13)));
+            search.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(LINE),
+                    new javax.swing.border.EmptyBorder(0, 13, 0, 13)));
             toolbar.add(search);
-            if (action != null) { gui.components.RoundedButton button = primaryButton(action);
+            if (action != null) {
+                gui.components.RoundedButton button = primaryButton(action);
                 button.setPreferredSize(new Dimension(140, 40));
                 toolbar.add(button, BorderLayout.EAST);
-                }
+            }
             return toolbar;
         }
+
         static JPanel tableCard(String[] columns, String emptyMessage, String action) {
             JPanel panel = card(PAPER, 22, true);
             panel.setLayout(new BorderLayout());
             panel.setBorder(new javax.swing.border.EmptyBorder(0, 0, action == null ? 0 : 12, 0));
             javax.swing.table.DefaultTableModel model = new javax.swing.table.DefaultTableModel(columns, 0) {
-                @Override public boolean isCellEditable(int row, int column) { return false;
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
                 }
             };
             JTable table = new JTable(model);
@@ -144,6 +227,7 @@ public final class CustomerManagementPanel extends JPanel {
             panel.setPreferredSize(new Dimension(1000, 520));
             return panel;
         }
+
         static JPanel productCard(String imagePath) {
             JPanel panel = card(PAPER, 22, true);
             panel.setLayout(new BorderLayout());
@@ -154,7 +238,9 @@ public final class CustomerManagementPanel extends JPanel {
             image.setFont(font(10, Font.PLAIN));
             if (imagePath != null) {
                 java.net.URL url = Ui.class.getResource(imagePath);
-                if (url != null) image.setIcon(new ImageIcon(new ImageIcon(url).getImage().getScaledInstance(260, 245, Image.SCALE_SMOOTH)));
+                if (url != null)
+                    image.setIcon(new ImageIcon(
+                            new ImageIcon(url).getImage().getScaledInstance(260, 245, Image.SCALE_SMOOTH)));
             }
             panel.add(image);
             JPanel caption = verticalBox();
@@ -165,6 +251,7 @@ public final class CustomerManagementPanel extends JPanel {
             panel.add(caption, BorderLayout.SOUTH);
             return panel;
         }
+
         static gui.components.RoundedButton primaryButton(String title) {
             gui.components.RoundedButton button = new gui.components.RoundedButton(title, INK, Color.WHITE);
             button.setFont(font(11, Font.BOLD));
@@ -172,22 +259,29 @@ public final class CustomerManagementPanel extends JPanel {
             button.setPreferredSize(new Dimension(135, 38));
             return button;
         }
+
         static gui.components.RoundedButton lightButton(String title) {
             gui.components.RoundedButton button = new gui.components.RoundedButton(title, CREAM, INK);
             button.setFont(font(11, Font.BOLD));
             button.setHoverColor(new Color(218, 225, 211));
             return button;
         }
-        static NavButton navButton(String title) { return new NavButton(title);
+
+        static NavButton navButton(String title) {
+            return new NavButton(title);
         }
+
         static void confirmLogout(Component parent, service.AuthService authService) {
-            int choice = JOptionPane.showConfirmDialog(parent, "Log out of QueueTees?", "Confirm Log Out", JOptionPane.YES_NO_OPTION);
+            int choice = JOptionPane.showConfirmDialog(parent, "Log out of QueueTees?", "Confirm Log Out",
+                    JOptionPane.YES_NO_OPTION);
             if (choice == JOptionPane.YES_OPTION) {
                 Window window = SwingUtilities.getWindowAncestor(parent);
-                if (window != null) window.dispose();
+                if (window != null)
+                    window.dispose();
                 new gui.auth.LoginFrame(authService).setVisible(true);
             }
         }
+
         static void styleTable(JTable table) {
             table.setFont(font(11, Font.PLAIN));
             table.setForeground(INK);
@@ -208,8 +302,10 @@ public final class CustomerManagementPanel extends JPanel {
             renderer.setBorder(new javax.swing.border.EmptyBorder(0, 12, 0, 12));
             table.setDefaultRenderer(Object.class, renderer);
         }
+
         static final class NavButton extends JButton {
             private boolean selected, hovered;
+
             NavButton(String title) {
                 super(title);
                 setFont(font(12, Font.PLAIN));
@@ -222,21 +318,29 @@ public final class CustomerManagementPanel extends JPanel {
                 setFocusPainted(false);
                 setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
                 addMouseListener(new java.awt.event.MouseAdapter() {
-                    @Override public void mouseEntered(java.awt.event.MouseEvent e) { hovered = true;
+                    @Override
+                    public void mouseEntered(java.awt.event.MouseEvent e) {
+                        hovered = true;
                         repaint();
                     }
-                    @Override public void mouseExited(java.awt.event.MouseEvent e) { hovered = false;
+
+                    @Override
+                    public void mouseExited(java.awt.event.MouseEvent e) {
+                        hovered = false;
                         repaint();
                     }
                 });
             }
+
             void setSelectedState(boolean value) {
                 selected = value;
                 setFont(font(12, value ? Font.BOLD : Font.PLAIN));
                 setForeground(value ? Color.WHITE : new Color(224, 230, 219));
                 repaint();
             }
-            @Override protected void paintComponent(Graphics g) {
+
+            @Override
+            protected void paintComponent(Graphics g) {
                 if (selected || hovered) {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setColor(new Color(255, 255, 255, selected ? 34 : 20));
@@ -247,5 +351,4 @@ public final class CustomerManagementPanel extends JPanel {
             }
         }
     }
-
 }
