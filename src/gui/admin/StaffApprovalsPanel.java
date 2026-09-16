@@ -6,17 +6,15 @@ import javax.swing.*;
 /** Administrator page for reviewing pending staff registrations. */
 public final class StaffApprovalsPanel extends JPanel {
     public StaffApprovalsPanel() {
-        setOpaque(false);
-        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        Ui.addLeft(this, Ui.label("STAFF", 10, Font.BOLD, Ui.FOREST));
-        add(Box.createVerticalStrut(4));
-        Ui.addLeft(this, Ui.label("Staff account approvals", 25, Font.BOLD, Ui.INK));
-        add(Box.createVerticalStrut(5));
-        Ui.addLeft(this, Ui.label("Review staff registrations before granting access.", 11, Font.PLAIN, Ui.MUTED));
-        add(Box.createVerticalStrut(18));
-        add(Ui.toolbar("Search records", null));
-        add(Box.createVerticalStrut(16));
-        add(Ui.tableCard(new String[]{"Name", "Email", "Date requested", "Status"}, "No staff accounts are awaiting approval.", "Review Selected"));
+        setOpaque(false);setLayout(new BoxLayout(this,BoxLayout.Y_AXIS));
+        Ui.addLeft(this,Ui.label("STAFF",10,Font.BOLD,Ui.FOREST));add(Box.createVerticalStrut(4));
+        Ui.addLeft(this,Ui.label("Staff account approvals",25,Font.BOLD,Ui.INK));add(Box.createVerticalStrut(5));
+        Ui.addLeft(this,Ui.label("Review staff registrations before granting access.",11,Font.PLAIN,Ui.MUTED));add(Box.createVerticalStrut(18));
+        add(AdminUi.metrics("—", "Pending approvals", "—", "Approved accounts", "—", "Rejected accounts"));add(Box.createVerticalStrut(16));
+        JTable table=new JTable(new javax.swing.table.DefaultTableModel(new String[]{"Name", "Email", "Date requested", "Role", "Status"},0){public boolean isCellEditable(int r,int c){return false;}});
+        AdminUi.style(table);add(AdminUi.filters(table,"All statuses", "Pending", "Approved", "Rejected"));add(Box.createVerticalStrut(16));
+        JPanel card=AdminUi.tableCard(table,"Account records");
+        card.add(AdminUi.label("Account records are not connected yet.",11,false),BorderLayout.SOUTH);add(card);
     }
 
     /** Styling owned by this panel so the screen can be configured independently. */

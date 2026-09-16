@@ -19,7 +19,10 @@ public final class ProductManagementPanel extends JPanel {
     private final JLabel emptyLabel = Ui.label("", 11, Font.PLAIN, Ui.MUTED);
     private final JTextField search = new JTextField();
 
-    public ProductManagementPanel() {
+    private final model.User user;
+    public ProductManagementPanel() {this(null);}
+    public ProductManagementPanel(model.User user) {
+        this.user=user;
         setOpaque(false);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         Ui.addLeft(this, Ui.label("CATALOG", 10, Font.BOLD, Ui.FOREST));
@@ -51,15 +54,23 @@ public final class ProductManagementPanel extends JPanel {
         gui.components.RoundedButton add = Ui.primaryButton("Add Product");
         add.setPreferredSize(new Dimension(140, 40));
         add.addActionListener(e -> showProductDialog());
-        toolbar.add(add, BorderLayout.EAST);
+        JPanel actions=new JPanel(new FlowLayout(FlowLayout.RIGHT,10,0));actions.setOpaque(false);
+        JButton print=AdminUi.button("Preview / print report");
+        print.addActionListener(e -> AdminTableReport.open(this,table,"Products and stock report",user));
+        actions.add(print);actions.add(add);toolbar.add(actions,BorderLayout.EAST);
+        toolbar.add(AdminUi.label("Search products",11,false),BorderLayout.WEST);
         return toolbar;
     }
 
     private JPanel createTableCard() {
         JPanel card = Ui.card(Ui.PAPER, 22, true);
         card.setLayout(new BorderLayout());
-        Ui.styleTable(table);
+        card.setBorder(new javax.swing.border.EmptyBorder(12,12,12,12));
+        AdminUi.style(table);
+        table.getColumnModel().getColumn(0).setPreferredWidth(220);
+        table.removeColumn(table.getColumnModel().getColumn(5));
         JScrollPane scroll = new JScrollPane(table);
+        scroll.setColumnHeaderView(table.getTableHeader());
         scroll.setBorder(null);
         scroll.getViewport().setBackground(Ui.PAPER);
         card.add(scroll);
@@ -230,6 +241,7 @@ public final class ProductManagementPanel extends JPanel {
             JTable table = new JTable(model);
             styleTable(table);
             JScrollPane scroll = new JScrollPane(table);
+        scroll.setColumnHeaderView(table.getTableHeader());
 
             scroll.setBorder(null);
             scroll.getViewport().setBackground(PAPER);

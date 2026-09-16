@@ -13,9 +13,15 @@ public final class AdminDashboardPanel extends JPanel {
     private final JPanel content = new JPanel(cardLayout);
     private final Map<String, Ui.NavButton> navigation = new LinkedHashMap<>();
     private final AuthService authService;
-    private final ProductManagementPanel productPanel = new ProductManagementPanel();
+    private final ProductManagementPanel productPanel;
+    private final SalesReportsPanel salesPanel;
+    private final AdminOrdersPanel queuePanel;
 
-    public AdminDashboardPanel(AuthService authService) {
+    public AdminDashboardPanel(AuthService authService) { this(authService,null); }
+    public AdminDashboardPanel(AuthService authService, model.User user) {
+        productPanel=new ProductManagementPanel(user);
+        salesPanel=new SalesReportsPanel(user);
+        queuePanel=new AdminOrdersPanel(false,user);
         this.authService = authService;
         setLayout(new BorderLayout());
         add(createSidebar(), BorderLayout.WEST);
@@ -26,9 +32,9 @@ public final class AdminDashboardPanel extends JPanel {
         content.add(new StaffApprovalsPanel(), "staff");
         content.add(productPanel, "products");
         content.add(new CustomerManagementPanel(), "customers");
-        content.add(createQueuePanel(), "queue");
-        content.add(new SalesReportsPanel(), "reports");
-        content.add(createProfilePanel(), "profile");
+        content.add(queuePanel, "queue");
+        content.add(salesPanel, "reports");
+        content.add(createProfilePanel(user), "profile");
         setOpaque(false);
         showPanel("overview");
     }
@@ -87,6 +93,8 @@ public final class AdminDashboardPanel extends JPanel {
 
     private void showPanel(String key) { cardLayout.show(content, key);
         if ("products".equals(key)) productPanel.refresh();
+        if ("reports".equals(key)) salesPanel.refresh();
+        if ("queue".equals(key)) queuePanel.refresh();
         navigation.forEach((name, button) -> button.setSelectedState(name.equals(key)));
     }
 
@@ -133,8 +141,8 @@ public final class AdminDashboardPanel extends JPanel {
         return page;
     }
 
-    private JPanel createProfilePanel() { JPanel page = Ui.page("ACCOUNT", "My account", "Review the signed-in administrator account.");
-        page.add(Ui.emptyState("Administrator profile", "Profile information loads from the authenticated user record."));
+    private JPanel createProfilePanel(model.User user) { JPanel page = Ui.page("ACCOUNT", "My account", "Review the signed-in administrator account.");
+        page.add(new gui.components.ProfileCard(user));
         return page;
     }
 

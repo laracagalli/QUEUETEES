@@ -34,7 +34,7 @@ public final class CustomerDashboardPanel extends JPanel {
         content.add(cartPanel, "cart");
         content.add(trackingPanel, "tracking");
         content.add(historyPanel, "history");
-        content.add(new CustomerProfilePanel(), "profile");
+        content.add(new CustomerProfilePanel(user), "profile");
         setOpaque(false);
         showPanel("shop");
     }

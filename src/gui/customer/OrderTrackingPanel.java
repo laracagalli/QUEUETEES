@@ -16,7 +16,7 @@ public final class OrderTrackingPanel extends JPanel {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("MMM d, yyyy / h:mm a");
     private final StoreService store = StoreService.getInstance();
     private final User user;
-    private final JComboBox<Order> selector = new JComboBox<>();
+    private final JComboBox<Order> selector = new gui.components.RoundedComboBox<>(new Order[0]);
     private final JPanel body = new JPanel();
     private final javax.swing.Timer timer = new javax.swing.Timer(2000, e -> { if (isShowing()) refresh(); });
     private Integer selectedId;
@@ -35,16 +35,17 @@ public final class OrderTrackingPanel extends JPanel {
         header.add(title);
         JPanel choice = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12)); choice.setOpaque(false);
         choice.add(label("Your order", 12, true, GREEN));
-        selector.setPreferredSize(new Dimension(225, 34));
+        selector.setPreferredSize(new Dimension(270, 42));
+        selector.setFont(UIManager.getFont("ComboBox.font"));
         selector.setBackground(PAPER);
         selector.getAccessibleContext().setAccessibleName("Choose an order to track");
-        selector.setRenderer(new DefaultListCellRenderer() {
-            @Override public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean selected, boolean focus) {
-                super.getListCellRendererComponent(list, value, index, selected, focus);
-                if (value instanceof Order) { Order o = (Order) value; setText(ticket(o) + " / " + o.getStatus().getLabel()); }
-                else setText("No orders yet");
-                return this;
+        ListCellRenderer<? super Order> roundedRenderer = selector.getRenderer();
+        selector.setRenderer((list, value, index, selected, focus) -> {
+            Component component = roundedRenderer.getListCellRendererComponent(list, value, index, selected, focus);
+            if (component instanceof JLabel) {
+                ((JLabel) component).setText(value == null ? "No orders yet" : ticket(value) + " / " + value.getStatus().getLabel());
             }
+            return component;
         });
         selector.addActionListener(e -> { if (!refreshing) {
             Order selected = (Order) selector.getSelectedItem(); selectedId = selected == null ? null : selected.getId();

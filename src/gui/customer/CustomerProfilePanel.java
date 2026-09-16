@@ -5,7 +5,8 @@ import javax.swing.*;
 
 /** Customer account/profile page. */
 public final class CustomerProfilePanel extends JPanel {
-    public CustomerProfilePanel() {
+    public CustomerProfilePanel() { this(null); }
+    public CustomerProfilePanel(model.User user) {
         setOpaque(false);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         Ui.addLeft(this, Ui.label("ACCOUNT", 10, Font.BOLD, Ui.FOREST));
@@ -14,7 +15,7 @@ public final class CustomerProfilePanel extends JPanel {
         add(Box.createVerticalStrut(5));
         Ui.addLeft(this, Ui.label("Review your QueueTees customer account.", 11, Font.PLAIN, Ui.MUTED));
         add(Box.createVerticalStrut(18));
-        add(Ui.emptyState("Customer profile", "Profile information loads from the authenticated user record."));
+        add(new gui.components.ProfileCard(user));
     }
 
     /** Styling owned by this panel so the screen can be configured independently. */

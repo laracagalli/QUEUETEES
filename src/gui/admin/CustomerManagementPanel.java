@@ -6,17 +6,15 @@ import javax.swing.*;
 /** Administrator page for registered customer accounts. */
 public final class CustomerManagementPanel extends JPanel {
     public CustomerManagementPanel() {
-        setOpaque(false);
-        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        Ui.addLeft(this, Ui.label("CUSTOMERS", 10, Font.BOLD, Ui.FOREST));
-        add(Box.createVerticalStrut(4));
-        Ui.addLeft(this, Ui.label("Customer accounts", 25, Font.BOLD, Ui.INK));
-        add(Box.createVerticalStrut(5));
-        Ui.addLeft(this, Ui.label("View registered customers and their access status.", 11, Font.PLAIN, Ui.MUTED));
-        add(Box.createVerticalStrut(18));
-        add(Ui.toolbar("Search records", null));
-        add(Box.createVerticalStrut(16));
-        add(Ui.tableCard(new String[]{"Customer", "Email", "Contact", "Status"}, "No customer records are available yet.", null));
+        setOpaque(false);setLayout(new BoxLayout(this,BoxLayout.Y_AXIS));
+        Ui.addLeft(this,Ui.label("CUSTOMERS",10,Font.BOLD,Ui.FOREST));add(Box.createVerticalStrut(4));
+        Ui.addLeft(this,Ui.label("Customer accounts",25,Font.BOLD,Ui.INK));add(Box.createVerticalStrut(5));
+        Ui.addLeft(this,Ui.label("View registered customers and their access status.",11,Font.PLAIN,Ui.MUTED));add(Box.createVerticalStrut(18));
+        add(AdminUi.metrics("—", "Total customers", "—", "Active accounts", "—", "Unverified accounts"));add(Box.createVerticalStrut(16));
+        JTable table=new JTable(new javax.swing.table.DefaultTableModel(new String[]{"Customer", "Email", "Contact", "Joined", "Status"},0){public boolean isCellEditable(int r,int c){return false;}});
+        AdminUi.style(table);add(AdminUi.filters(table,"All statuses", "Active", "Unverified", "Suspended"));add(Box.createVerticalStrut(16));
+        JPanel card=AdminUi.tableCard(table,"Account records");
+        card.add(AdminUi.label("Account records are not connected yet.",11,false),BorderLayout.SOUTH);add(card);
     }
 
     /** Styling owned by this panel so the screen can be configured independently. */
