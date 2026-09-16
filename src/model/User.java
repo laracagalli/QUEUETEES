@@ -8,6 +8,30 @@ public class User {
     private final UserRole role;
     private boolean emailVerified;
     private AccountStatus status;
+    private String fullName = "";
+    private String address = "";
+    private String contactNumber = "";
+    private String gender = "";
+    private java.time.LocalDate birthday;
+    private final java.time.LocalDateTime registeredAt = java.time.LocalDateTime.now();
+
+    public User(int id, String username, String email, String passwordHash, UserRole role,
+                boolean emailVerified, AccountStatus status, String fullName, String address,
+                String contactNumber, String gender, java.time.LocalDate birthday) {
+        this(id, username, email, passwordHash, role, emailVerified, status);
+        this.fullName = fullName;
+        this.address = address;
+        this.contactNumber = contactNumber;
+        this.gender = gender;
+        this.birthday = birthday;
+    }
+
+    public String getFullName() { return fullName; }
+    public String getAddress() { return address; }
+    public String getContactNumber() { return contactNumber; }
+    public String getGender() { return gender; }
+    public java.time.LocalDate getBirthday() { return birthday; }
+    public java.time.LocalDateTime getRegisteredAt() { return registeredAt; }
 
     public User(int id,
                 String username,

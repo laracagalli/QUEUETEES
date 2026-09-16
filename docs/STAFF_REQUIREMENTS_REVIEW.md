@@ -7,8 +7,8 @@ Source: **QUEUETEES DRAFT 1 (MAIN).pdf**, supplied by the user. Relevant section
 | Paper requirement | Current implementation | Assessment |
 | --- | --- | --- |
 | Approved staff can log in (pp. 5, 12) | `AuthService.login` checks staff account status before access. | Implemented for existing accounts. |
-| Register staff and approve/reject applications (pp. 5, 12) | Signup calls customer registration. Admin Staff Approvals is a placeholder table with a disabled review action. | Missing end-to-end registration and approval workflow; requires authentication and admin changes. |
-| Store personal information (pp. 5, 12) | `User` stores username/email/role/status, without the paper's separate name fields, contact, address, gender or birthday. | Model and registration storage need expansion. Printed staff identity currently uses the actual signed-in username, ID and email. |
+| Register staff and approve/reject applications (pp. 5, 12) | Register as staff uses the existing signup form, creates a pending application and connects administrator review to approval/rejection and login access. | Implemented with session storage. |
+| Store personal information (pp. 5, 12) | `User` retains full name, contact, address, gender, birthday and registration time. Admins can review these application details. | Stored in memory; separate name fields and persistent storage remain outside this implementation. |
 | Ordered queue, order details, processing and status updates (pp. 4, 5, 12) | Queue, detail dialog, status board and progression actions use shared `StoreService` orders. | Implemented. Details include items, contact, fulfillment, notes and simulated payment method. |
 | Chronological/FCFS handling (pp. 3, 6) | Earliest waiting order must start preparation first. Started orders can advance independently. | Start order is enforced. If the intended rule requires one order to finish before another starts, that stricter rule still needs to be agreed and implemented. |
 | Pending -> Processing -> Completed (pp. 4, 12) | Confirmed -> Preparing -> Ready for pickup -> Completed. | Terminology differs. Pending maps to Confirmed; Processing spans Preparing and Ready. Ready is an additional fulfillment stage, including delivery orders. Update the paper or adopt one consistent state model across customer/staff/admin. |
@@ -35,6 +35,6 @@ The paper's physical receipt-printer exclusion (p. 6) concerns checkout receipts
 
 ## Next priorities
 
-1. Implement the staff application and administrator approval/rejection flow, including the required personal fields.
+1. Staff application and administrator approval/rejection are implemented; `StaffRegistrationTest` covers permissions, pending/approved/rejected login behavior, customer verification and filtered approval tables.
 2. Persist users, catalog, carts, orders and transactions in a local database.
 3. Reconcile status names and the precise FCFS policy between the paper and all application roles.

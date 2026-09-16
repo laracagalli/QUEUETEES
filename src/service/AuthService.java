@@ -94,6 +94,39 @@ public class AuthService {
     }
 
     public RegistrationResult registerCustomer(
+            String email, String fullname, String username, char[] passwordChars,
+            String address, String contactnum, String gender, LocalDate birthday) {
+        return register(email, fullname, username, passwordChars, address, contactnum, gender, birthday, UserRole.CUSTOMER);
+    }
+
+    public RegistrationResult registerStaff(
+            String email, String fullname, String username, char[] passwordChars,
+            String address, String contactnum, String gender, LocalDate birthday) {
+        return register(email, fullname, username, passwordChars, address, contactnum, gender, birthday, UserRole.STAFF);
+    }
+
+    private void requireAdministrator(User actor) {
+        if (actor == null || actor.getRole() != UserRole.ADMIN || actor.getStatus() != AccountStatus.ACTIVE
+                || userRepository.findByEmailOrUsername(actor.getEmail()).orElse(null) != actor)
+            throw new IllegalStateException("An active administrator account is required.");
+    }
+
+    public java.util.List<User> getStaffApplications(User actor) {
+        requireAdministrator(actor);
+        return userRepository.findAll().stream().filter(u -> u.getRole() == UserRole.STAFF)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    public void reviewStaff(User actor, int staffId, boolean approve) {
+        requireAdministrator(actor);
+        User staff = userRepository.findAll().stream().filter(u -> u.getId() == staffId).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Staff account was not found."));
+        if (staff.getRole() != UserRole.STAFF || staff.getStatus() != AccountStatus.PENDING_APPROVAL)
+            throw new IllegalStateException("Only pending staff applications can be reviewed. Refresh and try again.");
+        staff.setStatus(approve ? AccountStatus.ACTIVE : AccountStatus.REJECTED);
+    }
+
+    private synchronized RegistrationResult register(
             String email,
             String fullname,
             String username,
@@ -101,7 +134,7 @@ public class AuthService {
             String address,
             String contactnum,
             String gender,
-            LocalDate birthday) {
+            LocalDate birthday, UserRole role) {
 
         String cleanEmail = email == null ? "" : email.trim();
         String cleanUsername = username == null ? "" : username.trim();
@@ -170,16 +203,23 @@ public class AuthService {
                         "You must be at least 18 years old to register.");
             }
 
-            // Create and save user
-            int newId = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
+            if (role == UserRole.STAFF && (address == null || address.trim().isEmpty()
+                    || contactnum == null || !contactnum.trim().matches("[0-9]{10}"))) {
+                return RegistrationResult.failure(AuthStatus.EMPTY_FIELDS,
+                        "Enter your address and a 10-digit contact number.");
+            }
+
+            int newId = userRepository.findAll().stream().mapToInt(User::getId).max().orElse(0) + 1;
             User newUser = new User(
                     newId,
                     cleanUsername,
                     cleanEmail,
                     PasswordUtil.hashPassword(password),
-                    UserRole.CUSTOMER,
+                    role,
                     false,
-                    AccountStatus.ACTIVE);
+                    role == UserRole.STAFF ? AccountStatus.PENDING_APPROVAL : AccountStatus.ACTIVE,
+                    cleanFullname, address == null ? "" : address.trim(),
+                    contactnum == null ? "" : contactnum.trim(), gender, birthday);
 
             userRepository.save(newUser);
 

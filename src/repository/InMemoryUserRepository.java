@@ -9,6 +9,9 @@ public class InMemoryUserRepository implements UserRepository {
     private final List<User> users = new ArrayList<>();
 
     @Override
+    public List<User> findAll() { return new ArrayList<>(users); }
+
+    @Override
     public Optional<User> findByEmailOrUsername(String identifier) {
         if (identifier == null) {
             return Optional.empty();

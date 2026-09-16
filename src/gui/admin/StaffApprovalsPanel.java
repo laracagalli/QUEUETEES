@@ -5,16 +5,114 @@ import javax.swing.*;
 
 /** Administrator page for reviewing pending staff registrations. */
 public final class StaffApprovalsPanel extends JPanel {
-    public StaffApprovalsPanel() {
+    private final service.AuthService authService;
+    private final model.User administrator;
+    private final javax.swing.table.DefaultTableModel records = new javax.swing.table.DefaultTableModel(
+            new String[]{"Name", "Email", "Date requested", "Role", "Status"}, 0) {
+        public boolean isCellEditable(int r, int c) { return false; }
+    };
+    private final JTable table = new JTable(records);
+    private java.util.List<model.User> staff = java.util.Collections.emptyList();
+    private final JPanel metrics = new JPanel(new BorderLayout());
+    private final JLabel message = AdminUi.label("", 11, false);
+    private final JButton review = AdminUi.button("Review application");
+
+    public StaffApprovalsPanel() { this(null, null); }
+
+    public StaffApprovalsPanel(service.AuthService authService, model.User administrator) {
+        this.authService = authService;
+        this.administrator = administrator;
         setOpaque(false);setLayout(new BoxLayout(this,BoxLayout.Y_AXIS));
         Ui.addLeft(this,Ui.label("STAFF",10,Font.BOLD,Ui.FOREST));add(Box.createVerticalStrut(4));
         Ui.addLeft(this,Ui.label("Staff account approvals",25,Font.BOLD,Ui.INK));add(Box.createVerticalStrut(5));
         Ui.addLeft(this,Ui.label("Review staff registrations before granting access.",11,Font.PLAIN,Ui.MUTED));add(Box.createVerticalStrut(18));
-        add(AdminUi.metrics("—", "Pending approvals", "—", "Approved accounts", "—", "Rejected accounts"));add(Box.createVerticalStrut(16));
-        JTable table=new JTable(new javax.swing.table.DefaultTableModel(new String[]{"Name", "Email", "Date requested", "Role", "Status"},0){public boolean isCellEditable(int r,int c){return false;}});
-        AdminUi.style(table);add(AdminUi.filters(table,"All statuses", "Pending", "Approved", "Rejected"));add(Box.createVerticalStrut(16));
+        metrics.setOpaque(false);metrics.setAlignmentX(0);
+        metrics.setMaximumSize(new Dimension(Integer.MAX_VALUE,104));
+        add(metrics);add(Box.createVerticalStrut(16));
+        AdminUi.style(table);add(AdminUi.filters(table,"All statuses", "Pending", "Approved", "Rejected", "Suspended", "Banned"));add(Box.createVerticalStrut(16));
         JPanel card=AdminUi.tableCard(table,"Account records");
-        card.add(AdminUi.label("Account records are not connected yet.",11,false),BorderLayout.SOUTH);add(card);
+        JPanel footer = new JPanel(new BorderLayout(10, 10));footer.setOpaque(false);
+        footer.add(message, BorderLayout.NORTH);
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));actions.setOpaque(false);
+        JButton refresh = AdminUi.button("Refresh");refresh.addActionListener(e -> refresh());
+        review.addActionListener(e -> reviewSelected());
+        actions.add(refresh);actions.add(review);footer.add(actions, BorderLayout.SOUTH);
+        card.add(footer, BorderLayout.SOUTH);add(card);
+        table.getSelectionModel().addListSelectionListener(e -> updateReview());
+        refresh();
+    }
+
+    private model.User selected() {
+        int row = table.getSelectedRow();
+        return row < 0 ? null : staff.get(table.convertRowIndexToModel(row));
+    }
+
+    private void updateReview() {
+        model.User selected = selected();
+        review.setEnabled(selected != null && selected.getStatus() == model.AccountStatus.PENDING_APPROVAL);
+    }
+
+    public void refresh() {
+        table.clearSelection();
+        records.setRowCount(0);
+        String error = null;
+        try {
+            staff = authService == null ? java.util.Collections.emptyList() : authService.getStaffApplications(administrator);
+        } catch (IllegalStateException ex) { staff = java.util.Collections.emptyList();error = ex.getMessage(); }
+        for (model.User user : staff) {
+            records.addRow(new Object[]{user.getFullName().isEmpty() ? user.getUsername() : user.getFullName(),
+                    user.getEmail(), user.getRegisteredAt().format(java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm")),
+                    "Staff", statusLabel(user.getStatus())});
+        }
+        metrics.removeAll();
+        metrics.add(AdminUi.metrics(count(model.AccountStatus.PENDING_APPROVAL), "Pending approvals",
+                count(model.AccountStatus.ACTIVE), "Approved accounts", count(model.AccountStatus.REJECTED), "Rejected accounts"));
+        metrics.revalidate();metrics.repaint();
+        message.setText(error != null ? error : staff.isEmpty() ? "No staff applications yet." : staff.size() + " staff account(s). Select a pending application to review.");
+        updateReview();
+    }
+
+    private String count(model.AccountStatus status) {
+        return String.valueOf(staff.stream().filter(u -> u.getStatus() == status).count());
+    }
+
+    private static String statusLabel(model.AccountStatus status) {
+        switch (status) {
+            case PENDING_APPROVAL: return "Pending";
+            case ACTIVE: return "Approved";
+            case REJECTED: return "Rejected";
+            case SUSPENDED: return "Suspended";
+            case BANNED: return "Banned";
+            default: return status.toString();
+        }
+    }
+
+    private void reviewSelected() {
+        model.User user = selected();
+        if (user == null || user.getStatus() != model.AccountStatus.PENDING_APPROVAL) return;
+        JPanel details = new JPanel(new GridLayout(0, 2, 14, 10));
+        details.setBackground(AdminUi.PAPER);
+        String[] fields = {"Full name", user.getFullName().isEmpty() ? user.getUsername() : user.getFullName(),
+                "Username", user.getUsername(), "Email", user.getEmail(), "Contact", user.getContactNumber(),
+                "Address", user.getAddress(), "Gender", user.getGender(), "Birthday", user.getBirthday() == null ? "—" : user.getBirthday().toString()};
+        for (int i = 0; i < fields.length; i += 2) {
+            details.add(AdminUi.label(fields[i], 11, true));
+            JTextField value = new JTextField(fields[i+1], 24);value.setEditable(false);
+            value.setFont(new Font("Fira Code", Font.PLAIN, 11));value.setBackground(AdminUi.PAPER);
+            details.add(value);
+        }
+        Object[] options = {"Approve", "Reject", "Cancel"};
+        int choice = JOptionPane.showOptionDialog(this, details, "Review staff application", JOptionPane.DEFAULT_OPTION,
+                JOptionPane.PLAIN_MESSAGE, null, options, options[2]);
+        if (choice != 0 && choice != 1) return;
+        try {
+            authService.reviewStaff(administrator, user.getId(), choice == 0);
+            refresh();
+            message.setText("Application " + (choice == 0 ? "approved. Staff can now sign in." : "rejected. Staff access remains blocked."));
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            refresh();
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Staff approval", JOptionPane.WARNING_MESSAGE);
+        }
     }
 
     /** Styling owned by this panel so the screen can be configured independently. */

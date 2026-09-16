@@ -23,6 +23,11 @@ public class EmailAuthFrame extends JFrame {
     private final SecureRandom random = new SecureRandom();
     private String currentOtp;
     private boolean sendingCode;
+    @FunctionalInterface interface CodeSender { void send(String email, String code) throws Exception; }
+    private final CodeSender codeSender;
+    private JButton resendCode;
+    private RoundedButton enterButton;
+    private JTextArea deliveryHint;
 
     // Timer variables
     private JLabel timerLabel;
@@ -30,8 +35,13 @@ public class EmailAuthFrame extends JFrame {
     private int timeLeft = 300; // 5 minutes in seconds
 
     public EmailAuthFrame(AuthService authService, User user) {
+        this(authService, user, EmailService::sendOtpEmail);
+    }
+
+    EmailAuthFrame(AuthService authService, User user, CodeSender codeSender) {
         this.authService = authService;
         this.user = user;
+        this.codeSender = codeSender;
 
         setTitle("Email Authentication");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -55,31 +65,35 @@ public class EmailAuthFrame extends JFrame {
 
         JPanel formArea = new JPanel(new GridBagLayout());
         formArea.setOpaque(false);
-        formArea.setBorder(new javax.swing.border.EmptyBorder(34, 42, 34, 42));
+        formArea.setBorder(new javax.swing.border.EmptyBorder(24, 24, 24, 24));
 
         JPanel card = roundedPanel(PAPER, 28);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBorder(new javax.swing.border.EmptyBorder(38, 44, 36, 44));
-        card.setPreferredSize(new Dimension(570, 520));
+        card.setBorder(new javax.swing.border.EmptyBorder(32, 32, 32, 32));
+        card.setPreferredSize(new Dimension(570, 480));
+        card.setMinimumSize(new Dimension(440, 480));
+        card.setMaximumSize(new Dimension(570, 480));
 
         JLabel eyebrow = label("EMAIL VERIFICATION", 10, Font.BOLD, FOREST);
-        eyebrow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        eyebrow.setAlignmentX(Component.CENTER_ALIGNMENT);
         card.add(eyebrow);
         card.add(Box.createVerticalStrut(7));
         JLabel title = label("Check your inbox", 27, Font.BOLD, INK);
-        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        title.setAlignmentX(Component.CENTER_ALIGNMENT);
         card.add(title);
         card.add(Box.createVerticalStrut(9));
         JLabel description = label("Enter the six-digit code sent to", 11, Font.PLAIN, MUTED);
-        description.setAlignmentX(Component.LEFT_ALIGNMENT);
+        description.setAlignmentX(Component.CENTER_ALIGNMENT);
         card.add(description);
         card.add(Box.createVerticalStrut(3));
         JLabel email = label(user.getEmail(), 11, Font.BOLD, FOREST);
-        email.setAlignmentX(Component.LEFT_ALIGNMENT);
+        email.setAlignmentX(Component.CENTER_ALIGNMENT);
+        email.setHorizontalAlignment(SwingConstants.CENTER);
+        email.setToolTipText(user.getEmail());
         card.add(email);
         card.add(Box.createVerticalStrut(25));
 
-        timerLabel = label("Time remaining: 05:00", 12, Font.PLAIN, MUTED);
+        timerLabel = label("Preparing your verification code...", 12, Font.PLAIN, MUTED);
         timerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         card.add(timerLabel);
         card.add(Box.createVerticalStrut(12));
@@ -87,6 +101,9 @@ public class EmailAuthFrame extends JFrame {
         JPanel codeRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
         codeRow.setOpaque(false);
         codeRow.setAlignmentX(Component.CENTER_ALIGNMENT);
+        codeRow.setPreferredSize(new Dimension(364, 58));
+        codeRow.setMinimumSize(new Dimension(364, 58));
+        codeRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
 
         for (int i = 0; i < codeFields.length; i++) {
             final int index = i;
@@ -102,6 +119,15 @@ public class EmailAuthFrame extends JFrame {
                     new javax.swing.border.EmptyBorder(4, 4, 4, 4)));
             field.setOpaque(true);
             field.setDocument(new OneDigitDocument());
+            field.getAccessibleContext().setAccessibleName("Verification digit " + (i + 1));
+            field.addFocusListener(new FocusAdapter() {
+                private void border(Color color) {
+                    field.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(color, 2, true),
+                            new javax.swing.border.EmptyBorder(4, 4, 4, 4)));
+                }
+                @Override public void focusGained(FocusEvent e) { border(FOREST); }
+                @Override public void focusLost(FocusEvent e) { border(LINE); }
+            });
 
             field.addKeyListener(new KeyAdapter() {
                 @Override
@@ -121,8 +147,9 @@ public class EmailAuthFrame extends JFrame {
         card.add(codeRow);
         card.add(Box.createVerticalStrut(16));
 
-        JButton resendCode = new JButton("Resend verification code");
-        resendCode.setFont(font(11, Font.BOLD));
+        resendCode = new JButton("Resend verification code");
+        resendCode.setFont(font(11, Font.BOLD).deriveFont(java.util.Collections.singletonMap(
+                java.awt.font.TextAttribute.UNDERLINE, java.awt.font.TextAttribute.UNDERLINE_ON)));
         resendCode.setForeground(FOREST);
         resendCode.setOpaque(false);
         resendCode.setContentAreaFilled(false);
@@ -136,9 +163,24 @@ public class EmailAuthFrame extends JFrame {
             codeFields[0].requestFocusInWindow();
         });
         card.add(resendCode);
-        card.add(Box.createVerticalStrut(19));
+        card.add(Box.createVerticalStrut(8));
 
-        RoundedButton enterButton = new RoundedButton("Verify Email", INK, Color.WHITE);
+        deliveryHint = new JTextArea("Your code is valid for five minutes. Check your spam folder if it has not arrived.");
+        deliveryHint.setEditable(false);
+        deliveryHint.setFocusable(false);
+        deliveryHint.setOpaque(false);
+        deliveryHint.setLineWrap(true);
+        deliveryHint.setWrapStyleWord(true);
+        deliveryHint.setFont(font(11, Font.PLAIN));
+        deliveryHint.setForeground(MUTED);
+        deliveryHint.setAlignmentX(Component.CENTER_ALIGNMENT);
+        deliveryHint.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
+        deliveryHint.setPreferredSize(new Dimension(440, 46));
+        card.add(deliveryHint);
+        card.add(Box.createVerticalGlue());
+        card.add(Box.createVerticalStrut(14));
+
+        enterButton = new RoundedButton("Verify Email", INK, Color.WHITE);
         enterButton.setFont(font(13, Font.BOLD));
         enterButton.setHoverColor(new Color(74, 91, 74));
         enterButton.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -161,10 +203,18 @@ public class EmailAuthFrame extends JFrame {
             new LoginFrame(authService).setVisible(true);
         });
         card.add(backButton);
-        formArea.add(card);
+        GridBagConstraints placement = new GridBagConstraints();
+        placement.fill = GridBagConstraints.HORIZONTAL;
+        placement.weightx = 1;
+        JPanel cardHolder = new JPanel(new GridBagLayout());
+        cardHolder.setOpaque(false);
+        cardHolder.setPreferredSize(new Dimension(570, 480));
+        cardHolder.add(card, placement);
+        formArea.add(cardHolder);
         root.add(formArea);
 
         getRootPane().setDefaultButton(enterButton);
+        setCodeEntryEnabled(false);
 
         addWindowListener(new WindowAdapter() {
             @Override public void windowClosed(WindowEvent e) {
@@ -173,6 +223,7 @@ public class EmailAuthFrame extends JFrame {
         });
 
         SwingUtilities.invokeLater(() -> {
+            if (!isDisplayable()) return;
             generateTemporaryCode();
             codeFields[0].requestFocusInWindow();
         });
@@ -181,7 +232,7 @@ public class EmailAuthFrame extends JFrame {
     private JPanel createBrandPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(FOREST);
-        panel.setPreferredSize(new Dimension(350, 0));
+        panel.setPreferredSize(new Dimension(300, 0));
         JPanel brand = new JPanel();
         brand.setOpaque(false);
         brand.setLayout(new BoxLayout(brand, BoxLayout.Y_AXIS));
@@ -257,6 +308,7 @@ public class EmailAuthFrame extends JFrame {
                 timerLabel.setText("OTP Expired. Please resend.");
                 timerLabel.setForeground(new Color(164, 56, 56));
                 currentOtp = null; // Erase OTP so they can't force it through
+                setCodeEntryEnabled(false);
             } else {
                 updateTimerLabel();
             }
@@ -275,30 +327,43 @@ public class EmailAuthFrame extends JFrame {
     private void generateTemporaryCode() {
         if (sendingCode) return;
         sendingCode = true;
+        currentOtp = null;
+        if (countdownTimer != null) countdownTimer.stop();
+        setCodeEntryEnabled(false);
+        resendCode.setEnabled(false);
         String candidate = String.valueOf(100000 + random.nextInt(900000));
         timerLabel.setText("Sending verification code...");
+        timerLabel.setForeground(MUTED);
+        deliveryHint.setText("Please wait while we send a new code to your email.");
+        deliveryHint.setForeground(MUTED);
         new SwingWorker<Void, Void>() {
             @Override protected Void doInBackground() throws Exception {
-                EmailService.sendOtpEmail(user.getEmail(), candidate);
+                codeSender.send(user.getEmail(), candidate);
                 return null;
             }
             @Override protected void done() {
                 sendingCode = false;
                 if (!isDisplayable()) return;
+                resendCode.setEnabled(true);
                 try {
                     get(); currentOtp = candidate; startCountdown();
+                    setCodeEntryEnabled(true);
+                    resendCode.setText("Resend verification code");
+                    deliveryHint.setText("Your code is valid for five minutes. Check your spam folder if it has not arrived.");
                     codeFields[0].requestFocusInWindow();
                 } catch (Exception ex) {
-                    timerLabel.setText("Email could not be sent. Please try again.");
-                    JOptionPane.showMessageDialog(EmailAuthFrame.this,
-                            "Could not send the code. Check the SMTP configuration and connection.",
-                            "Email Verification", JOptionPane.ERROR_MESSAGE);
+                    timerLabel.setText("We could not send your code");
+                    timerLabel.setForeground(new Color(164, 56, 56));
+                    deliveryHint.setText(EmailService.deliveryFailureMessage(ex));
+                    deliveryHint.setForeground(new Color(164, 56, 56));
+                    resendCode.setText("Try sending again");
                 }
             }
         }.execute();
     }
 
     private void verifyCode() {
+        if (sendingCode) return;
         String enteredCode = getEnteredCode();
 
         if (currentOtp == null) {
@@ -359,6 +424,11 @@ public class EmailAuthFrame extends JFrame {
         for (JTextField field : codeFields) {
             field.setText("");
         }
+    }
+
+    private void setCodeEntryEnabled(boolean enabled) {
+        enterButton.setEnabled(enabled);
+        for (JTextField field : codeFields) field.setEnabled(enabled);
     }
 
     private static class OneDigitDocument extends PlainDocument {

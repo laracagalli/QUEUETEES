@@ -6,4 +6,5 @@ import model.User;
 public interface UserRepository {
     Optional<User> findByEmailOrUsername(String identifier);
     void save(User user);
+    java.util.List<User> findAll();
 }

@@ -57,6 +57,10 @@ public class PasswordResetTest {
         });
         waitStage(ui[0],2);
         javax.swing.SwingUtilities.invokeAndWait(()->{
+            ui[0].setSize(1080,694);layout(ui[0]);
+            java.awt.image.BufferedImage passwordImage=new java.awt.image.BufferedImage(1080,694,java.awt.image.BufferedImage.TYPE_INT_RGB);
+            java.awt.Graphics2D passwordGraphics=passwordImage.createGraphics();ui[0].printAll(passwordGraphics);passwordGraphics.dispose();
+            try {javax.imageio.ImageIO.write(passwordImage,"png",new java.io.File("bin/review/forgot-password-new.png"));}catch(Exception ex){throw new RuntimeException(ex);}
             gui.auth.ForgotPasswordPanel panel = new gui.auth.ForgotPasswordPanel(reset,()->{});
             panel.setSize(1080,720); layout(panel);
             java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(1080,720,java.awt.image.BufferedImage.TYPE_INT_RGB);

@@ -16,6 +16,7 @@ public final class AdminDashboardPanel extends JPanel {
     private final ProductManagementPanel productPanel;
     private final SalesReportsPanel salesPanel;
     private final AdminOrdersPanel queuePanel;
+    private final StaffApprovalsPanel staffPanel;
 
     public AdminDashboardPanel(AuthService authService) { this(authService,null); }
     public AdminDashboardPanel(AuthService authService, model.User user) {
@@ -29,7 +30,8 @@ public final class AdminDashboardPanel extends JPanel {
         content.setBorder(new EmptyBorder(30, 36, 30, 36));
         add(content);
         content.add(createDashboardPanel(), "overview");
-        content.add(new StaffApprovalsPanel(), "staff");
+        staffPanel = new StaffApprovalsPanel(authService, user);
+        content.add(staffPanel, "staff");
         content.add(productPanel, "products");
         content.add(new CustomerManagementPanel(), "customers");
         content.add(queuePanel, "queue");
@@ -92,6 +94,7 @@ public final class AdminDashboardPanel extends JPanel {
     }
 
     private void showPanel(String key) { cardLayout.show(content, key);
+        if ("staff".equals(key)) staffPanel.refresh();
         if ("products".equals(key)) productPanel.refresh();
         if ("reports".equals(key)) salesPanel.refresh();
         if ("queue".equals(key)) queuePanel.refresh();

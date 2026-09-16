@@ -43,6 +43,7 @@ public class SignupFrame extends JFrame implements ActionListener {
     private final ButtonGroup gender = new ButtonGroup();
 
     private final AuthService authService;
+    private final boolean staffRegistration;
 
     private static final String[] SLIDE_IMAGES = {
         "/Gui_Images/model1.png",
@@ -61,9 +62,14 @@ public class SignupFrame extends JFrame implements ActionListener {
     private int currentSlide = 0;
 
     public SignupFrame(AuthService authService) {
-        this.authService = authService;
+        this(authService, false);
+    }
 
-        setTitle("Sign Up");
+    public SignupFrame(AuthService authService, boolean staffRegistration) {
+        this.authService = authService;
+        this.staffRegistration = staffRegistration;
+
+        setTitle(staffRegistration ? "Staff Registration" : "Sign Up");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(1100, 733);
         setLocationRelativeTo(null);
@@ -87,7 +93,7 @@ public class SignupFrame extends JFrame implements ActionListener {
         Color fieldBg = new Color(225, 225, 225);
 
         // Title
-        JLabel title = new JLabel("Create Account");
+        JLabel title = new JLabel(staffRegistration ? "Staff Registration" : "Create Account");
         title.setBounds(30, 30, 400, 45);
         title.setFont(new Font("Arial Black", Font.BOLD, 30));
         leftPanel.add(title);
@@ -303,7 +309,14 @@ public class SignupFrame extends JFrame implements ActionListener {
         leftPanel.add(sep2);
 
         // Buttons
-        signupbtn = new RoundedButton("Sign Up", new Color(60, 60, 60), Color.WHITE);
+        signupbtn = new RoundedButton(staffRegistration ? "Submit application" : "Sign Up", new Color(60, 60, 60), Color.WHITE);
+        if (staffRegistration) {
+            JLabel approvalHint = new JLabel("Administrator approval is required before you can sign in.");
+            approvalHint.setFont(new Font("Fira Code", Font.PLAIN, 11));
+            approvalHint.setForeground(Color.DARK_GRAY);
+            approvalHint.setBounds(30, 505, 500, 20);
+            leftPanel.add(approvalHint);
+        }
         signupbtn.setBounds(30, 535, 500, 50);
         signupbtn.setFont(new Font("Arial Black", Font.BOLD, 16));
         signupbtn.setHoverColor(new Color(40, 40, 40));
@@ -574,7 +587,10 @@ public class SignupFrame extends JFrame implements ActionListener {
             return;
         }
 
-        RegistrationResult result = authService.registerCustomer(
+        RegistrationResult result = staffRegistration ? authService.registerStaff(
+                email.getText(), fullname.getText(), username.getText(), pass.getPassword(),
+                address.getText(), contactnum.getText(), selectedGender(), parsedBirthday)
+                : authService.registerCustomer(
                 email.getText(),
                 fullname.getText(),
                 username.getText(),
@@ -590,6 +606,16 @@ public class SignupFrame extends JFrame implements ActionListener {
         }
 
         clearPassword();
+
+        if (staffRegistration) {
+            JOptionPane.showMessageDialog(this,
+                    "Application submitted. Your account is pending administrator approval.\n"
+                    + "Once approved, sign in here with your username or email and password.",
+                    "QueueTees", JOptionPane.INFORMATION_MESSAGE);
+            dispose();
+            new LoginFrame(authService).setVisible(true);
+            return;
+        }
 
         JOptionPane.showMessageDialog(this,
                 "Account created successfully.\nPlease verify your email to continue.",

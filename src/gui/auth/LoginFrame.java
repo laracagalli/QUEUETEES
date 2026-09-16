@@ -147,7 +147,8 @@ public class LoginFrame extends JFrame implements ActionListener {
             @Override public void mouseClicked(MouseEvent e) {
                 JDialog dialog = new JDialog(LoginFrame.this, "Forgot Password", true);
                 dialog.setContentPane(new ForgotPasswordPanel(authService.passwordResets(), dialog::dispose));
-                dialog.setSize(1080, 760);
+                dialog.setMinimumSize(new Dimension(1000, 733));
+                dialog.setSize(1100, 733);
                 dialog.setLocationRelativeTo(LoginFrame.this);
                 dialog.setVisible(true);
             }
@@ -155,6 +156,42 @@ public class LoginFrame extends JFrame implements ActionListener {
             @Override public void mouseExited(MouseEvent e) { forgotPass.setForeground(Color.DARK_GRAY); }
         });
         leftPanel.add(forgotPass);
+
+        // A quiet, separate entry point for staff applications.
+        Color staffGreen = new Color(55, 70, 56);
+        Color staffLine = new Color(218, 224, 215);
+        JLabel staffLabel = new JLabel("STAFF ACCESS", SwingConstants.CENTER);
+        staffLabel.setBounds(160, 562, 130, 18);
+        staffLabel.setFont(new Font("Fira Code", Font.BOLD, 10));
+        staffLabel.setForeground(new Color(99, 110, 98));
+        leftPanel.add(staffLabel);
+        for (int x : new int[]{40, 300}) {
+            JPanel line = new JPanel();
+            line.setBackground(staffLine);
+            line.setBounds(x, 571, 110, 1);
+            leftPanel.add(line);
+        }
+
+        Color staffOutline = new Color(91, 110, 88);
+        OutlineButton staffSignup = new OutlineButton("Register as staff", staffOutline, staffGreen);
+        staffSignup.setBounds(40, 594, 370, 42);
+        staffSignup.setFont(new Font("Fira Code", Font.BOLD, 12));
+        staffSignup.setBgColor(new Color(239, 243, 236));
+        staffSignup.addFocusListener(new FocusAdapter() {
+            @Override public void focusGained(FocusEvent e) { staffSignup.setBorderColor(staffGreen); }
+            @Override public void focusLost(FocusEvent e) { staffSignup.setBorderColor(staffOutline); }
+        });
+        staffSignup.addActionListener(e -> {
+            dispose();
+            new SignupFrame(authService, true).setVisible(true);
+        });
+        leftPanel.add(staffSignup);
+
+        JLabel staffHint = new JLabel("Account access requires admin approval.", SwingConstants.CENTER);
+        staffHint.setBounds(40, 645, 370, 18);
+        staffHint.setFont(new Font("Fira Code", Font.PLAIN, 10));
+        staffHint.setForeground(new Color(116, 123, 113));
+        leftPanel.add(staffHint);
 
 
         // =========================

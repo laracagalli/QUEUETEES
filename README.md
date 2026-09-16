@@ -2,6 +2,16 @@
 
 ## Staff panel
 
+### Staff registration and approval
+
+Choose **Register as staff** on the login screen. The shared signup form collects the application and saves it as **Pending approval**. Staff registration does not grant access or open the customer email-verification screen.
+
+Sign in as an administrator, open **Staff Approvals**, select a pending row and choose **Review application**. Review the personal details, then **Approve**, **Reject**, or **Cancel**. Approved staff use the normal login screen to enter the staff dashboard; pending and rejected accounts remain blocked. Search, status filters, approval counts and Refresh use the current account repository. Customer signup still requires email verification.
+
+Application details and decisions use in-memory storage and reset when the application restarts. For a demonstration, register staff, return to login, sign in as `admin` with `Admin123!`, approve the application, log out, and sign in with the new staff credentials in the same running application.
+
+Check: `java -Djava.awt.headless=true -cp "bin;src;lib/*" StaffRegistrationTest`.
+
 - Sign in with an approved staff account to view its username, email and account status.
 - Overview shows waiting orders, orders being prepared or ready, today's completions and recent orders.
 - Search Order Queue, Order Details or Completed Orders, select a row and choose **View details** to review contact information, fulfillment, payment method, notes and line items.
@@ -68,7 +78,9 @@ java '-Djava.awt.headless=true' -cp 'bin;src' gui.customer.CustomerTrackingTest
 ### Forgot password
 The login screen's Forgot Password link opens email, verification-code, and new-password steps. Codes expire after 10 minutes, allow at most five attempts, and cannot be reused. A new request invalidates the previous code, with a one-minute request cooldown. Passwords use the signup validation rules. Account role, approval status and email-verification flags are preserved.
 
-Before starting the app, set `QUEUETEES_SMTP_EMAIL` to the Gmail sender address and `QUEUETEES_SMTP_PASSWORD` to its Gmail app password in the launch environment. These settings are also used by registration emails. The previously hardcoded app password should be revoked and replaced. Do not commit credentials. Real SMTP delivery was not exercised by the automated tests.
+The sender Gmail address and app password are configured directly in `src/backend/EmailService.java`, as in the original project. Registration and password-reset emails share these settings; no Windows environment variables are required. Real SMTP delivery was not exercised by the automated tests.
+
+If the email service cannot sign in, check the sender address and app password in `EmailService.java`. Email verification shows an inline delivery error and retry action; code entry stays disabled until sending succeeds. `gui.auth.EmailAuthPresentationTest` uses an injected sender to check failure/retry behavior and render the screen at normal and minimum sizes without sending real email.
 
 Users and password changes currently live in the existing in-memory repository and do not survive application restarts. Durable password recovery requires persistent user storage.
 

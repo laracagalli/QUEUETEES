@@ -15,7 +15,7 @@ public final class CartPanel extends JPanel {
     private final StoreService store = StoreService.getInstance();
     private final User user;
     private final Runnable openTracking;
-    private final DefaultTableModel model = new DefaultTableModel(new String[]{"Photo", "Product", "Price", "Quantity", "Subtotal"}, 0) {
+    private final DefaultTableModel model = new DefaultTableModel(new String[]{"Product", "Price", "Quantity", "Subtotal", "Photo"}, 0) {
         @Override public boolean isCellEditable(int row, int column) { return false; }
     };
     private final JTable table = new JTable(model);
@@ -79,15 +79,21 @@ public final class CartPanel extends JPanel {
         card.setLayout(new BorderLayout());
         Ui.styleTable(table);
         table.setRowHeight(72);
-        table.getColumnModel().getColumn(0).setPreferredWidth(88);
-        table.getColumnModel().getColumn(0).setMaxWidth(100);
+        table.getColumnModel().getColumn(0).setPreferredWidth(360);
         table.getColumnModel().getColumn(0).setCellRenderer(new javax.swing.table.DefaultTableCellRenderer() {
-            @Override protected void setValue(Object value) {
-                setHorizontalAlignment(SwingConstants.CENTER);
-                setIcon(value instanceof Icon ? (Icon) value : null);
-                setText(value instanceof Icon ? "" : "No image");
+            @Override public Component getTableCellRendererComponent(JTable source, Object value,
+                    boolean selected, boolean focused, int row, int column) {
+                super.getTableCellRendererComponent(source, value, selected, focused, row, column);
+                Object photo = source.getModel().getValueAt(source.convertRowIndexToModel(row), 4);
+                setIcon(photo instanceof Icon ? (Icon) photo : null);
+                setHorizontalAlignment(SwingConstants.LEFT);
+                setIconTextGap(12);
+                setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+                putClientProperty("html.disable", true);
+                return this;
             }
         });
+        table.removeColumn(table.getColumnModel().getColumn(4));
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(null);
         card.add(scroll);
@@ -364,9 +370,9 @@ public final class CartPanel extends JPanel {
         double total = 0;
         for (CartItem item : visibleItems) {
             total += item.getSubtotal();
-            model.addRow(new Object[]{loadProductThumbnail(item.getProduct().getImagePath()),
-                    item.getProduct().getName(), String.format("₱%,.2f", item.getProduct().getPrice()),
-                    item.getQuantity(), String.format("₱%,.2f", item.getSubtotal())});
+            model.addRow(new Object[]{item.getProduct().getName(), String.format("₱%,.2f", item.getProduct().getPrice()),
+                    item.getQuantity(), String.format("₱%,.2f", item.getSubtotal()),
+                    loadProductThumbnail(item.getProduct().getImagePath())});
         }
         summary.setText(visibleItems.isEmpty() ? "Your cart is empty" : String.format("Total: ₱%,.2f", total));
         updateReceipt();
