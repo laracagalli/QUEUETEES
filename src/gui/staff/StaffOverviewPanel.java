@@ -66,7 +66,7 @@ public final class StaffOverviewPanel extends JPanel {
         Ui.styleTable(activity);
         activity.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         StaffQueuePresentation.style(activity, 3, false);
-        JScrollPane scroll = new JScrollPane(activity);
+        JScrollPane scroll = new gui.components.ModernScrollPane(activity);
         scroll.setColumnHeaderView(activity.getTableHeader());
         scroll.setBorder(null);
         recent.add(scroll);
@@ -217,7 +217,7 @@ public final class StaffOverviewPanel extends JPanel {
             };
             JTable table = new JTable(model);
             styleTable(table);
-            JScrollPane scroll = new JScrollPane(table);
+            JScrollPane scroll = new gui.components.ModernScrollPane(table);
 
             scroll.setBorder(null);
             scroll.getViewport().setBackground(PAPER);

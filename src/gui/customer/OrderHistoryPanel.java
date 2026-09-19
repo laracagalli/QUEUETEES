@@ -13,7 +13,7 @@ import service.StoreService;
 public final class OrderHistoryPanel extends JPanel {
     private final StoreService store = StoreService.getInstance();
     private final User user;
-    private final DefaultTableModel model = new DefaultTableModel(new String[]{"Order", "Placed", "Items", "Total", "Status"}, 0) {
+    private final DefaultTableModel model = new DefaultTableModel(new String[]{"Queue no.", "Placed", "Items", "Total", "Status"}, 0) {
         @Override public boolean isCellEditable(int row, int column) { return false; }
     };
     private final JTable table = new JTable(model);
@@ -37,7 +37,13 @@ public final class OrderHistoryPanel extends JPanel {
         JPanel card = Ui.card(Ui.PAPER, 22, true);
         card.setLayout(new BorderLayout());
         Ui.styleTable(table);
-        JScrollPane scroll = new JScrollPane(table);
+        table.setDefaultRenderer(Object.class,new javax.swing.table.DefaultTableCellRenderer(){
+            public Component getTableCellRendererComponent(JTable t,Object value,boolean selected,boolean focus,int row,int column){
+                super.getTableCellRendererComponent(t,value,selected,focus,row,column);setBorder(BorderFactory.createEmptyBorder(8,14,8,14));setHorizontalAlignment(LEFT);setFont(t.getFont());setBackground(selected?t.getSelectionBackground():Ui.PAPER);setForeground(Ui.INK);
+                if(column==4){String status=String.valueOf(value);setFont(t.getFont().deriveFont(Font.BOLD));setForeground(status.equals("Confirmed")?new Color(139,91,15):status.equals("Preparing")?new Color(34,91,157):status.equals("Completed")?new Color(100,78,138):new Color(29,113,75));}return this;
+            }
+        });
+        JScrollPane scroll = new gui.components.ModernScrollPane(table);
         scroll.setBorder(null);
         card.add(scroll);
         message.setHorizontalAlignment(SwingConstants.CENTER);
@@ -52,7 +58,7 @@ public final class OrderHistoryPanel extends JPanel {
         model.setRowCount(0);
         List<Order> orders = store.getOrdersForCustomer(user.getId());
         for (Order order : orders) {
-            model.addRow(new Object[]{"#" + order.getId(), order.getPlacedAt().format(DateTimeFormatter.ofPattern("MMM d, h:mm a")),
+            model.addRow(new Object[]{String.format("Q-%03d", order.getQueueNumber()), order.getPlacedAt().format(DateTimeFormatter.ofPattern("MMM d, h:mm a")),
                     order.getItemCount(), String.format("₱%,.2f", order.getTotal()), order.getStatus().getLabel()});
         }
         message.setText(model.getRowCount() == 0 ? "You have no previous orders yet." : model.getRowCount() + " order(s)");
@@ -163,7 +169,7 @@ public final class OrderHistoryPanel extends JPanel {
             };
             JTable table = new JTable(model);
             styleTable(table);
-            JScrollPane scroll = new JScrollPane(table);
+            JScrollPane scroll = new gui.components.ModernScrollPane(table);
 
             scroll.setBorder(null);
             scroll.getViewport().setBackground(PAPER);

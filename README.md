@@ -85,3 +85,16 @@ If the email service cannot sign in, check the sender address and app password i
 Users and password changes currently live in the existing in-memory repository and do not survive application restarts. Durable password recovery requires persistent user storage.
 
 Check: `java -Djava.awt.headless=true -cp "bin;src;lib/*" PasswordResetTest`.
+
+
+### Opening the project on another computer
+
+Use **JDK 21** for this project (the version used for compilation and checks). Java 8 / `jre-1.8` is not supported by the current source. Install a full JDK, not just a JRE.
+
+1. Preserve any local edits before updating the checkout. Open the actual QUEUETEES project folder in VS Code.
+2. Run **Java: Configure Java Runtime** from the Command Palette and select the installed JDK 21 for this project. Configure the Java language-server runtime too if the installed Java extension requests it. Installation paths differ per computer; do not copy someone else's JDK path.
+3. Run **Java: Clean Java Language Server Workspace** and restart when prompted. Wait for Java project loading to finish.
+4. Confirm `java -version` and `javac -version` show 21 in a new terminal. Use the build commands above; fix any compilation errors before running **Run QueueTees**.
+5. The correct authentication files are under `src/gui/auth` and reusable controls under `src/gui/components`. Older files such as `src/gui/SignupFrame.java` should not be copied back into the updated source tree. Compare and preserve local work before resolving duplicate files.
+
+`Unresolved compilation problems` during login means the IDE launched code with build errors. It is not an incorrect-password message. The project now disables proceeding after build failures. If errors remain on JDK 21, inspect the first error in Problems and compare locally modified files with the repository version.

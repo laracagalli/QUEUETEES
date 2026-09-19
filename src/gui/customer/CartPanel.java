@@ -26,7 +26,7 @@ public final class CartPanel extends JPanel {
     private final JTextField email = new JTextField();
     private final JTextField contact = new JTextField();
     private final JTextArea address = new JTextArea(2, 20);
-    private final JComboBox<String> payment = new JComboBox<>(new String[]{"GCash", "Card"});
+    private final JComboBox<String> payment = new gui.components.RoundedComboBox<>(new String[]{"GCash", "Card"});
     private final JTextArea notes = new JTextArea(2, 20);
     private final JTextArea receipt = new JTextArea();
     private final CardLayout paymentDetailsLayout = new CardLayout();
@@ -54,8 +54,8 @@ public final class CartPanel extends JPanel {
         add(Box.createVerticalStrut(18));
         CheckoutValidation.restrict(fullName, 36, "[A-Za-z ]*",
                 "Use letters and spaces only (maximum 36 characters).", fullNameError::setText);
-        CheckoutValidation.restrict(contact, 10, "[0-9]*",
-                "Numbers only; enter 10 digits after +63.", contactError::setText);
+        CheckoutValidation.restrict(contact, 10, "(?:[1-9][0-9]*)?",
+                "Enter 10 digits after +63 without a leading 0.", contactError::setText);
         CheckoutValidation.restrict(qrReference, 24, "[0-9]*",
                 "Numbers only (maximum 24 digits).", referenceError::setText);
         // Usernames are not verified full names and may contain digits or punctuation.
@@ -94,7 +94,7 @@ public final class CartPanel extends JPanel {
             }
         });
         table.removeColumn(table.getColumnModel().getColumn(4));
-        JScrollPane scroll = new JScrollPane(table);
+        JScrollPane scroll = new gui.components.ModernScrollPane(table);
         scroll.setBorder(null);
         card.add(scroll);
         JPanel actions = new JPanel(new BorderLayout(12, 0));
@@ -116,24 +116,34 @@ public final class CartPanel extends JPanel {
         return card;
     }
 
+    private static final class CheckoutFormStack extends JPanel implements Scrollable {
+        public Dimension getPreferredScrollableViewportSize(){return getPreferredSize();}
+        public int getScrollableUnitIncrement(Rectangle r,int orientation,int direction){return 20;}
+        public int getScrollableBlockIncrement(Rectangle r,int orientation,int direction){return Math.max(20,r.height-20);}
+        public boolean getScrollableTracksViewportWidth(){return true;}
+        public boolean getScrollableTracksViewportHeight(){return false;}
+    }
+
     private JPanel createCheckoutPanel() {
-        JPanel columns = new JPanel(new BorderLayout(16, 0));
+        JPanel columns = new JPanel(new BorderLayout(24, 0));
         columns.setOpaque(false);
 
         JPanel formCard = Ui.card(Ui.PAPER, 22, true);
         formCard.setLayout(new BorderLayout());
         formCard.setBorder(new javax.swing.border.EmptyBorder(18, 20, 18, 20));
         JLabel formTitle = Ui.label("Customer & payment details", 16, Font.BOLD, Ui.INK);
-        formTitle.setBorder(new javax.swing.border.EmptyBorder(0, 0, 10, 0));
+        formTitle.setBorder(new javax.swing.border.EmptyBorder(0, 0, 16, 0));
+        formTitle.setOpaque(true);formTitle.setBackground(Ui.PAPER);
         formCard.add(formTitle, BorderLayout.NORTH);
 
-        JPanel formStack = new JPanel();
+        JPanel formStack = new CheckoutFormStack();
         formStack.setOpaque(false);
+        formStack.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 16));
         formStack.setLayout(new BoxLayout(formStack, BoxLayout.Y_AXIS));
         JPanel form = new JPanel(new GridBagLayout());
         form.setOpaque(false);
         form.setAlignmentX(Component.LEFT_ALIGNMENT);
-        form.setMaximumSize(new Dimension(Integer.MAX_VALUE, 410));
+
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 0, 0);
@@ -150,13 +160,15 @@ public final class CartPanel extends JPanel {
         phone.add(contact, BorderLayout.CENTER);
         addFormField(form, gbc, "Contact number", validatedField(phone, contactError));
         address.setLineWrap(true); address.setWrapStyleWord(true);
-        addFormField(form, gbc, "Delivery address", new JScrollPane(address));
+        addFormField(form, gbc, "Delivery address", new gui.components.ModernScrollPane(address));
         addFormField(form, gbc, "Payment method", payment);
         notes.setLineWrap(true); notes.setWrapStyleWord(true);
-        addFormField(form, gbc, "Order notes (optional)", new JScrollPane(notes));
+        addFormField(form, gbc, "Order notes (optional)", new gui.components.ModernScrollPane(notes));
         gbc.gridy++;
+        form.setMinimumSize(new Dimension(0,form.getPreferredSize().height));
+        form.setMaximumSize(new Dimension(Integer.MAX_VALUE,form.getPreferredSize().height));
         formStack.add(form);
-        formStack.add(Box.createVerticalStrut(12));
+        formStack.add(Box.createVerticalStrut(22));
         configurePaymentDetails();
         paymentDetails.setOpaque(false);
         paymentDetails.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -165,7 +177,7 @@ public final class CartPanel extends JPanel {
         paymentDetails.setMaximumSize(new Dimension(Integer.MAX_VALUE, 190));
         formStack.add(paymentDetails);
         formStack.add(Box.createVerticalGlue());
-        JScrollPane formScroll = new JScrollPane(formStack);
+        JScrollPane formScroll = new gui.components.ModernScrollPane(formStack);
         formScroll.setBorder(null);
         formScroll.setOpaque(false);
         formScroll.getViewport().setOpaque(false);
@@ -184,7 +196,7 @@ public final class CartPanel extends JPanel {
         receipt.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         receipt.setForeground(Ui.INK);
         receipt.setBorder(new javax.swing.border.EmptyBorder(14, 40, 10, 0));
-        JScrollPane receiptScroll = new JScrollPane(receipt);
+        JScrollPane receiptScroll = new gui.components.ModernScrollPane(receipt);
         receiptScroll.setBorder(null);
         receiptScroll.setOpaque(false);
         receiptScroll.getViewport().setOpaque(false);
@@ -240,6 +252,7 @@ public final class CartPanel extends JPanel {
         qrCopy.add(Ui.label("Replace payment_qr.png with your QR image.", 10, Font.PLAIN, Ui.MUTED));
         qrCopy.add(Box.createVerticalStrut(10));
         qrCopy.add(Ui.label("Payment reference number", 10, Font.BOLD, Ui.MUTED));
+        qrCopy.add(Box.createVerticalStrut(6));
         qrReference.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         qrCopy.add(validatedField(qrReference, referenceError));
         qrPanel.add(qrCopy);
@@ -320,7 +333,7 @@ public final class CartPanel extends JPanel {
 
     private void addFormField(JPanel form, GridBagConstraints gbc, String title, JComponent field) {
         gbc.gridy++;
-        gbc.insets = new Insets(7, 0, 3, 0);
+        gbc.insets = new Insets("Delivery address".equals(title) ? 0 : 7, 0, 3, 0);
         form.add(Ui.label(title, 10, Font.BOLD, Ui.MUTED), gbc);
         gbc.gridy++;
         gbc.insets = new Insets(0, 0, 0, 0);
@@ -598,7 +611,7 @@ public final class CartPanel extends JPanel {
             };
             JTable table = new JTable(model);
             styleTable(table);
-            JScrollPane scroll = new JScrollPane(table);
+            JScrollPane scroll = new gui.components.ModernScrollPane(table);
 
             scroll.setBorder(null);
             scroll.getViewport().setBackground(PAPER);

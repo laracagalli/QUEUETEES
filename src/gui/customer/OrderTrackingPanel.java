@@ -53,7 +53,7 @@ public final class OrderTrackingPanel extends JPanel {
         }});
         choice.add(selector); header.add(choice, BorderLayout.EAST); add(header, BorderLayout.NORTH);
         body.setOpaque(false); body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
-        JScrollPane scroll = new JScrollPane(body); scroll.setBorder(null); scroll.setOpaque(false);
+        JScrollPane scroll = new gui.components.ModernScrollPane(body); scroll.setBorder(null); scroll.setOpaque(false);
         scroll.getViewport().setOpaque(false); scroll.getVerticalScrollBar().setUnitIncrement(24);
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         add(scroll); refresh();
@@ -140,7 +140,7 @@ public final class OrderTrackingPanel extends JPanel {
             JPanel info = vertical(); info.add(copy(item.getProduct().getName())); info.add(label("Qty " + item.getQuantity() + " / " + money(item.getSubtotal()), 11, false, MUTED)); row.add(info);
             rows.add(row);
         }
-        JScrollPane scroll = new JScrollPane(rows); scroll.setBorder(null); scroll.getViewport().setBackground(PAPER);
+        JScrollPane scroll = new gui.components.ModernScrollPane(rows); scroll.setBorder(null); scroll.getViewport().setBackground(PAPER);
         scroll.setPreferredSize(new Dimension(220, 200)); scroll.getVerticalScrollBar().setUnitIncrement(18); card.add(scroll);
         card.add(label("Total  " + money(order.getTotal()), 18, true, GREEN), BorderLayout.SOUTH); return card;
     }

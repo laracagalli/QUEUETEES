@@ -73,7 +73,7 @@ final class ReportPreview {
         heading.add(StaffStyles.label("Completed orders report", 22, true, StaffStyles.FOREST));
         heading.add(back, BorderLayout.EAST);
         panel.add(heading, BorderLayout.NORTH);
-        JScrollPane scroll = new JScrollPane(page);
+        JScrollPane scroll = new gui.components.ModernScrollPane(page);
         scroll.getVerticalScrollBar().setUnitIncrement(24);
         panel.add(scroll, BorderLayout.CENTER);
         panel.add(actions, BorderLayout.SOUTH);

@@ -12,6 +12,7 @@ public class main {
 
         public static void main(String[] args) {
                 SwingUtilities.invokeLater(() -> {
+                        gui.components.AppTheme.install();
                         UserRepository userRepository = createTestUsers();
                         AuthService authService = new AuthService(userRepository);
                         new LoginFrame(authService).setVisible(true);

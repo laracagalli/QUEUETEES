@@ -19,6 +19,11 @@ public final class CheckoutValidationTest {
                 check(name.getText().equals("Maria Dela Cruz"), "Invalid name paste preserves previous value");
                 name.selectAll(); name.replaceSelection("A".repeat(37));
                 check(name.getText().equals("Maria Dela Cruz"), "Name length capped at 36");
+                contact.setText("0");
+                check(contact.getText().isEmpty(), "Leading zero is rejected while typing");
+                contact.setText("0912345678");
+                check(contact.getText().isEmpty(), "Leading zero is rejected when pasted");
+                check(!CheckoutValidation.contactError("0912345678").isEmpty(), "Leading zero is rejected at submission");
                 contact.setText("9123456789");
                 contact.selectAll(); contact.replaceSelection("+639123456789");
                 check(contact.getText().equals("9123456789"), "Country code is not typed into contact");

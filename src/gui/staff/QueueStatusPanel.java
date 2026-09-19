@@ -107,7 +107,7 @@ public final class QueueStatusPanel extends JPanel {
             cards.add(card);
             cards.add(Box.createVerticalStrut(12));
         }
-        JScrollPane scroll = new JScrollPane(cards);
+        JScrollPane scroll = new gui.components.ModernScrollPane(cards);
         scroll.setBorder(null);
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.getViewport().setBackground(StaffStyles.PAPER);

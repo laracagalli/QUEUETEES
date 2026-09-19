@@ -123,7 +123,7 @@ public final class CustomerProfilePanel extends JPanel {
             };
             JTable table = new JTable(model);
             styleTable(table);
-            JScrollPane scroll = new JScrollPane(table);
+            JScrollPane scroll = new gui.components.ModernScrollPane(table);
 
             scroll.setBorder(null);
             scroll.getViewport().setBackground(PAPER);

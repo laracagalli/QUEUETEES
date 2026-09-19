@@ -80,6 +80,7 @@ public final class CustomerDashboardPanel extends JPanel {
         logout.addActionListener(e -> Ui.confirmLogout(header, authService));
         JPanel logoutWrap = new JPanel(new GridBagLayout());
         logoutWrap.setOpaque(false);
+        logoutWrap.setPreferredSize(new Dimension(210,64));
         logoutWrap.add(logout);
         header.add(logoutWrap, BorderLayout.EAST);
         return header;
@@ -104,10 +105,11 @@ public final class CustomerDashboardPanel extends JPanel {
         private float targetHighlight;
         private final javax.swing.Timer transitionTimer;
         CustomerNavButton(String title) { super(title);
+            putClientProperty("queuetees.preserveButtonStyle", true);
             transitionTimer = new javax.swing.Timer(16, e -> animateHighlight());
-            setFont(Ui.font(11, Font.PLAIN));
+            setFont(Ui.font(14, Font.PLAIN));
             setForeground(Ui.MUTED);
-            setBorder(new EmptyBorder(8, 11, 8, 11));
+            setBorder(new EmptyBorder(11, 14, 11, 14));
             setOpaque(false);
             setContentAreaFilled(false);
             setBorderPainted(false);
@@ -125,7 +127,7 @@ public final class CustomerDashboardPanel extends JPanel {
             });
         }
         void setSelectedState(boolean value) { selected = value;
-            setFont(Ui.font(11, value ? Font.BOLD : Font.PLAIN));
+            setFont(Ui.font(14, value ? Font.BOLD : Font.PLAIN));
             setForeground(value ? Ui.INK : Ui.MUTED);
             setHighlightTarget(value ? 1f : (hovered ? 0.42f : 0f));
         }
@@ -266,7 +268,7 @@ public final class CustomerDashboardPanel extends JPanel {
             };
             JTable table = new JTable(model);
             styleTable(table);
-            JScrollPane scroll = new JScrollPane(table);
+            JScrollPane scroll = new gui.components.ModernScrollPane(table);
 
             scroll.setBorder(null);
             scroll.getViewport().setBackground(PAPER);

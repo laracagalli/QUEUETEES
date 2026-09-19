@@ -44,11 +44,10 @@ public final class OrderDetailsPanel extends JPanel {
         header.add(Box.createVerticalStrut(16)); header.add(StaffOrderActions.search(table));
         add(header, BorderLayout.NORTH);
         JPanel list = createTableCard(); JPanel detail = createDetailsCard();
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, list, detail);
-        split.setOpaque(false); split.setBorder(null); split.setDividerSize(14); split.setResizeWeight(0.56);
-        list.setMinimumSize(new Dimension(350, 300)); detail.setMinimumSize(new Dimension(340, 300));
-        list.setPreferredSize(new Dimension(580, 500)); detail.setPreferredSize(new Dimension(430, 500));
-        split.setContinuousLayout(true); add(split);
+        JPanel columns=new JPanel(new GridBagLayout());columns.setOpaque(false);
+        GridBagConstraints col=new GridBagConstraints();col.fill=GridBagConstraints.BOTH;col.weighty=1;col.weightx=0.56;col.gridx=0;col.insets=new Insets(0,0,0,14);
+        list.setPreferredSize(new Dimension(560,500));detail.setPreferredSize(new Dimension(440,500));
+        columns.add(list,col);col.gridx=1;col.weightx=0.44;col.insets=new Insets(0,0,0,0);columns.add(detail,col);add(columns);
         refresh();
     }
 
@@ -57,12 +56,14 @@ public final class OrderDetailsPanel extends JPanel {
         card.setBorder(BorderFactory.createEmptyBorder(16, 12, 12, 12));
         Ui.styleTable(table); StaffQueuePresentation.style(table, 6, true);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
-        int[] widths = {55, 65, 100, 135, 35, 125, 145};
-        table.getColumnModel().getColumn(0).setMinWidth(55);
-        table.getColumnModel().getColumn(0).setMaxWidth(70);
+        int[] widths = {96, 96, 100, 135, 56, 125, 120};
+        table.getColumnModel().getColumn(0).setMinWidth(96);
+        table.getColumnModel().getColumn(0).setMaxWidth(96);
         for (int i = 0; i < widths.length; i++) table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+        table.getColumnModel().getColumn(1).setMinWidth(96);
+        table.getColumnModel().getColumn(4).setMinWidth(56);
         table.removeColumn(table.getColumnModel().getColumn(5)); // Payment is shown in full in the details pane.
-        JScrollPane scroll = new JScrollPane(table); scroll.setColumnHeaderView(table.getTableHeader()); scroll.setBorder(null);
+        JScrollPane scroll = new gui.components.ModernScrollPane(table); scroll.setColumnHeaderView(table.getTableHeader()); scroll.setBorder(null);
         scroll.getViewport().setBackground(Ui.PAPER); card.add(scroll);
         JPanel heading = Ui.verticalBox();
         Ui.addLeft(heading, Ui.label("Orders in queue", 16, Font.BOLD, Ui.INK));
@@ -79,8 +80,9 @@ public final class OrderDetailsPanel extends JPanel {
     private JPanel createDetailsCard() {
         JPanel card = Ui.card(Ui.PAPER, 22, true); card.setLayout(new BorderLayout(0, 14));
         card.setBorder(BorderFactory.createEmptyBorder(18, 18, 16, 18));
+        detailBody.setBorder(BorderFactory.createEmptyBorder(0, 0, 12, 18));
         detailBody.setOpaque(false); detailBody.setLayout(new BoxLayout(detailBody, BoxLayout.Y_AXIS));
-        JScrollPane scroll = new JScrollPane(detailBody); scroll.setBorder(null); scroll.getViewport().setBackground(Ui.PAPER);
+        JScrollPane scroll = new gui.components.ModernScrollPane(detailBody); scroll.setBorder(null); scroll.getViewport().setBackground(Ui.PAPER);
         scroll.getVerticalScrollBar().setUnitIncrement(22); card.add(scroll);
         JPanel actions = new JPanel(new GridLayout(1, 2, 10, 0)); actions.setOpaque(false);
         advance.addActionListener(e -> { Order order = selectedOrder(); if (order != null) StaffOrderActions.advance(this, order, this::refresh); });
@@ -305,7 +307,7 @@ public final class OrderDetailsPanel extends JPanel {
             };
             JTable table = new JTable(model);
             styleTable(table);
-            JScrollPane scroll = new JScrollPane(table);
+            JScrollPane scroll = new gui.components.ModernScrollPane(table);
         scroll.setColumnHeaderView(table.getTableHeader());
 
             scroll.setBorder(null);

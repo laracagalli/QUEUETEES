@@ -23,7 +23,6 @@ public final class OrderQueuePanel extends JPanel {
     private final JButton selectNext = StaffStyles.lightButton("Select next waiting");
 
     private final JPanel metrics = new JPanel(new GridLayout(1, 3, 14, 0));
-    private final JPanel detailBody = new JPanel();
     private final JLabel featuredTicket = StaffStyles.label("", 23, true, Ui.FOREST);
     private final JLabel featuredInfo = StaffStyles.label("", 12, false, Ui.MUTED);
     private final JButton startNext = StaffStyles.button("Start preparing");
@@ -41,13 +40,7 @@ public final class OrderQueuePanel extends JPanel {
         metrics.setOpaque(false); metrics.setAlignmentX(Component.LEFT_ALIGNMENT);
         metrics.setPreferredSize(new Dimension(1000, 105)); metrics.setMaximumSize(new Dimension(Integer.MAX_VALUE, 105));
         top.add(metrics); add(top, BorderLayout.NORTH);
-        JPanel left = createQueueCard();
-        JPanel right = createDetailCard();
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
-        split.setOpaque(false); split.setBorder(null); split.setDividerSize(14); split.setResizeWeight(0.72);
-        left.setMinimumSize(new Dimension(420, 300)); right.setMinimumSize(new Dimension(265, 300));
-        right.setPreferredSize(new Dimension(300, 450));
-        split.setContinuousLayout(true); add(split);
+        add(createQueueCard(), BorderLayout.CENTER);
         refresh();
     }
 
@@ -72,14 +65,14 @@ public final class OrderQueuePanel extends JPanel {
         });
         featured.add(action, BorderLayout.EAST); header.add(featured); header.add(Box.createVerticalStrut(8));
         header.add(StaffOrderActions.search(table));
-        header.add(StaffStyles.label("Waiting # = preparation priority. Select a row for details.", 10, false, Ui.MUTED));
+        header.add(StaffStyles.label("Waiting # shows preparation priority. Manage item details from Order Details.", 10, false, Ui.MUTED));
         card.add(header, BorderLayout.NORTH);
         Ui.styleTable(table); StaffQueuePresentation.style(table, 6, true);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
         int[] widths = {85, 80, 135, 120, 45, 95, 145};
         for (int i = 0; i < widths.length; i++) table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         table.removeColumn(table.getColumnModel().getColumn(5)); // Total remains in the selected-order summary.
-        JScrollPane scroll = new JScrollPane(table); scroll.setColumnHeaderView(table.getTableHeader()); scroll.setBorder(null);
+        JScrollPane scroll = new gui.components.ModernScrollPane(table); scroll.setColumnHeaderView(table.getTableHeader()); scroll.setBorder(null);
         scroll.getViewport().setBackground(Ui.PAPER); card.add(scroll);
         table.getSelectionModel().addListSelectionListener(e -> { if (!refreshing && !e.getValueIsAdjusting()) updateDetails(); });
         table.getRowSorter().addRowSorterListener(e -> SwingUtilities.invokeLater(() -> updateCount()));
@@ -87,21 +80,10 @@ public final class OrderQueuePanel extends JPanel {
         footer.add(message);
         selectNext.setText("Select next"); selectNext.setPreferredSize(new Dimension(125, 36));
         selectNext.addActionListener(e -> selectNextWaiting()); selectNext.setToolTipText("Clear search and select the first waiting order.");
-        footer.add(selectNext, BorderLayout.EAST); card.add(footer, BorderLayout.SOUTH);
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));actions.setOpaque(false);
+        advance.addActionListener(e -> advanceSelected());actions.add(advance);actions.add(selectNext);
+        footer.add(actions, BorderLayout.EAST); card.add(footer, BorderLayout.SOUTH);
         return card;
-    }
-
-    private JPanel createDetailCard() {
-        JPanel card = Ui.card(Ui.PAPER, 22, true); card.setLayout(new BorderLayout(0, 14));
-        card.setBorder(BorderFactory.createEmptyBorder(18, 18, 16, 18));
-        card.add(StaffStyles.label("Order details", 17, true, Ui.INK), BorderLayout.NORTH);
-        detailBody.setOpaque(false); detailBody.setLayout(new BoxLayout(detailBody, BoxLayout.Y_AXIS));
-        JScrollPane scroll = new JScrollPane(detailBody); scroll.setBorder(null); scroll.getViewport().setBackground(Ui.PAPER);
-        scroll.getVerticalScrollBar().setUnitIncrement(20); card.add(scroll);
-        JPanel actions = new JPanel(new GridLayout(2, 1, 0, 9)); actions.setOpaque(false);
-        advance.addActionListener(e -> advanceSelected()); actions.add(advance);
-        actions.add(StaffOrderActions.detailsButton(this, table, this::selectedOrder, this::refresh));
-        card.add(actions, BorderLayout.SOUTH); return card;
     }
 
     private Order nextWaiting() {
@@ -110,49 +92,12 @@ public final class OrderQueuePanel extends JPanel {
     }
 
     private void updateDetails() {
-        Order order = selectedOrder(); detailBody.removeAll();
+        Order order = selectedOrder();
         boolean eligible = order != null && (order.getStatus() != OrderStatus.CONFIRMED
                 || Integer.valueOf(1).equals(StaffQueuePresentation.waitingPositions(store.getActiveOrders()).get(order.getId())));
         advance.setEnabled(eligible);
         advance.setText(order == null ? "Select an order" : StaffOrderActions.nextAction(order));
         advance.setToolTipText(order != null && !eligible ? "Start Waiting #1 first." : "Update this order's status");
-        if (order == null) {
-            detailBody.add(detailText("Select an order from the queue to see its customer, items and fulfillment details.", false));
-        } else {
-            detailBody.add(StaffStyles.label(String.format("Q-%03d", order.getQueueNumber()), 26, true, Ui.INK));
-            detailBody.add(Box.createVerticalStrut(8));
-            detailBody.add(StaffStyles.label(order.getStatus().getLabel(), 12, true, StaffQueuePresentation.statusColor(order.getStatus().getLabel())));
-            detailBody.add(Box.createVerticalStrut(12));
-            detailBody.add(detailText(order.getCustomerName(), true));
-            detailBody.add(detailText(order.getCheckoutDetails().getContactNumber(), false));
-            detailBody.add(Box.createVerticalStrut(14));
-            detailBody.add(StaffStyles.label("ORDER SUMMARY", 11, true, Ui.FOREST));
-            detailBody.add(Box.createVerticalStrut(8));
-            detailBody.add(detailText("Items: " + order.getItemCount() + "    Total: " + String.format("₱%,.2f", order.getTotal()), true));
-            detailBody.add(detailText("Placed: " + order.getPlacedAt().format(DateTimeFormatter.ofPattern("MMM d, h:mm a")), false));
-            detailBody.add(detailText("Fulfillment: " + order.getCheckoutDetails().getFulfillmentMethod(), false));
-            detailBody.add(detailText("Payment: " + order.getCheckoutDetails().getPaymentMethod(), false));
-            detailBody.add(Box.createVerticalStrut(14));
-            for (model.CartItem item : order.getItems()) {
-                JPanel row = new JPanel(new BorderLayout(10, 0)); row.setOpaque(false); row.setAlignmentX(Component.LEFT_ALIGNMENT);
-                row.setBorder(BorderFactory.createEmptyBorder(6, 0, 8, 0));
-                java.net.URL url = getClass().getResource(item.getProduct().getImagePath());
-                if (url != null) row.add(new JLabel(new ImageIcon(new ImageIcon(url).getImage().getScaledInstance(42, 48, Image.SCALE_SMOOTH))), BorderLayout.WEST);
-                row.add(detailText(item.getProduct().getName() + "\nQty " + item.getQuantity() + " / " + String.format("₱%,.2f", item.getSubtotal()), false));
-                row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 85)); detailBody.add(row);
-            }
-            if (!eligible) { detailBody.add(Box.createVerticalStrut(10)); detailBody.add(detailText("Waiting #1 must begin preparation first.", true)); }
-        }
-        detailBody.revalidate(); detailBody.repaint();
-    }
-
-    private JTextArea detailText(String text, boolean bold) {
-        JTextArea value = new JTextArea(text == null ? "—" : text); StaffStyles.readOnly(value);
-        value.setOpaque(false); value.setLineWrap(true); value.setWrapStyleWord(true);
-        value.setFont(new Font("Segoe UI", bold ? Font.BOLD : Font.PLAIN, 12)); value.setForeground(bold ? Ui.INK : Ui.MUTED);
-        int lines = Math.max(1, (value.getText().length() + 27) / 28) + (value.getText().contains("\n") ? 1 : 0);
-        value.setMinimumSize(new Dimension(0, lines * 18)); value.setPreferredSize(new Dimension(210, lines * 18));
-        value.setMaximumSize(new Dimension(Integer.MAX_VALUE, lines * 18)); value.setAlignmentX(Component.LEFT_ALIGNMENT); return value;
     }
 
     private void updateCount() {
@@ -342,7 +287,7 @@ public final class OrderQueuePanel extends JPanel {
             };
             JTable table = new JTable(model);
             styleTable(table);
-            JScrollPane scroll = new JScrollPane(table);
+            JScrollPane scroll = new gui.components.ModernScrollPane(table);
         scroll.setColumnHeaderView(table.getTableHeader());
 
             scroll.setBorder(null);

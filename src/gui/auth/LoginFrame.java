@@ -85,13 +85,13 @@ public class LoginFrame extends JFrame implements ActionListener {
 
         // Password label
         JLabel passLabel = new JLabel("Password:");
-        passLabel.setBounds(40, 218, 200, 20);
+        passLabel.setBounds(40, 206, 200, 20);
         passLabel.setFont(new Font("Fira Code", Font.PLAIN, 13));
         leftPanel.add(passLabel);
 
         // Password field
         pass = new JPasswordField();
-        pass.setBounds(40, 241, 370, 38);
+        pass.setBounds(40, 229, 370, 38);
         pass.setFont(new Font("Fira Code", Font.PLAIN, 14));
         pass.setBackground(new Color(225, 225, 225));
         pass.setBorder(BorderFactory.createEmptyBorder(5, 12, 5, 12));
@@ -100,7 +100,7 @@ public class LoginFrame extends JFrame implements ActionListener {
 
         // Show password
         showpass = new JCheckBox("Show Password");
-        showpass.setBounds(40, 285, 150, 22);
+        showpass.setBounds(40, 273, 150, 22);
         showpass.setOpaque(false);
         showpass.setFont(new Font("Fira Code", Font.PLAIN, 12));
         showpass.setFocusPainted(false);

@@ -38,7 +38,7 @@ final class CheckoutValidation {
                 : value.length() > 36 || !name.matches("[A-Za-z ]+") ? "Use letters and spaces only (maximum 36 characters)." : "";
     }
     static String contactError(String value) {
-        return value.matches("[0-9]{10}") ? "" : "Enter exactly 10 digits after +63.";
+        return value.matches("[1-9][0-9]{9}") ? "" : "Enter 10 digits after +63 without a leading 0.";
     }
     static String referenceError(String value) {
         return value.matches("[0-9]{6,24}") ? "" : "Enter a 6-24 digit reference number.";

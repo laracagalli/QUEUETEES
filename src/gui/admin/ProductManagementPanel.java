@@ -112,7 +112,7 @@ public final class ProductManagementPanel extends JPanel {
         });
 
         table.removeColumn(table.getColumnModel().getColumn(5));
-        JScrollPane scroll = new JScrollPane(table);
+        JScrollPane scroll = new gui.components.ModernScrollPane(table);
         scroll.setColumnHeaderView(table.getTableHeader());
         scroll.setBorder(null);
         scroll.getViewport().setBackground(Ui.PAPER);
@@ -171,7 +171,7 @@ public final class ProductManagementPanel extends JPanel {
 
     private void showProductDialog() {
         JTextField name = new JTextField();
-        JComboBox<String> category = new JComboBox<>(new String[] { "Women", "Men", "Kids", "Accessories" });
+        JComboBox<String> category = new gui.components.RoundedComboBox<>(new String[] { "Women", "Men", "Kids", "Accessories" });
         JTextField subcategory = new JTextField("Tops");
         JTextField price = new JTextField();
         JTextField stock = new JTextField();
@@ -356,7 +356,7 @@ public final class ProductManagementPanel extends JPanel {
             };
             JTable table = new JTable(model);
             styleTable(table);
-            JScrollPane scroll = new JScrollPane(table);
+            JScrollPane scroll = new gui.components.ModernScrollPane(table);
             scroll.setColumnHeaderView(table.getTableHeader());
             scroll.setBorder(null);
             scroll.getViewport().setBackground(PAPER);

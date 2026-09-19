@@ -58,7 +58,7 @@ public final class ShopPanel extends JPanel {
         add(createCatalogSearch());
         add(Box.createVerticalStrut(10));
         products.setOpaque(false);
-        JScrollPane catalog = new JScrollPane(products);
+        JScrollPane catalog = new gui.components.ModernScrollPane(products);
         catalog.setBorder(null);
         catalog.setOpaque(false);
         catalog.getViewport().setOpaque(false);
@@ -316,6 +316,7 @@ public final class ShopPanel extends JPanel {
 
         private JButton stepButton(String title) {
             JButton button = new JButton(title);
+            button.putClientProperty("queuetees.preserveButtonStyle",true);
             button.setFont(Ui.font(13, Font.BOLD));
             button.setForeground(Ui.INK);
             button.setPreferredSize(new Dimension(28, 36));
@@ -716,7 +717,7 @@ public final class ShopPanel extends JPanel {
             };
             JTable table = new JTable(model);
             styleTable(table);
-            JScrollPane scroll = new JScrollPane(table);
+            JScrollPane scroll = new gui.components.ModernScrollPane(table);
 
             scroll.setBorder(null);
             scroll.getViewport().setBackground(PAPER);

@@ -18,11 +18,28 @@ public final class CompletedOrdersPanel extends JPanel {
     private final JLabel message = Ui.label("", 11, Font.PLAIN, Ui.MUTED);
     private final model.User staff;
     private final JCheckBox allDates = new JCheckBox("All dates", true);
-    private final JSpinner from = new JSpinner(new SpinnerDateModel());
-    private final JSpinner to = new JSpinner(new SpinnerDateModel());
+    private final JSpinner from = new JSpinner(new PastDateModel());
+    private final JSpinner to = new JSpinner(new PastDateModel());
     private final JButton print = StaffStyles.button("Preview / print report");
     private final JPanel content = new JPanel();
     private JPanel preview;
+
+    /** Enforces the same limit for arrows, typed dates and programmatic updates. */
+    static final class PastDateModel extends SpinnerDateModel {
+        PastDateModel() {
+            super(today(), null, today(), java.util.Calendar.DAY_OF_MONTH);
+        }
+        private static java.util.Date today() {
+            return java.util.Date.from(java.time.LocalDate.now().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
+        }
+        @Override public void setValue(Object value) {
+            if (value instanceof java.util.Date && ((java.util.Date)value).toInstant()
+                    .atZone(java.time.ZoneId.systemDefault()).toLocalDate().isAfter(java.time.LocalDate.now())) {
+                throw new IllegalArgumentException("Completion date cannot be later than today.");
+            }
+            super.setValue(value);
+        }
+    }
 
     public CompletedOrdersPanel() {
         this(null);
@@ -55,7 +72,11 @@ public final class CompletedOrdersPanel extends JPanel {
         filters.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         allDates.setOpaque(false);
         for (JSpinner spinner : new JSpinner[]{from, to}) {
-            spinner.setEditor(new JSpinner.DateEditor(spinner, "yyyy-MM-dd"));
+            JSpinner.DateEditor editor = new JSpinner.DateEditor(spinner, "yyyy-MM-dd");
+            editor.getFormat().setLenient(false);
+            editor.getTextField().setFocusLostBehavior(JFormattedTextField.COMMIT_OR_REVERT);
+            spinner.setEditor(editor);
+            spinner.setToolTipText("Choose today or an earlier date (yyyy-MM-dd).");
             spinner.setPreferredSize(new Dimension(125, 30));
             spinner.setEnabled(false);
             spinner.addChangeListener(e -> refresh());
@@ -140,7 +161,7 @@ public final class CompletedOrdersPanel extends JPanel {
         JPanel card = Ui.card(Ui.PAPER, 22, true);
         card.setLayout(new BorderLayout());
         Ui.styleTable(table);
-        JScrollPane scroll = new JScrollPane(table);
+        JScrollPane scroll = new gui.components.ModernScrollPane(table);
         scroll.setColumnHeaderView(table.getTableHeader());
         scroll.setBorder(null);
         card.add(scroll);
@@ -293,7 +314,7 @@ public final class CompletedOrdersPanel extends JPanel {
             };
             JTable table = new JTable(model);
             styleTable(table);
-            JScrollPane scroll = new JScrollPane(table);
+            JScrollPane scroll = new gui.components.ModernScrollPane(table);
         scroll.setColumnHeaderView(table.getTableHeader());
 
             scroll.setBorder(null);

@@ -70,11 +70,11 @@ public final class StaffReportTest {
                 JSpinner to = field(completed, "to", JSpinner.class);
                 all.doClick();
                 check(table.getRowCount() == 1, "Inclusive current completion date");
-                from.setValue(java.util.Date.from(java.time.Instant.now().plusSeconds(86400)));
+                to.setValue(java.util.Date.from(java.time.Instant.now().minusSeconds(86400)));
                 check(table.getRowCount() == 0 && !print.isEnabled(), "Invalid range blocks printing");
                 all.doClick();
                 check(table.getRowCount() == 1 && print.isEnabled(), "All dates restores report");
-                from.setValue(to.getValue());
+                to.setValue(from.getValue());
                 render(completed, "completed-screen.png");
                 print.doClick();
                 JPanel preview = field(completed, "preview", JPanel.class);
