@@ -96,6 +96,15 @@ public class AuthService {
         user.setEmailVerified(true);
     }
 
+    // ==========================================
+    // NEW METHOD: Persist user profile updates
+    // ==========================================
+    public void updateUser(User user) {
+        if (user != null) {
+            userRepository.save(user);
+        }
+    }
+
     public RegistrationResult registerCustomer(
             String email, String fullname, String username, char[] passwordChars,
             String address, String contactnum, String gender, LocalDate birthday) {

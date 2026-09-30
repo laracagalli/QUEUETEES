@@ -1,11 +1,15 @@
 package gui.customer;
 
 import java.awt.*;
+import java.io.File;
 import javax.swing.*;
 
 /** Customer account/profile page. */
 public final class CustomerProfilePanel extends JPanel {
-    public CustomerProfilePanel() { this(null); }
+    public CustomerProfilePanel() {
+        this(null);
+    }
+
     public CustomerProfilePanel(model.User user) {
         setOpaque(false);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -15,10 +19,74 @@ public final class CustomerProfilePanel extends JPanel {
         add(Box.createVerticalStrut(5));
         Ui.addLeft(this, Ui.label("Review your QueueTees customer account.", 11, Font.PLAIN, Ui.MUTED));
         add(Box.createVerticalStrut(18));
-        add(new gui.components.ProfileCard(user));
+
+        // Replaced external ProfileCard with a self-contained profile display
+        // to guarantee local image loading executes perfectly on this panel.
+        add(createProfileDisplay(user));
     }
 
-    /** Styling owned by this panel so the screen can be configured independently. */
+    private JPanel createProfileDisplay(model.User user) {
+        JPanel card = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 0));
+        card.setOpaque(false);
+        card.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // Render Avatar (Loads picture if available, otherwise shows initial)
+        int size = 64;
+        JLabel avatarLabel = new JLabel();
+        avatarLabel.setPreferredSize(new Dimension(size, size));
+        avatarLabel.setMinimumSize(new Dimension(size, size));
+        avatarLabel.setMaximumSize(new Dimension(size, size));
+        avatarLabel.setHorizontalAlignment(SwingConstants.CENTER);
+
+        String picPath = (user != null) ? user.getProfilePicture() : null;
+        boolean imageLoaded = false;
+
+        if (picPath != null && !picPath.trim().isEmpty()) {
+            File imgFile = new File(picPath);
+            // Verify the file exists on the local machine before loading
+            if (imgFile.exists() && imgFile.isFile()) {
+                ImageIcon icon = new ImageIcon(imgFile.getAbsolutePath());
+                if (icon.getIconWidth() > 0 && icon.getIconHeight() > 0) {
+                    Image scaledImg = icon.getImage().getScaledInstance(size, size, Image.SCALE_SMOOTH);
+                    avatarLabel.setIcon(new ImageIcon(scaledImg));
+                    imageLoaded = true;
+                }
+            }
+        }
+
+        // Fallback placeholder letter if image doesn't exist or fails to load
+        if (!imageLoaded) {
+            String initial = "C";
+            if (user != null && user.getUsername() != null && !user.getUsername().trim().isEmpty()) {
+                initial = user.getUsername().trim().substring(0, 1).toUpperCase();
+            }
+
+            avatarLabel.setText(initial);
+            avatarLabel.setFont(Ui.font(26, Font.BOLD));
+            avatarLabel.setForeground(Ui.INK);
+            avatarLabel.setOpaque(true);
+            avatarLabel.setBackground(new Color(218, 224, 211));
+        }
+
+        card.add(avatarLabel);
+
+        // User Details
+        JPanel infoPanel = Ui.verticalBox();
+        String username = (user != null && user.getUsername() != null && !user.getUsername().isEmpty())
+                ? user.getUsername()
+                : "Customer";
+
+        infoPanel.add(Ui.label(username, 22, Font.BOLD, Ui.INK));
+        infoPanel.add(Box.createVerticalStrut(4));
+        infoPanel.add(Ui.label("Customer account", 12, Font.PLAIN, Ui.MUTED));
+
+        card.add(infoPanel);
+        return card;
+    }
+
+    /**
+     * Styling owned by this panel so the screen can be configured independently.
+     */
     private static final class Ui {
         static final Color INK = new Color(28, 31, 27);
         static final Color MUTED = new Color(99, 106, 96);
@@ -28,17 +96,22 @@ public final class CustomerProfilePanel extends JPanel {
         static final Color PAPER = new Color(252, 252, 247);
         static final Color LINE = new Color(218, 220, 209);
 
-        static Font font(int size, int style) { return new Font("Fira Code", style, size);
+        static Font font(int size, int style) {
+            return new Font("Fira Code", style, size);
         }
+
         static JLabel label(String value, int size, int style, Color color) {
             JLabel label = new JLabel(value);
             label.setFont(font(size, style));
             label.setForeground(color);
             return label;
         }
-        static void addLeft(JPanel parent, JComponent child) { child.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        static void addLeft(JPanel parent, JComponent child) {
+            child.setAlignmentX(Component.LEFT_ALIGNMENT);
             parent.add(child);
         }
+
         static JPanel verticalBox() {
             JPanel panel = new JPanel();
             panel.setOpaque(false);
@@ -46,14 +119,17 @@ public final class CustomerProfilePanel extends JPanel {
 
             return panel;
         }
+
         static JPanel card(Color color, int radius, boolean outlined) {
             JPanel panel = new JPanel() {
-                @Override protected void paintComponent(Graphics g) {
+                @Override
+                protected void paintComponent(Graphics g) {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                     g2.setColor(color);
                     g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
-                    if (outlined) { g2.setColor(LINE);
+                    if (outlined) {
+                        g2.setColor(LINE);
                         g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
                     }
                     g2.dispose();
@@ -65,6 +141,7 @@ public final class CustomerProfilePanel extends JPanel {
             panel.setAlignmentX(Component.LEFT_ALIGNMENT);
             return panel;
         }
+
         static JPanel metricCard(String value, String caption) {
             JPanel panel = card(PAPER, 20, true);
             panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
@@ -75,6 +152,7 @@ public final class CustomerProfilePanel extends JPanel {
 
             return panel;
         }
+
         static JPanel emptyState(String title, String message) {
             JPanel panel = card(PAPER, 22, true);
             panel.setLayout(new GridBagLayout());
@@ -96,6 +174,7 @@ public final class CustomerProfilePanel extends JPanel {
             panel.setPreferredSize(new Dimension(1000, 205));
             return panel;
         }
+
         static JPanel toolbar(String placeholder, String action) {
             JPanel toolbar = new JPanel(new BorderLayout(12, 0));
             toolbar.setOpaque(false);
@@ -105,20 +184,25 @@ public final class CustomerProfilePanel extends JPanel {
             search.setFont(font(11, Font.PLAIN));
             search.setForeground(MUTED);
             search.setBackground(PAPER);
-            search.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(LINE), new javax.swing.border.EmptyBorder(0, 13, 0, 13)));
+            search.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(LINE),
+                    new javax.swing.border.EmptyBorder(0, 13, 0, 13)));
             toolbar.add(search);
-            if (action != null) { gui.components.RoundedButton button = primaryButton(action);
+            if (action != null) {
+                gui.components.RoundedButton button = primaryButton(action);
                 button.setPreferredSize(new Dimension(140, 40));
                 toolbar.add(button, BorderLayout.EAST);
-                }
+            }
             return toolbar;
         }
+
         static JPanel tableCard(String[] columns, String emptyMessage, String action) {
             JPanel panel = card(PAPER, 22, true);
             panel.setLayout(new BorderLayout());
             panel.setBorder(new javax.swing.border.EmptyBorder(0, 0, action == null ? 0 : 12, 0));
             javax.swing.table.DefaultTableModel model = new javax.swing.table.DefaultTableModel(columns, 0) {
-                @Override public boolean isCellEditable(int row, int column) { return false;
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
                 }
             };
             JTable table = new JTable(model);
@@ -145,6 +229,7 @@ public final class CustomerProfilePanel extends JPanel {
             panel.setPreferredSize(new Dimension(1000, 350));
             return panel;
         }
+
         static JPanel productCard(String imagePath) {
             JPanel panel = card(PAPER, 22, true);
             panel.setLayout(new BorderLayout());
@@ -155,7 +240,9 @@ public final class CustomerProfilePanel extends JPanel {
             image.setFont(font(10, Font.PLAIN));
             if (imagePath != null) {
                 java.net.URL url = Ui.class.getResource(imagePath);
-                if (url != null) image.setIcon(new ImageIcon(new ImageIcon(url).getImage().getScaledInstance(260, 245, Image.SCALE_SMOOTH)));
+                if (url != null)
+                    image.setIcon(new ImageIcon(
+                            new ImageIcon(url).getImage().getScaledInstance(260, 245, Image.SCALE_SMOOTH)));
             }
             panel.add(image);
             JPanel caption = verticalBox();
@@ -166,6 +253,7 @@ public final class CustomerProfilePanel extends JPanel {
             panel.add(caption, BorderLayout.SOUTH);
             return panel;
         }
+
         static gui.components.RoundedButton primaryButton(String title) {
             gui.components.RoundedButton button = new gui.components.RoundedButton(title, INK, Color.WHITE);
             button.setFont(font(11, Font.BOLD));
@@ -173,22 +261,29 @@ public final class CustomerProfilePanel extends JPanel {
             button.setPreferredSize(new Dimension(135, 38));
             return button;
         }
+
         static gui.components.RoundedButton lightButton(String title) {
             gui.components.RoundedButton button = new gui.components.RoundedButton(title, CREAM, INK);
             button.setFont(font(11, Font.BOLD));
             button.setHoverColor(new Color(218, 225, 211));
             return button;
         }
-        static NavButton navButton(String title) { return new NavButton(title);
+
+        static NavButton navButton(String title) {
+            return new NavButton(title);
         }
+
         static void confirmLogout(Component parent, service.AuthService authService) {
-            int choice = JOptionPane.showConfirmDialog(parent, "Log out of QueueTees?", "Confirm Log Out", JOptionPane.YES_NO_OPTION);
+            int choice = JOptionPane.showConfirmDialog(parent, "Log out of QueueTees?", "Confirm Log Out",
+                    JOptionPane.YES_NO_OPTION);
             if (choice == JOptionPane.YES_OPTION) {
                 Window window = SwingUtilities.getWindowAncestor(parent);
-                if (window != null) window.dispose();
+                if (window != null)
+                    window.dispose();
                 new gui.auth.LoginFrame(authService).setVisible(true);
             }
         }
+
         static void styleTable(JTable table) {
             table.setFont(font(11, Font.PLAIN));
             table.setForeground(INK);
@@ -209,8 +304,10 @@ public final class CustomerProfilePanel extends JPanel {
             renderer.setBorder(new javax.swing.border.EmptyBorder(0, 12, 0, 12));
             table.setDefaultRenderer(Object.class, renderer);
         }
+
         static final class NavButton extends JButton {
             private boolean selected, hovered;
+
             NavButton(String title) {
                 super(title);
                 setFont(font(12, Font.PLAIN));
@@ -223,21 +320,29 @@ public final class CustomerProfilePanel extends JPanel {
                 setFocusPainted(false);
                 setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
                 addMouseListener(new java.awt.event.MouseAdapter() {
-                    @Override public void mouseEntered(java.awt.event.MouseEvent e) { hovered = true;
+                    @Override
+                    public void mouseEntered(java.awt.event.MouseEvent e) {
+                        hovered = true;
                         repaint();
                     }
-                    @Override public void mouseExited(java.awt.event.MouseEvent e) { hovered = false;
+
+                    @Override
+                    public void mouseExited(java.awt.event.MouseEvent e) {
+                        hovered = false;
                         repaint();
                     }
                 });
             }
+
             void setSelectedState(boolean value) {
                 selected = value;
                 setFont(font(12, value ? Font.BOLD : Font.PLAIN));
                 setForeground(value ? Color.WHITE : new Color(224, 230, 219));
                 repaint();
             }
-            @Override protected void paintComponent(Graphics g) {
+
+            @Override
+            protected void paintComponent(Graphics g) {
                 if (selected || hovered) {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setColor(new Color(255, 255, 255, selected ? 34 : 20));
@@ -248,5 +353,4 @@ public final class CustomerProfilePanel extends JPanel {
             }
         }
     }
-
 }

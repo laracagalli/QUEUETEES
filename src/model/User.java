@@ -2,7 +2,7 @@ package model;
 
 public class User {
     private final int id;
-    private final String username;
+    private String username; // Removed 'final' so you can change the username
     private final String email;
     private volatile String passwordHash;
     private final UserRole role;
@@ -15,9 +15,12 @@ public class User {
     private java.time.LocalDate birthday;
     private final java.time.LocalDateTime registeredAt = java.time.LocalDateTime.now();
 
+    // Added profile picture field
+    private String profilePicture = "";
+
     public User(int id, String username, String email, String passwordHash, UserRole role,
-                boolean emailVerified, AccountStatus status, String fullName, String address,
-                String contactNumber, String gender, java.time.LocalDate birthday) {
+            boolean emailVerified, AccountStatus status, String fullName, String address,
+            String contactNumber, String gender, java.time.LocalDate birthday) {
         this(id, username, email, passwordHash, role, emailVerified, status);
         this.fullName = fullName;
         this.address = address;
@@ -26,20 +29,13 @@ public class User {
         this.birthday = birthday;
     }
 
-    public String getFullName() { return fullName; }
-    public String getAddress() { return address; }
-    public String getContactNumber() { return contactNumber; }
-    public String getGender() { return gender; }
-    public java.time.LocalDate getBirthday() { return birthday; }
-    public java.time.LocalDateTime getRegisteredAt() { return registeredAt; }
-
     public User(int id,
-                String username,
-                String email,
-                String passwordHash,
-                UserRole role,
-                boolean emailVerified,
-                AccountStatus status) {
+            String username,
+            String email,
+            String passwordHash,
+            UserRole role,
+            boolean emailVerified,
+            AccountStatus status) {
         this.id = id;
         this.username = username;
         this.email = email;
@@ -49,12 +45,19 @@ public class User {
         this.status = status;
     }
 
+    // --- Getters & Setters ---
+
     public int getId() {
         return id;
     }
 
     public String getUsername() {
         return username;
+    }
+
+    // Added setter for username
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public String getEmail() {
@@ -87,5 +90,38 @@ public class User {
 
     public void setStatus(AccountStatus status) {
         this.status = status;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public String getContactNumber() {
+        return contactNumber;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public java.time.LocalDate getBirthday() {
+        return birthday;
+    }
+
+    public java.time.LocalDateTime getRegisteredAt() {
+        return registeredAt;
+    }
+
+    // Added getter and setter for profile picture
+    public String getProfilePicture() {
+        return profilePicture;
+    }
+
+    public void setProfilePicture(String profilePicture) {
+        this.profilePicture = profilePicture;
     }
 }

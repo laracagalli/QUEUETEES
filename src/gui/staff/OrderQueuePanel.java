@@ -12,11 +12,20 @@ import service.StoreService;
 /** Staff page for processing the FCFS order queue. */
 public final class OrderQueuePanel extends JPanel {
     private final StoreService store = StoreService.getInstance();
-    private final DefaultTableModel model = new DefaultTableModel(new String[]{"Waiting #", "Queue no.", "Customer", "Placed", "Items", "Total", "Status"}, 0) {
-        @Override public boolean isCellEditable(int row, int column) { return false; }
-        @Override public Class<?> getColumnClass(int column) { return column == 0 ? Integer.class : Object.class; }
+    private final DefaultTableModel model = new DefaultTableModel(
+            new String[] { "Waiting #", "Queue no.", "Customer", "Placed", "Items", "Total", "Status" }, 0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+
+        @Override
+        public Class<?> getColumnClass(int column) {
+            return column == 0 ? Integer.class : Object.class;
+        }
     };
-    private final JTable table = StaffQueuePresentation.table(model, "No active orders yet", "Customer orders will appear here after checkout.");
+    private final JTable table = StaffQueuePresentation.table(model, "No active orders yet",
+            "Customer orders will appear here after checkout.");
     private final JLabel message = Ui.label("", 11, Font.PLAIN, Ui.MUTED);
     private List<Order> visibleOrders;
     private final gui.components.RoundedButton advance = Ui.primaryButton("Advance selected");
@@ -37,9 +46,12 @@ public final class OrderQueuePanel extends JPanel {
         top.add(Box.createVerticalStrut(5));
         top.add(Ui.label("First come, first served / Live order fulfillment", 12, Font.PLAIN, Ui.MUTED));
         top.add(Box.createVerticalStrut(18));
-        metrics.setOpaque(false); metrics.setAlignmentX(Component.LEFT_ALIGNMENT);
-        metrics.setPreferredSize(new Dimension(1000, 105)); metrics.setMaximumSize(new Dimension(Integer.MAX_VALUE, 105));
-        top.add(metrics); add(top, BorderLayout.NORTH);
+        metrics.setOpaque(false);
+        metrics.setAlignmentX(Component.LEFT_ALIGNMENT);
+        metrics.setPreferredSize(new Dimension(1000, 105));
+        metrics.setMaximumSize(new Dimension(Integer.MAX_VALUE, 105));
+        top.add(metrics);
+        add(top, BorderLayout.NORTH);
         add(createQueueCard(), BorderLayout.CENTER);
         refresh();
     }
@@ -49,40 +61,69 @@ public final class OrderQueuePanel extends JPanel {
         card.setLayout(new BorderLayout(0, 12));
         card.setBorder(BorderFactory.createEmptyBorder(16, 14, 12, 14));
         JPanel header = Ui.verticalBox();
-        JPanel title = new JPanel(new BorderLayout()); title.setOpaque(false); title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JPanel title = new JPanel(new BorderLayout());
+        title.setOpaque(false);
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
         title.add(StaffStyles.label("Live order queue", 16, true, Ui.INK));
         title.add(StaffStyles.label("● Auto-refresh on", 11, false, Ui.FOREST), BorderLayout.EAST);
-        header.add(title); header.add(Box.createVerticalStrut(14));
+        header.add(title);
+        header.add(Box.createVerticalStrut(14));
         JPanel featured = Ui.card(new Color(235, 241, 229), 16, true);
-        featured.setLayout(new BorderLayout(12, 0)); featured.setBorder(BorderFactory.createEmptyBorder(13, 14, 13, 14));
+        featured.setLayout(new BorderLayout(12, 0));
+        featured.setBorder(BorderFactory.createEmptyBorder(13, 14, 13, 14));
         JPanel info = Ui.verticalBox();
-        info.add(StaffStyles.label("NEXT TO PREPARE", 10, true, Ui.FOREST)); info.add(Box.createVerticalStrut(5));
-        info.add(featuredTicket); info.add(Box.createVerticalStrut(4)); info.add(featuredInfo);
-        featured.add(info); JPanel action = new JPanel(new GridBagLayout()); action.setOpaque(false); action.add(startNext);
+        info.add(StaffStyles.label("NEXT TO PREPARE", 10, true, Ui.FOREST));
+        info.add(Box.createVerticalStrut(5));
+        info.add(featuredTicket);
+        info.add(Box.createVerticalStrut(4));
+        info.add(featuredInfo);
+        featured.add(info);
+        JPanel action = new JPanel(new GridBagLayout());
+        action.setOpaque(false);
+        action.add(startNext);
         startNext.addActionListener(e -> {
             Order next = nextWaiting();
-            if (next != null) StaffOrderActions.advance(this, next, this::refresh);
+            if (next != null)
+                StaffOrderActions.advance(this, next, this::refresh);
         });
-        featured.add(action, BorderLayout.EAST); header.add(featured); header.add(Box.createVerticalStrut(8));
+        featured.add(action, BorderLayout.EAST);
+        header.add(featured);
+        header.add(Box.createVerticalStrut(8));
         header.add(StaffOrderActions.search(table));
-        header.add(StaffStyles.label("Waiting # shows preparation priority. Manage item details from Order Details.", 10, false, Ui.MUTED));
+        header.add(StaffStyles.label("Waiting # shows preparation priority. Manage item details from Order Details.",
+                10, false, Ui.MUTED));
         card.add(header, BorderLayout.NORTH);
-        Ui.styleTable(table); StaffQueuePresentation.style(table, 6, true);
+        Ui.styleTable(table);
+        StaffQueuePresentation.style(table, 6, true);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
-        int[] widths = {85, 80, 135, 120, 45, 95, 145};
-        for (int i = 0; i < widths.length; i++) table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+        int[] widths = { 85, 80, 135, 120, 45, 95, 145 };
+        for (int i = 0; i < widths.length; i++)
+            table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         table.removeColumn(table.getColumnModel().getColumn(5)); // Total remains in the selected-order summary.
-        JScrollPane scroll = new gui.components.ModernScrollPane(table); scroll.setColumnHeaderView(table.getTableHeader()); scroll.setBorder(null);
-        scroll.getViewport().setBackground(Ui.PAPER); card.add(scroll);
-        table.getSelectionModel().addListSelectionListener(e -> { if (!refreshing && !e.getValueIsAdjusting()) updateDetails(); });
+        JScrollPane scroll = new gui.components.ModernScrollPane(table);
+        scroll.setColumnHeaderView(table.getTableHeader());
+        scroll.setBorder(null);
+        scroll.getViewport().setBackground(Ui.PAPER);
+        card.add(scroll);
+        table.getSelectionModel().addListSelectionListener(e -> {
+            if (!refreshing && !e.getValueIsAdjusting())
+                updateDetails();
+        });
         table.getRowSorter().addRowSorterListener(e -> SwingUtilities.invokeLater(() -> updateCount()));
-        JPanel footer = new JPanel(new BorderLayout(8, 0)); footer.setOpaque(false);
+        JPanel footer = new JPanel(new BorderLayout(8, 0));
+        footer.setOpaque(false);
         footer.add(message);
-        selectNext.setText("Select next"); selectNext.setPreferredSize(new Dimension(125, 36));
-        selectNext.addActionListener(e -> selectNextWaiting()); selectNext.setToolTipText("Clear search and select the first waiting order.");
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));actions.setOpaque(false);
-        advance.addActionListener(e -> advanceSelected());actions.add(advance);actions.add(selectNext);
-        footer.add(actions, BorderLayout.EAST); card.add(footer, BorderLayout.SOUTH);
+        selectNext.setText("Select next");
+        selectNext.setPreferredSize(new Dimension(125, 36));
+        selectNext.addActionListener(e -> selectNextWaiting());
+        selectNext.setToolTipText("Clear search and select the first waiting order.");
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        actions.setOpaque(false);
+        advance.addActionListener(e -> advanceSelected());
+        actions.add(advance);
+        actions.add(selectNext);
+        footer.add(actions, BorderLayout.EAST);
+        card.add(footer, BorderLayout.SOUTH);
         return card;
     }
 
@@ -94,7 +135,8 @@ public final class OrderQueuePanel extends JPanel {
     private void updateDetails() {
         Order order = selectedOrder();
         boolean eligible = order != null && (order.getStatus() != OrderStatus.CONFIRMED
-                || Integer.valueOf(1).equals(StaffQueuePresentation.waitingPositions(store.getActiveOrders()).get(order.getId())));
+                || Integer.valueOf(1)
+                        .equals(StaffQueuePresentation.waitingPositions(store.getActiveOrders()).get(order.getId())));
         advance.setEnabled(eligible);
         advance.setText(order == null ? "Select an order" : StaffOrderActions.nextAction(order));
         advance.setToolTipText(order != null && !eligible ? "Start Waiting #1 first." : "Update this order's status");
@@ -108,31 +150,41 @@ public final class OrderQueuePanel extends JPanel {
         List<Order> active = store.getActiveOrders();
         String state = store.getOrders().stream().map(o -> o.getId() + ":" + o.getStatus())
                 .collect(java.util.stream.Collectors.joining("|")) + java.time.LocalDate.now();
-        if (state.equals(lastState)) return;
+        if (state.equals(lastState))
+            return;
         lastState = state;
-        Order selected = selectedOrder(); refreshing = true;
-        model.setRowCount(0); visibleOrders = active;
+        Order selected = selectedOrder();
+        refreshing = true;
+        model.setRowCount(0);
+        visibleOrders = active;
         java.util.Map<Integer, Integer> positions = StaffQueuePresentation.waitingPositions(visibleOrders);
         for (Order order : visibleOrders) {
-            model.addRow(new Object[]{positions.get(order.getId()), "Q-" + String.format("%03d", order.getQueueNumber()), order.getCustomerName(),
+            model.addRow(new Object[] { positions.get(order.getId()),
+                    "Q-" + String.format("%03d", order.getQueueNumber()), order.getCustomerName(),
                     order.getPlacedAt().format(DateTimeFormatter.ofPattern("MMM d, h:mm a")), order.getItemCount(),
-                    String.format("₱%,.2f", order.getTotal()), order.getStatus().getLabel()});
+                    String.format("₱%,.2f", order.getTotal()), order.getStatus().getLabel() });
         }
         restoreSelection(selected);
         Order next = nextWaiting();
-        if (table.getSelectedRow() < 0) restoreSelection(next != null ? next : visibleOrders.isEmpty() ? null : visibleOrders.get(0));
+        if (table.getSelectedRow() < 0)
+            restoreSelection(next != null ? next : visibleOrders.isEmpty() ? null : visibleOrders.get(0));
         refreshing = false;
-        selectNext.setEnabled(next != null); startNext.setEnabled(next != null);
+        selectNext.setEnabled(next != null);
+        startNext.setEnabled(next != null);
         featuredTicket.setText(next == null ? "No orders waiting" : String.format("Q-%03d", next.getQueueNumber()));
-        featuredInfo.setText(next == null ? "Continue working on active orders below." : next.getCustomerName() + " / " + next.getItemCount() + " items");
+        featuredInfo.setText(next == null ? "Continue working on active orders below."
+                : next.getCustomerName() + " / " + next.getItemCount() + " items");
         featuredInfo.setToolTipText(featuredInfo.getText());
         metrics.removeAll();
         metrics.add(Ui.metricCard(String.valueOf(positions.size()), "Waiting to start"));
         metrics.add(Ui.metricCard(String.valueOf(active.size() - positions.size()), "Preparing / ready"));
         long completed = store.getCompletedOrders().stream().filter(o -> o.getCompletedAt() != null
                 && o.getCompletedAt().toLocalDate().equals(java.time.LocalDate.now())).count();
-        metrics.add(Ui.metricCard(String.valueOf(completed), "Completed today")); metrics.revalidate(); metrics.repaint();
-        updateDetails(); updateCount();
+        metrics.add(Ui.metricCard(String.valueOf(completed), "Completed today"));
+        metrics.revalidate();
+        metrics.repaint();
+        updateDetails();
+        updateCount();
     }
 
     private void selectNextWaiting() {
@@ -153,25 +205,30 @@ public final class OrderQueuePanel extends JPanel {
 
     private void clearSearch(Container parent) {
         for (Component child : parent.getComponents()) {
-            if (child instanceof JTextField && Boolean.TRUE.equals(((JTextField) child).getClientProperty("searchField")))
+            if (child instanceof JTextField
+                    && Boolean.TRUE.equals(((JTextField) child).getClientProperty("searchField")))
                 ((JTextField) child).setText("");
-            else if (child instanceof Container) clearSearch((Container) child);
+            else if (child instanceof Container)
+                clearSearch((Container) child);
         }
     }
 
     private Order selectedOrder() {
         int row = table.getSelectedRow();
-        if (row < 0 || visibleOrders == null) return null;
+        if (row < 0 || visibleOrders == null)
+            return null;
         int index = table.convertRowIndexToModel(row);
         return index < visibleOrders.size() ? visibleOrders.get(index) : null;
     }
 
     private void restoreSelection(Order selected) {
-        if (selected == null) return;
+        if (selected == null)
+            return;
         for (int i = 0; i < visibleOrders.size(); i++) {
             if (visibleOrders.get(i).getId() == selected.getId()) {
                 int view = table.convertRowIndexToView(i);
-                if (view >= 0) table.setRowSelectionInterval(view, view);
+                if (view >= 0)
+                    table.setRowSelectionInterval(view, view);
                 return;
             }
         }
@@ -179,10 +236,13 @@ public final class OrderQueuePanel extends JPanel {
 
     private void advanceSelected() {
         Order selected = selectedOrder();
-        if (selected != null) StaffOrderActions.advance(this, selected, this::refresh);
+        if (selected != null)
+            StaffOrderActions.advance(this, selected, this::refresh);
     }
 
-    /** Styling owned by this panel so the screen can be configured independently. */
+    /**
+     * Styling owned by this panel so the screen can be configured independently.
+     */
     private static final class Ui {
         static final Color INK = new Color(28, 31, 27);
         static final Color MUTED = new Color(99, 106, 96);
@@ -192,17 +252,22 @@ public final class OrderQueuePanel extends JPanel {
         static final Color PAPER = new Color(252, 252, 247);
         static final Color LINE = new Color(218, 220, 209);
 
-        static Font font(int size, int style) { return new Font("Segoe UI", style, size);
+        static Font font(int size, int style) {
+            return new Font("Segoe UI", style, size);
         }
+
         static JLabel label(String value, int size, int style, Color color) {
             JLabel label = new JLabel(value);
             label.setFont(font(size, style));
             label.setForeground(color);
             return label;
         }
-        static void addLeft(JPanel parent, JComponent child) { child.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        static void addLeft(JPanel parent, JComponent child) {
+            child.setAlignmentX(Component.LEFT_ALIGNMENT);
             parent.add(child);
         }
+
         static JPanel verticalBox() {
             JPanel panel = new JPanel();
             panel.setOpaque(false);
@@ -210,14 +275,17 @@ public final class OrderQueuePanel extends JPanel {
 
             return panel;
         }
+
         static JPanel card(Color color, int radius, boolean outlined) {
             JPanel panel = new JPanel() {
-                @Override protected void paintComponent(Graphics g) {
+                @Override
+                protected void paintComponent(Graphics g) {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                     g2.setColor(color);
                     g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
-                    if (outlined) { g2.setColor(LINE);
+                    if (outlined) {
+                        g2.setColor(LINE);
                         g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
                     }
                     g2.dispose();
@@ -229,6 +297,7 @@ public final class OrderQueuePanel extends JPanel {
             panel.setAlignmentX(Component.LEFT_ALIGNMENT);
             return panel;
         }
+
         static JPanel metricCard(String value, String caption) {
             JPanel panel = card(PAPER, 20, true);
             panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
@@ -239,6 +308,7 @@ public final class OrderQueuePanel extends JPanel {
 
             return panel;
         }
+
         static JPanel emptyState(String title, String message) {
             JPanel panel = card(PAPER, 22, true);
             panel.setLayout(new GridBagLayout());
@@ -260,6 +330,7 @@ public final class OrderQueuePanel extends JPanel {
             panel.setPreferredSize(new Dimension(1000, 390));
             return panel;
         }
+
         static JPanel toolbar(String placeholder, String action) {
             JPanel toolbar = new JPanel(new BorderLayout(12, 0));
             toolbar.setOpaque(false);
@@ -269,26 +340,31 @@ public final class OrderQueuePanel extends JPanel {
             search.setFont(font(11, Font.PLAIN));
             search.setForeground(MUTED);
             search.setBackground(PAPER);
-            search.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(LINE), new javax.swing.border.EmptyBorder(0, 13, 0, 13)));
+            search.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(LINE),
+                    new javax.swing.border.EmptyBorder(0, 13, 0, 13)));
             toolbar.add(search);
-            if (action != null) { gui.components.RoundedButton button = primaryButton(action);
+            if (action != null) {
+                gui.components.RoundedButton button = primaryButton(action);
                 button.setPreferredSize(new Dimension(140, 40));
                 toolbar.add(button, BorderLayout.EAST);
-                }
+            }
             return toolbar;
         }
+
         static JPanel tableCard(String[] columns, String emptyMessage, String action) {
             JPanel panel = card(PAPER, 22, true);
             panel.setLayout(new BorderLayout());
             panel.setBorder(new javax.swing.border.EmptyBorder(0, 0, action == null ? 0 : 12, 0));
             javax.swing.table.DefaultTableModel model = new javax.swing.table.DefaultTableModel(columns, 0) {
-                @Override public boolean isCellEditable(int row, int column) { return false;
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
                 }
             };
             JTable table = new JTable(model);
             styleTable(table);
             JScrollPane scroll = new gui.components.ModernScrollPane(table);
-        scroll.setColumnHeaderView(table.getTableHeader());
+            scroll.setColumnHeaderView(table.getTableHeader());
 
             scroll.setBorder(null);
             scroll.getViewport().setBackground(PAPER);
@@ -310,6 +386,7 @@ public final class OrderQueuePanel extends JPanel {
             panel.setPreferredSize(new Dimension(1000, 520));
             return panel;
         }
+
         static JPanel productCard(String imagePath) {
             JPanel panel = card(PAPER, 22, true);
             panel.setLayout(new BorderLayout());
@@ -320,7 +397,9 @@ public final class OrderQueuePanel extends JPanel {
             image.setFont(font(10, Font.PLAIN));
             if (imagePath != null) {
                 java.net.URL url = Ui.class.getResource(imagePath);
-                if (url != null) image.setIcon(new ImageIcon(new ImageIcon(url).getImage().getScaledInstance(260, 245, Image.SCALE_SMOOTH)));
+                if (url != null)
+                    image.setIcon(new ImageIcon(
+                            new ImageIcon(url).getImage().getScaledInstance(260, 245, Image.SCALE_SMOOTH)));
             }
             panel.add(image);
             JPanel caption = verticalBox();
@@ -331,22 +410,30 @@ public final class OrderQueuePanel extends JPanel {
             panel.add(caption, BorderLayout.SOUTH);
             return panel;
         }
+
         static gui.components.RoundedButton primaryButton(String title) {
             return StaffStyles.button(title);
         }
+
         static gui.components.RoundedButton lightButton(String title) {
             return StaffStyles.lightButton(title);
         }
-        static NavButton navButton(String title) { return new NavButton(title);
+
+        static NavButton navButton(String title) {
+            return new NavButton(title);
         }
+
         static void confirmLogout(Component parent, service.AuthService authService) {
-            int choice = StaffStyles.confirm(parent, "Log out of QueueTees?", "Confirm Log Out", JOptionPane.YES_NO_OPTION);
+            int choice = StaffStyles.confirm(parent, "Log out of QueueTees?", "Confirm Log Out",
+                    JOptionPane.YES_NO_OPTION);
             if (choice == JOptionPane.YES_OPTION) {
                 Window window = SwingUtilities.getWindowAncestor(parent);
-                if (window != null) window.dispose();
+                if (window != null)
+                    window.dispose();
                 new gui.auth.LoginFrame(authService).setVisible(true);
             }
         }
+
         static void styleTable(JTable table) {
             table.setFont(font(11, Font.PLAIN));
             table.setForeground(INK);
@@ -367,8 +454,10 @@ public final class OrderQueuePanel extends JPanel {
             renderer.setBorder(new javax.swing.border.EmptyBorder(0, 12, 0, 12));
             table.setDefaultRenderer(Object.class, renderer);
         }
+
         static final class NavButton extends JButton {
             private boolean selected, hovered;
+
             NavButton(String title) {
                 super(title);
                 setFont(font(12, Font.PLAIN));
@@ -381,21 +470,29 @@ public final class OrderQueuePanel extends JPanel {
                 setFocusPainted(false);
                 setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
                 addMouseListener(new java.awt.event.MouseAdapter() {
-                    @Override public void mouseEntered(java.awt.event.MouseEvent e) { hovered = true;
+                    @Override
+                    public void mouseEntered(java.awt.event.MouseEvent e) {
+                        hovered = true;
                         repaint();
                     }
-                    @Override public void mouseExited(java.awt.event.MouseEvent e) { hovered = false;
+
+                    @Override
+                    public void mouseExited(java.awt.event.MouseEvent e) {
+                        hovered = false;
                         repaint();
                     }
                 });
             }
+
             void setSelectedState(boolean value) {
                 selected = value;
                 setFont(font(12, value ? Font.BOLD : Font.PLAIN));
                 setForeground(value ? Color.WHITE : new Color(224, 230, 219));
                 repaint();
             }
-            @Override protected void paintComponent(Graphics g) {
+
+            @Override
+            protected void paintComponent(Graphics g) {
                 if (selected || hovered) {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setColor(new Color(255, 255, 255, selected ? 34 : 20));

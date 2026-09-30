@@ -2,6 +2,8 @@ package gui.staff;
 
 import gui.components.RoundedButton;
 import java.awt.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -13,6 +15,7 @@ public final class StaffDashboardPanel extends JPanel {
     private final JPanel content = new JPanel(cardLayout);
     private final Map<String, Ui.NavButton> navigation = new LinkedHashMap<>();
     private final AuthService authService;
+    private final model.User currentUser;
     private final OrderQueuePanel queuePanel = new OrderQueuePanel();
     private final CompletedOrdersPanel completedPanel;
     private final OrderDetailsPanel detailsPanel = new OrderDetailsPanel();
@@ -24,6 +27,7 @@ public final class StaffDashboardPanel extends JPanel {
 
     public StaffDashboardPanel(AuthService authService, model.User user) {
         this.authService = authService;
+        this.currentUser = user;
         completedPanel = new CompletedOrdersPanel(user);
         setLayout(new BorderLayout());
         add(createSidebar(), BorderLayout.WEST);
@@ -40,7 +44,8 @@ public final class StaffDashboardPanel extends JPanel {
         showPanel("overview");
     }
 
-    @Override protected void paintComponent(Graphics g) {
+    @Override
+    protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setPaint(new GradientPaint(0, 0, Ui.CREAM, 0, getHeight(), Ui.SAGE));
@@ -74,12 +79,13 @@ public final class StaffDashboardPanel extends JPanel {
         logout.setPreferredSize(new Dimension(186, 40));
         logout.setMaximumSize(new Dimension(186, 40));
         logout.setAlignmentX(Component.LEFT_ALIGNMENT);
-        logout.addActionListener(e -> Ui.confirmLogout(sidebar, authService));
+        logout.addActionListener(e -> Ui.confirmLogout(sidebar, authService, currentUser));
         sidebar.add(logout);
         return sidebar;
     }
 
-    private void addNavigation(JPanel sidebar, String title, String key) { Ui.NavButton button = Ui.navButton(title);
+    private void addNavigation(JPanel sidebar, String title, String key) {
+        Ui.NavButton button = Ui.navButton(title);
         button.setPreferredSize(new Dimension(186, 36));
         button.setMinimumSize(new Dimension(186, 36));
         button.setMaximumSize(new Dimension(186, 36));
@@ -89,19 +95,23 @@ public final class StaffDashboardPanel extends JPanel {
         sidebar.add(button);
         sidebar.add(Box.createVerticalStrut(5));
     }
-    @Override public void addNotify() {
+
+    @Override
+    public void addNotify() {
         super.addNotify();
         refreshTimer.start();
     }
 
-    @Override public void removeNotify() {
+    @Override
+    public void removeNotify() {
         refreshTimer.stop();
         super.removeNotify();
     }
 
     private void refreshVisiblePanel() {
         for (Window window : Window.getWindows())
-            if (window instanceof JDialog && window.isShowing() && ((JDialog) window).isModal()) return;
+            if (window instanceof JDialog && window.isShowing() && ((JDialog) window).isModal())
+                return;
         refreshPanel(currentPanel);
     }
 
@@ -113,14 +123,21 @@ public final class StaffDashboardPanel extends JPanel {
     }
 
     private void refreshPanel(String key) {
-        if ("overview".equals(key)) overviewPanel.refresh();
-        if ("queue".equals(key)) queuePanel.refresh();
-        if ("orders".equals(key)) detailsPanel.refresh();
-        if ("completed".equals(key)) completedPanel.refresh();
-        if ("status".equals(key)) statusPanel.refresh();
+        if ("overview".equals(key))
+            overviewPanel.refresh();
+        if ("queue".equals(key))
+            queuePanel.refresh();
+        if ("orders".equals(key))
+            detailsPanel.refresh();
+        if ("completed".equals(key))
+            completedPanel.refresh();
+        if ("status".equals(key))
+            statusPanel.refresh();
     }
 
-    /** Styling owned by this panel so the screen can be configured independently. */
+    /**
+     * Styling owned by this panel so the screen can be configured independently.
+     */
     private static final class Ui {
         static final Color INK = new Color(28, 31, 27);
         static final Color MUTED = new Color(99, 106, 96);
@@ -130,14 +147,17 @@ public final class StaffDashboardPanel extends JPanel {
         static final Color PAPER = new Color(252, 252, 247);
         static final Color LINE = new Color(218, 220, 209);
 
-        static Font font(int size, int style) { return new Font("Fira Code", style, size);
+        static Font font(int size, int style) {
+            return new Font("Fira Code", style, size);
         }
+
         static JLabel label(String value, int size, int style, Color color) {
             JLabel label = new JLabel(value);
             label.setFont(font(size, style));
             label.setForeground(color);
             return label;
         }
+
         static JLabel logo(int width, int height) {
             JLabel logo = new JLabel();
             java.net.URL url = StaffDashboardPanel.class.getResource("/Gui_Images/hirayalogo2.png");
@@ -150,35 +170,40 @@ public final class StaffDashboardPanel extends JPanel {
             logo.setMaximumSize(new Dimension(width, height));
             return logo;
         }
-        static void addLeft(JPanel parent, JComponent child) { child.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        static void addLeft(JPanel parent, JComponent child) {
+            child.setAlignmentX(Component.LEFT_ALIGNMENT);
             parent.add(child);
         }
+
         static JPanel verticalBox() {
             JPanel panel = new JPanel();
             panel.setOpaque(false);
             panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-
             return panel;
         }
+
         static JPanel card(Color color, int radius, boolean outlined) {
             JPanel panel = new JPanel() {
-                @Override protected void paintComponent(Graphics g) {
+                @Override
+                protected void paintComponent(Graphics g) {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                     g2.setColor(color);
                     g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
-                    if (outlined) { g2.setColor(LINE);
+                    if (outlined) {
+                        g2.setColor(LINE);
                         g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
                     }
                     g2.dispose();
                     super.paintComponent(g);
                 }
             };
-
             panel.setOpaque(false);
             panel.setAlignmentX(Component.LEFT_ALIGNMENT);
             return panel;
         }
+
         static JPanel metricCard(String value, String caption) {
             JPanel panel = card(PAPER, 20, true);
             panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
@@ -186,9 +211,9 @@ public final class StaffDashboardPanel extends JPanel {
             panel.add(label(value, 24, Font.BOLD, FOREST));
             panel.add(Box.createVerticalStrut(6));
             panel.add(label(caption, 11, Font.PLAIN, MUTED));
-
             return panel;
         }
+
         static JPanel emptyState(String title, String message) {
             JPanel panel = card(PAPER, 22, true);
             panel.setLayout(new GridBagLayout());
@@ -210,6 +235,7 @@ public final class StaffDashboardPanel extends JPanel {
             panel.setPreferredSize(new Dimension(1000, 390));
             return panel;
         }
+
         static JPanel toolbar(String placeholder, String action) {
             JPanel toolbar = new JPanel(new BorderLayout(12, 0));
             toolbar.setOpaque(false);
@@ -219,20 +245,25 @@ public final class StaffDashboardPanel extends JPanel {
             search.setFont(font(11, Font.PLAIN));
             search.setForeground(MUTED);
             search.setBackground(PAPER);
-            search.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(LINE), new javax.swing.border.EmptyBorder(0, 13, 0, 13)));
+            search.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(LINE),
+                    new javax.swing.border.EmptyBorder(0, 13, 0, 13)));
             toolbar.add(search);
-            if (action != null) { gui.components.RoundedButton button = primaryButton(action);
+            if (action != null) {
+                gui.components.RoundedButton button = primaryButton(action);
                 button.setPreferredSize(new Dimension(140, 40));
                 toolbar.add(button, BorderLayout.EAST);
-                }
+            }
             return toolbar;
         }
+
         static JPanel tableCard(String[] columns, String emptyMessage, String action) {
             JPanel panel = card(PAPER, 22, true);
             panel.setLayout(new BorderLayout());
             panel.setBorder(new javax.swing.border.EmptyBorder(0, 0, action == null ? 0 : 12, 0));
             javax.swing.table.DefaultTableModel model = new javax.swing.table.DefaultTableModel(columns, 0) {
-                @Override public boolean isCellEditable(int row, int column) { return false;
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
                 }
             };
             JTable table = new JTable(model);
@@ -259,6 +290,7 @@ public final class StaffDashboardPanel extends JPanel {
             panel.setPreferredSize(new Dimension(1000, 520));
             return panel;
         }
+
         static JPanel productCard(String imagePath) {
             JPanel panel = card(PAPER, 22, true);
             panel.setLayout(new BorderLayout());
@@ -269,7 +301,9 @@ public final class StaffDashboardPanel extends JPanel {
             image.setFont(font(10, Font.PLAIN));
             if (imagePath != null) {
                 java.net.URL url = Ui.class.getResource(imagePath);
-                if (url != null) image.setIcon(new ImageIcon(new ImageIcon(url).getImage().getScaledInstance(260, 245, Image.SCALE_SMOOTH)));
+                if (url != null)
+                    image.setIcon(new ImageIcon(
+                            new ImageIcon(url).getImage().getScaledInstance(260, 245, Image.SCALE_SMOOTH)));
             }
             panel.add(image);
             JPanel caption = verticalBox();
@@ -280,25 +314,50 @@ public final class StaffDashboardPanel extends JPanel {
             panel.add(caption, BorderLayout.SOUTH);
             return panel;
         }
+
         static gui.components.RoundedButton primaryButton(String title) {
             return StaffStyles.button(title);
         }
+
         static gui.components.RoundedButton lightButton(String title) {
             gui.components.RoundedButton button = new gui.components.RoundedButton(title, CREAM, INK);
             button.setFont(font(11, Font.BOLD));
             button.setHoverColor(new Color(218, 225, 211));
             return button;
         }
-        static NavButton navButton(String title) { return new NavButton(title);
+
+        static NavButton navButton(String title) {
+            return new NavButton(title);
         }
-        static void confirmLogout(Component parent, service.AuthService authService) {
-            int choice = StaffStyles.confirm(parent, "Log out of QueueTees?", "Confirm Log Out", JOptionPane.YES_NO_OPTION);
+
+        static void confirmLogout(Component parent, service.AuthService authService, model.User currentUser) {
+            int choice = StaffStyles.confirm(parent, "Log out of QueueTees?", "Confirm Log Out",
+                    JOptionPane.YES_NO_OPTION);
             if (choice == JOptionPane.YES_OPTION) {
+                String name = (currentUser != null && currentUser.getUsername() != null
+                        && !currentUser.getUsername().trim().isEmpty())
+                                ? currentUser.getUsername().trim()
+                                : "Staff";
+                String email = (currentUser != null && currentUser.getEmail() != null
+                        && !currentUser.getEmail().trim().isEmpty())
+                                ? currentUser.getEmail().trim()
+                                : name.toLowerCase().replaceAll("\\s+", "") + "@queuetees.local";
+                String role = (currentUser != null && currentUser.getRole() != null)
+                        ? currentUser.getRole().toString().toUpperCase()
+                        : "STAFF";
+                String date = LocalDateTime.now()
+                        .format(DateTimeFormatter.ofPattern("MMM dd, yyyy hh:mm a", Locale.ENGLISH));
+
+                // Pushes formatted log string so Admin Recent Activity updates properly
+                service.ActivityLogger.log(name + " | " + email + " | " + date + " | " + role + " | Logged out");
+
                 Window window = SwingUtilities.getWindowAncestor(parent);
-                if (window != null) window.dispose();
+                if (window != null)
+                    window.dispose();
                 new gui.auth.LoginFrame(authService).setVisible(true);
             }
         }
+
         static void styleTable(JTable table) {
             table.setFont(font(11, Font.PLAIN));
             table.setForeground(INK);
@@ -319,11 +378,13 @@ public final class StaffDashboardPanel extends JPanel {
             renderer.setBorder(new javax.swing.border.EmptyBorder(0, 12, 0, 12));
             table.setDefaultRenderer(Object.class, renderer);
         }
+
         static final class NavButton extends JButton {
             private boolean selected, hovered;
             private float highlight;
             private float targetHighlight;
             private final javax.swing.Timer transitionTimer;
+
             NavButton(String title) {
                 super(title);
                 transitionTimer = new javax.swing.Timer(16, e -> animateHighlight());
@@ -337,24 +398,32 @@ public final class StaffDashboardPanel extends JPanel {
                 setFocusPainted(false);
                 setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
                 addMouseListener(new java.awt.event.MouseAdapter() {
-                    @Override public void mouseEntered(java.awt.event.MouseEvent e) { hovered = true;
+                    @Override
+                    public void mouseEntered(java.awt.event.MouseEvent e) {
+                        hovered = true;
                         setHighlightTarget(selected ? 1f : 0.58f);
                     }
-                    @Override public void mouseExited(java.awt.event.MouseEvent e) { hovered = false;
+
+                    @Override
+                    public void mouseExited(java.awt.event.MouseEvent e) {
+                        hovered = false;
                         setHighlightTarget(selected ? 1f : 0f);
                     }
                 });
             }
+
             void setSelectedState(boolean value) {
                 selected = value;
                 setFont(font(12, value ? Font.BOLD : Font.PLAIN));
                 setForeground(value ? Color.WHITE : new Color(224, 230, 219));
                 setHighlightTarget(value ? 1f : (hovered ? 0.58f : 0f));
             }
+
             private void setHighlightTarget(float value) {
                 targetHighlight = value;
                 transitionTimer.start();
             }
+
             private void animateHighlight() {
                 highlight += (targetHighlight - highlight) * 0.28f;
                 if (Math.abs(targetHighlight - highlight) < 0.02f) {
@@ -363,7 +432,9 @@ public final class StaffDashboardPanel extends JPanel {
                 }
                 repaint();
             }
-            @Override protected void paintComponent(Graphics g) {
+
+            @Override
+            protected void paintComponent(Graphics g) {
                 if (highlight > 0f) {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setColor(new Color(255, 255, 255, Math.round(34 * highlight)));
