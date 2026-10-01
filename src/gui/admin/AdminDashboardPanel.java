@@ -124,8 +124,10 @@ public final class AdminDashboardPanel extends JPanel {
 
     private void showPanel(String key) {
         cardLayout.show(content, key);
-        if ("overview".equals(key))
+        if ("overview".equals(key)) {
             refreshOverview();
+            SwingUtilities.invokeLater(() -> activityContainer.repaint());
+        }
         if ("staff".equals(key))
             staffPanel.refresh();
         if ("products".equals(key))
@@ -329,10 +331,11 @@ public final class AdminDashboardPanel extends JPanel {
             card.setLayout(new BorderLayout());
             card.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
             card.setPreferredSize(new Dimension(1000, 300));
+            card.setBorder(new EmptyBorder(16, 16, 16, 16));
 
             JPanel heading = new JPanel(new BorderLayout());
             heading.setOpaque(false);
-            heading.setBorder(new EmptyBorder(16, 18, 16, 18));
+            heading.setBorder(new EmptyBorder(0, 0, 12, 0));
             heading.add(Ui.label("Recent activity", 17, Font.BOLD, Ui.INK), BorderLayout.WEST);
             heading.add(Ui.label("All activity logs / newest first", 11, Font.PLAIN, Ui.MUTED), BorderLayout.EAST);
             card.add(heading, BorderLayout.NORTH);
@@ -362,9 +365,11 @@ public final class AdminDashboardPanel extends JPanel {
             table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
             JScrollPane scroll = new gui.components.ModernScrollPane(table);
-            scroll.setColumnHeaderView(table.getTableHeader());
             scroll.setBorder(null);
+            scroll.setBackground(Ui.PAPER);
             scroll.getViewport().setBackground(Ui.PAPER);
+            table.getTableHeader().setBackground(new Color(238, 239, 230));
+            table.getTableHeader().setBorder(null);
 
             card.add(scroll, BorderLayout.CENTER);
 
@@ -439,105 +444,113 @@ public final class AdminDashboardPanel extends JPanel {
 
     private JPanel createProfilePanel(model.User user) {
         JPanel page = Ui.page("ACCOUNT", "My account", "Review and update administrator account details.");
-
         profileContainer.setOpaque(false);
         profileContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
         refreshProfileCard();
         page.add(profileContainer);
-
-        page.add(Box.createVerticalStrut(16));
-
-        RoundedButton editProfileBtn = Ui.primaryButton("Edit Profile");
-        editProfileBtn.setPreferredSize(new Dimension(130, 34));
-        editProfileBtn.setMaximumSize(new Dimension(130, 34));
-        editProfileBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        editProfileBtn.addActionListener(e -> showEditProfileDialog(user));
-
-        page.add(editProfileBtn);
+        page.add(Box.createVerticalGlue());
         return page;
     }
 
     private void refreshProfileCard() {
         profileContainer.removeAll();
-        profileContainer.add(createProfileCardUI(currentUser), BorderLayout.CENTER);
+        profileContainer.setLayout(new BoxLayout(profileContainer, BoxLayout.Y_AXIS));
+        profileContainer.add(createProfileCardUI(currentUser));
         profileContainer.revalidate();
         profileContainer.repaint();
     }
 
     private JPanel createProfileCardUI(model.User user) {
-        JPanel card = Ui.card(Ui.PAPER, 12, false);
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBorder(new EmptyBorder(24, 28, 24, 28));
+        String username = user != null && user.getUsername() != null && !user.getUsername().trim().isEmpty()
+                ? user.getUsername() : "Admin";
+        String email = user != null && user.getEmail() != null ? user.getEmail()
+                : username.toLowerCase() + "@queuetees.local";
+        String roleStr = user != null && user.getRole() != null
+                ? user.getRole().toString().substring(0, 1).toUpperCase() + user.getRole().toString().substring(1).toLowerCase()
+                : "Administrator";
 
-        JPanel header = new JPanel();
-        header.setLayout(new BoxLayout(header, BoxLayout.X_AXIS));
+        JPanel card = Ui.card(Ui.PAPER, 22, true);
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBorder(new EmptyBorder(20, 24, 20, 24));
+        card.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // ── Avatar + name row ──
+        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 0));
         header.setOpaque(false);
         header.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel avatar = new JLabel();
-        avatar.setPreferredSize(new Dimension(80, 80));
-        avatar.setMinimumSize(new Dimension(80, 80));
-        avatar.setMaximumSize(new Dimension(80, 80));
-        avatar.setOpaque(true);
-        avatar.setBackground(new Color(230, 235, 227));
-        avatar.setHorizontalAlignment(SwingConstants.CENTER);
+        JPanel avatar = new JPanel(new GridBagLayout()) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(220, 227, 213));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+                g2.dispose();
+            }
+        };
+        avatar.setOpaque(false);
+        avatar.setPreferredSize(new Dimension(56, 56));
 
-        String username = user != null && user.getUsername() != null && !user.getUsername().trim().isEmpty()
-                ? user.getUsername()
-                : "Admin";
-
+        JLabel avatarLabel = new JLabel();
+        avatarLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        boolean imageLoaded = false;
         if (user != null && user.getProfilePicture() != null && !user.getProfilePicture().isEmpty()) {
             File f = new File(user.getProfilePicture());
             if (f.exists()) {
-                ImageIcon icon = new ImageIcon(new ImageIcon(f.getAbsolutePath())
-                        .getImage().getScaledInstance(80, 80, Image.SCALE_SMOOTH));
-                avatar.setIcon(icon);
-            } else {
-                setInitials(avatar, username);
+                avatarLabel.setIcon(new ImageIcon(new ImageIcon(f.getAbsolutePath())
+                        .getImage().getScaledInstance(56, 56, Image.SCALE_SMOOTH)));
+                imageLoaded = true;
             }
-        } else {
-            setInitials(avatar, username);
         }
+        if (!imageLoaded) {
+            avatarLabel.setText(username.substring(0, 1).toUpperCase());
+            avatarLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
+            avatarLabel.setForeground(Ui.INK);
+        }
+        avatar.add(avatarLabel);
 
-        JPanel names = Ui.verticalBox();
-        names.add(Ui.label(username, 20, Font.BOLD, Ui.INK));
-        names.add(Box.createVerticalStrut(4));
-        names.add(Ui.label("Administrator account", 12, Font.PLAIN, Ui.MUTED));
+        JPanel nameBox = new JPanel();
+        nameBox.setLayout(new BoxLayout(nameBox, BoxLayout.Y_AXIS));
+        nameBox.setOpaque(false);
+        nameBox.add(Ui.label(username, 17, Font.BOLD, Ui.INK));
+        nameBox.add(Box.createVerticalStrut(2));
+        nameBox.add(Ui.label("Administrator account", 11, Font.PLAIN, Ui.MUTED));
 
         header.add(avatar);
-        header.add(Box.createHorizontalStrut(20));
-        header.add(names);
-
+        header.add(nameBox);
         card.add(header);
-        card.add(Box.createVerticalStrut(24));
+        card.add(Box.createVerticalStrut(14));
 
-        JPanel grid = new JPanel(new GridLayout(3, 2, 40, 18));
+        // ── Divider ──
+        JSeparator sep = new JSeparator();
+        sep.setForeground(new Color(218, 220, 209));
+        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        sep.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(sep);
+        card.add(Box.createVerticalStrut(14));
+
+        // ── Fields: 3 rows × 2 columns ──
+        JPanel grid = new JPanel(new GridLayout(3, 2, 32, 12));
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        String email = user != null && user.getEmail() != null ? user.getEmail()
-                : username.toLowerCase() + "@queuetees.local";
-        String roleStr = user != null && user.getRole() != null ? user.getRole().toString() : "Administrator";
-
         grid.add(createField("Username", username));
         grid.add(createField("Email address", email));
-
-        grid.add(createField("Role", roleStr.substring(0, 1).toUpperCase() + roleStr.substring(1).toLowerCase()));
+        grid.add(createField("Role", roleStr));
         grid.add(createField("Account status", "Active"));
-
         grid.add(createField("Email verification", "Verified"));
         grid.add(createField("Account ID", "1"));
-
         card.add(grid);
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 320));
-        card.setPreferredSize(new Dimension(1000, 320));
-        return card;
-    }
+        card.add(Box.createVerticalStrut(16));
 
-    private void setInitials(JLabel label, String username) {
-        label.setText(username.substring(0, 1).toUpperCase());
-        label.setFont(new Font("Segoe UI", Font.BOLD, 32));
-        label.setForeground(Ui.INK);
+        // ── Edit button ──
+        RoundedButton editBtn = Ui.primaryButton("Edit Profile");
+        editBtn.setPreferredSize(new Dimension(120, 34));
+        editBtn.setMaximumSize(new Dimension(120, 34));
+        editBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
+        editBtn.addActionListener(e -> showEditProfileDialog(user));
+        card.add(editBtn);
+
+        return card;
     }
 
     private JPanel createField(String labelText, String valueText) {

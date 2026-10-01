@@ -144,12 +144,14 @@ public class LoginFrame extends JFrame implements ActionListener {
         forgotPass.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                JDialog dialog = new JDialog(LoginFrame.this, "Forgot Password", true);
-                dialog.setContentPane(new ForgotPasswordPanel(authService.passwordResets(), dialog::dispose));
-                dialog.setMinimumSize(new Dimension(1000, 733));
-                dialog.setSize(1100, 733);
-                dialog.setLocationRelativeTo(LoginFrame.this);
-                dialog.setVisible(true);
+                JFrame frame = new JFrame("Forgot Password");
+                frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                frame.setContentPane(new ForgotPasswordPanel(authService.passwordResets(), frame::dispose));
+                frame.setMinimumSize(new Dimension(1000, 733));
+                frame.setSize(1100, 733);
+                frame.setResizable(false);
+                frame.setLocationRelativeTo(LoginFrame.this);
+                frame.setVisible(true);
             }
 
             @Override

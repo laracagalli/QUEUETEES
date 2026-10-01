@@ -89,7 +89,7 @@ public final class ForgotPasswordPanel extends JPanel {
 
         JPanel brandArea = new JPanel(new GridBagLayout());
         brandArea.setBackground(GREEN);
-        brandArea.setPreferredSize(new Dimension(340, 0));
+        brandArea.setPreferredSize(new Dimension(280, 0));
         JPanel brand = new JPanel();
         brand.setOpaque(false);
         brand.setLayout(new BoxLayout(brand, BoxLayout.Y_AXIS));
@@ -110,9 +110,9 @@ public final class ForgotPasswordPanel extends JPanel {
             }
         brandArea.add(brand);
         add(brandArea, BorderLayout.WEST);
-        JPanel formArea = new JPanel(new GridBagLayout());
+        JPanel formArea = new JPanel(new BorderLayout());
         formArea.setOpaque(false);
-        formArea.setBorder(new EmptyBorder(16, 24, 16, 24));
+        formArea.setBorder(new EmptyBorder(24, 32, 24, 32));
         JPanel card = new JPanel(new BorderLayout(0, 16)) {
             @Override
             protected void paintComponent(Graphics graphics) {
@@ -126,10 +126,8 @@ public final class ForgotPasswordPanel extends JPanel {
             }
         };
         card.setOpaque(false);
-        card.setBorder(new EmptyBorder(40, 48, 40, 48));
+        card.setBorder(new EmptyBorder(40, 56, 40, 56));
         recoveryCard = card;
-        card.setPreferredSize(new Dimension(620, 700));
-        card.setMinimumSize(new Dimension(500, 700));
         JPanel header = new JPanel();
         header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
         header.setOpaque(false);
@@ -167,7 +165,7 @@ public final class ForgotPasswordPanel extends JPanel {
         backButton.setPreferredSize(new Dimension(400, 48));
         backButton.addActionListener(e -> back.run());
         card.add(backButton, BorderLayout.SOUTH);
-        formArea.add(card);
+        formArea.add(card, BorderLayout.CENTER);
         add(formArea, BorderLayout.CENTER);
         code.setLayout(new FlowLayout(FlowLayout.CENTER, 8, 0));
         code.setAlignmentX(CENTER_ALIGNMENT);
@@ -202,8 +200,6 @@ public final class ForgotPasswordPanel extends JPanel {
     private void showStage() {
         form.removeAll();
         message.setText(" ");
-        recoveryCard.setPreferredSize(new Dimension(620, 700));
-        recoveryCard.setMinimumSize(new Dimension(500, 700));
         for (int i = 0; i < 3; i++) {
             steps[i].setForeground(i == stage ? Color.WHITE : GREEN);
             steps[i].setBackground(i == stage ? GREEN : new Color(237, 240, 231));
