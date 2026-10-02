@@ -118,7 +118,7 @@ public final class OrderTrackingPanel extends JPanel {
     }
     private JPanel progress(Order order) {
         JPanel panel = card(); panel.setLayout(new BorderLayout(0, 14)); panel.add(label("ORDER PROGRESS", 12, true, GREEN), BorderLayout.NORTH);
-        JPanel steps = new JPanel(new GridLayout(1, 4, 10, 0)); steps.setOpaque(false);
+        JPanel steps = new JPanel(new GridLayout(1, 5, 10, 0)); steps.setOpaque(false);
         OrderStatus[] statuses = OrderStatus.values();
         for (int i = 0; i < statuses.length; i++) {
             boolean reached = i <= order.getStatus().ordinal();
@@ -150,33 +150,145 @@ public final class OrderTrackingPanel extends JPanel {
         text.add(copy(statusDescription(order))); text.add(Box.createVerticalStrut(20));
         if (order.getCompletedAt() != null) { text.add(label("Completed", 12, true, INK)); text.add(copy(order.getCompletedAt().format(DATE))); text.add(Box.createVerticalStrut(16)); }
         text.add(label("Order received", 12, true, INK)); text.add(copy(order.getPlacedAt().format(DATE))); text.add(Box.createVerticalStrut(18));
-        text.add(copy("Keep this page open for status changes from staff.")); card.add(text); return card;
+        if (order.getStatus() == OrderStatus.OUT_FOR_DELIVERY) {
+            text.add(Box.createVerticalStrut(4));
+            RoundedButton receivedBtn = new RoundedButton("Order Received", GREEN, Color.WHITE);
+            receivedBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            receivedBtn.setHoverColor(new Color(40, 55, 40));
+            receivedBtn.setPreferredSize(new Dimension(200, 40));
+            receivedBtn.setMaximumSize(new Dimension(200, 40));
+            receivedBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
+            receivedBtn.addActionListener(e -> {
+                int confirm = JOptionPane.showConfirmDialog(this,
+                        "Confirm that you have received your order?",
+                        "Order Received", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+                if (confirm != JOptionPane.YES_OPTION) return;
+                try {
+                    store.completeOrder(order.getId());
+                    lastState = "";
+                    refresh();
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            });
+            text.add(receivedBtn);
+            text.add(Box.createVerticalStrut(8));
+        } else {
+            text.add(copy("Keep this page open for status changes from staff."));
+        }
+        card.add(text); return card;
     }
     private JPanel receipt(Order order) {
-        CheckoutDetails d = order.getCheckoutDetails(); JPanel card = card(); card.setLayout(new BorderLayout(0, 14));
-        card.add(label("RECEIPT / INFORMATION", 12, true, GREEN), BorderLayout.NORTH);
-        JPanel rows = vertical();
-        detail(rows, "Order number", ticket(order)); detail(rows, "Order date", order.getPlacedAt().format(DATE));
-        detail(rows, "Payment method", d.getPaymentMethod()); detail(rows, "Customer", order.getCustomerName());
-        detail(rows, "Contact", d.getContactNumber()); detail(rows, "Fulfillment", d.getFulfillmentMethod());
-        if ("Delivery".equals(d.getFulfillmentMethod())) detail(rows, "Delivery address", d.getAddress());
-        if (d.getNotes() != null && !d.getNotes().isBlank()) detail(rows, "Order notes", d.getNotes());
-        rows.add(Box.createVerticalStrut(8)); rows.add(copy("Keep your queue number handy when contacting the store."));
-        card.add(rows);
-        RoundedButton copy = new RoundedButton("Copy queue number", INK, Color.WHITE); copy.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        copy.setHoverColor(new Color(65, 65, 65)); copy.setPreferredSize(new Dimension(200, 38));
-        copy.addActionListener(e -> { try { Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new java.awt.datatransfer.StringSelection(ticket(order)), null); copy.setText("Queue number copied"); }
-            catch (RuntimeException ex) { JOptionPane.showMessageDialog(this, "Your queue number is " + ticket(order), "Queue number", JOptionPane.INFORMATION_MESSAGE); }});
-        card.add(copy, BorderLayout.SOUTH); return card;
+        CheckoutDetails d = order.getCheckoutDetails();
+
+        // ── Build receipt text (same format as cart receipt) ──
+        StringBuilder text = new StringBuilder();
+        text.append("       HIRAYA CLOTHING\n");
+        text.append("          QUEUETEES\n");
+        text.append("--------------------------------\n");
+        text.append(order.getPlacedAt().format(DateTimeFormatter.ofPattern("MMM d, yyyy  h:mm a"))).append("\n");
+        text.append("Queue:    ").append(ticket(order)).append("\n");
+        text.append("Customer: ").append(abbrev(order.getCustomerName(), 21)).append("\n");
+        text.append("Contact:  ").append(d.getContactNumber()).append("\n");
+        text.append("--------------------------------\n");
+        double total = 0;
+        for (CartItem item : order.getItems()) {
+            total += item.getSubtotal();
+            text.append(String.format("%-19s x%-2d %8s\n",
+                    abbrev(item.getProduct().getName(), 19), item.getQuantity(),
+                    String.format("₱%,.2f", item.getSubtotal())));
+        }
+        text.append("--------------------------------\n");
+        text.append(String.format("%-23s %8s\n", "SUBTOTAL", String.format("₱%,.2f", total)));
+        text.append(String.format("%-23s %8s\n", "TOTAL", String.format("₱%,.2f", total)));
+        text.append("\nPayment: ").append(d.getPaymentMethod());
+        if (d.getFulfillmentMethod() != null) text.append("\nFulfillment: ").append(d.getFulfillmentMethod());
+        if ("Delivery".equals(d.getFulfillmentMethod()) && d.getAddress() != null && !d.getAddress().isBlank())
+            text.append("\nAddress: ").append(d.getAddress());
+        if (d.getNotes() != null && !d.getNotes().isBlank())
+            text.append("\nNotes: ").append(d.getNotes());
+        if (order.getCompletedAt() != null)
+            text.append("\n--------------------------------\n").append("Completed: ")
+                .append(order.getCompletedAt().format(DateTimeFormatter.ofPattern("MMM d, yyyy  h:mm a")));
+        text.append("\n--------------------------------\n");
+        text.append("     Thank you for shopping!\n");
+        text.append("         QUEUETEES");
+
+        // ── Receipt card ──
+        JPanel card = card();
+        card.setLayout(new BorderLayout(0, 14));
+
+        JLabel title = label("Receipt", 16, true, INK);
+        title.setHorizontalAlignment(SwingConstants.CENTER);
+        card.add(title, BorderLayout.NORTH);
+
+        JTextArea receiptArea = new JTextArea(text.toString());
+        receiptArea.setEditable(false);
+        receiptArea.setOpaque(false);
+        receiptArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        receiptArea.setForeground(INK);
+        receiptArea.setBorder(new EmptyBorder(10, 8, 10, 8));
+
+        JScrollPane scroll = new gui.components.ModernScrollPane(receiptArea);
+        scroll.setBorder(null);
+        scroll.getViewport().setBackground(PAPER);
+        scroll.setPreferredSize(new Dimension(280, 320));
+        card.add(scroll, BorderLayout.CENTER);
+
+        // ── Buttons ──
+        JPanel actions = vertical();
+
+        RoundedButton printBtn = new RoundedButton("Print receipt", INK, Color.WHITE);
+        printBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        printBtn.setHoverColor(new Color(65, 65, 65));
+        printBtn.setPreferredSize(new Dimension(200, 38));
+        printBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        printBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
+        printBtn.addActionListener(e -> {
+            try {
+                receiptArea.print();
+            } catch (java.awt.print.PrinterException ex) {
+                JOptionPane.showMessageDialog(this, "Printing failed: " + ex.getMessage(),
+                        "Print error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        RoundedButton copyBtn = new RoundedButton("Copy queue number", new Color(237, 240, 231), INK);
+        copyBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        copyBtn.setHoverColor(new Color(220, 226, 213));
+        copyBtn.setPreferredSize(new Dimension(200, 38));
+        copyBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        copyBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
+        copyBtn.addActionListener(e -> {
+            try {
+                Toolkit.getDefaultToolkit().getSystemClipboard()
+                        .setContents(new java.awt.datatransfer.StringSelection(ticket(order)), null);
+                copyBtn.setText("Copied!");
+            } catch (RuntimeException ex) {
+                JOptionPane.showMessageDialog(this, "Your queue number is " + ticket(order),
+                        "Queue number", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+
+        actions.add(printBtn);
+        actions.add(Box.createVerticalStrut(8));
+        actions.add(copyBtn);
+        card.add(actions, BorderLayout.SOUTH);
+
+        card.setPreferredSize(new Dimension(320, 500));
+        return card;
     }
-    private void detail(JPanel panel, String heading, String value) {
-        panel.add(label(heading, 10, true, MUTED)); panel.add(Box.createVerticalStrut(3)); panel.add(copy(value)); panel.add(Box.createVerticalStrut(10));
+
+    private static String abbrev(String value, int max) {
+        if (value == null) return "—";
+        return value.length() <= max ? value : value.substring(0, max - 1) + "…";
     }
     private static String statusDescription(Order o) {
         switch (o.getStatus()) {
             case CONFIRMED: return "Your order is confirmed and waiting for preparation.";
             case PREPARING: return "Staff are preparing your order.";
-            case READY_FOR_PICKUP: return "Delivery".equals(o.getCheckoutDetails().getFulfillmentMethod()) ? "Your order is ready for delivery fulfillment." : "Your order is ready for pickup.";
+            case READY_FOR_PICKUP: return "Delivery".equals(o.getCheckoutDetails().getFulfillmentMethod()) ? "Your order is ready and will be dispatched for delivery soon." : "Your order is ready for pickup at the store.";
+            case OUT_FOR_DELIVERY: return "Your order is on its way! Click \"Order Received\" once you receive it.";
             default: return "Your order has been completed. Thank you!";
         }
     }

@@ -16,6 +16,16 @@ public final class StaffApprovalsPanel extends JPanel {
     private final JPanel metrics = new JPanel(new BorderLayout());
     private final JLabel message = AdminUi.label("", 11, false);
     private final JButton review = AdminUi.button("Review application");
+    private final JButton suspendBtn = new gui.components.RoundedButton("Suspend", new Color(180, 45, 35), Color.WHITE) {{
+        setFont(new Font("Fira Code", Font.BOLD, 11));
+        setHoverColor(new Color(155, 35, 25));
+        setPreferredSize(new java.awt.Dimension(100, 40));
+    }};
+    private final JButton unsuspendBtn = new gui.components.RoundedButton("Unsuspend", new Color(29, 113, 75), Color.WHITE) {{
+        setFont(new Font("Fira Code", Font.BOLD, 11));
+        setHoverColor(new Color(22, 90, 58));
+        setPreferredSize(new java.awt.Dimension(115, 40));
+    }};
 
     public StaffApprovalsPanel() { this(null, null); }
 
@@ -36,7 +46,11 @@ public final class StaffApprovalsPanel extends JPanel {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));actions.setOpaque(false);
         JButton refresh = AdminUi.button("Refresh");refresh.addActionListener(e -> refresh());
         review.addActionListener(e -> reviewSelected());
-        actions.add(refresh);actions.add(review);footer.add(actions, BorderLayout.SOUTH);
+        suspendBtn.setEnabled(false);
+        unsuspendBtn.setEnabled(false);
+        suspendBtn.addActionListener(e -> toggleSuspend(true));
+        unsuspendBtn.addActionListener(e -> toggleSuspend(false));
+        actions.add(refresh);actions.add(unsuspendBtn);actions.add(suspendBtn);actions.add(review);footer.add(actions, BorderLayout.SOUTH);
         card.add(footer, BorderLayout.SOUTH);add(card);
         table.getSelectionModel().addListSelectionListener(e -> updateReview());
         refresh();
@@ -50,6 +64,25 @@ public final class StaffApprovalsPanel extends JPanel {
     private void updateReview() {
         model.User selected = selected();
         review.setEnabled(selected != null && selected.getStatus() == model.AccountStatus.PENDING_APPROVAL);
+        suspendBtn.setEnabled(selected != null && selected.getStatus() == model.AccountStatus.ACTIVE);
+        unsuspendBtn.setEnabled(selected != null && selected.getStatus() == model.AccountStatus.SUSPENDED);
+    }
+
+    private void toggleSuspend(boolean suspend) {
+        model.User user = selected();
+        if (user == null) return;
+        String action = suspend ? "Suspend" : "Unsuspend";
+        int confirm = JOptionPane.showConfirmDialog(this,
+                action + " account for " + user.getUsername() + "?",
+                action + " account", JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) return;
+        try {
+            authService.suspendUser(administrator, user.getId(), suspend);
+            refresh();
+            message.setText("Account " + (suspend ? "suspended" : "unsuspended") + ": " + user.getUsername());
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.WARNING_MESSAGE);
+        }
     }
 
     public void refresh() {
@@ -101,8 +134,12 @@ public final class StaffApprovalsPanel extends JPanel {
             value.setFont(new Font("Fira Code", Font.PLAIN, 11));value.setBackground(AdminUi.PAPER);
             details.add(value);
         }
+        details.setBorder(new javax.swing.border.EmptyBorder(8, 8, 8, 8));
+        JScrollPane scroll = new JScrollPane(details);
+        scroll.setPreferredSize(new java.awt.Dimension(480, 260));
+        scroll.setBorder(null);
         Object[] options = {"Approve", "Reject", "Cancel"};
-        int choice = JOptionPane.showOptionDialog(this, details, "Review staff application", JOptionPane.DEFAULT_OPTION,
+        int choice = JOptionPane.showOptionDialog(this, scroll, "Review staff application", JOptionPane.DEFAULT_OPTION,
                 JOptionPane.PLAIN_MESSAGE, null, options, options[2]);
         if (choice != 0 && choice != 1) return;
         try {

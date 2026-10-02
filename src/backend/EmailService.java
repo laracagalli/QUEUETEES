@@ -61,4 +61,62 @@ public class EmailService {
         sendCode(email, code, "Your Registration Verification Code",
                 "Your email verification code is: ", 5);
     }
+
+    public static void sendStaffApprovalEmail(String email, String username) throws MessagingException {
+        String sender = "hakutorreta@gmail.com";
+        String password = "wqpmsajmyjinxnjc";
+        Properties props = new Properties();
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.starttls.required", "true");
+        props.put("mail.smtp.host", "smtp.gmail.com");
+        props.put("mail.smtp.port", "587");
+        props.put("mail.smtp.connectiontimeout", "10000");
+        props.put("mail.smtp.timeout", "10000");
+        props.put("mail.smtp.writetimeout", "10000");
+        Session session = Session.getInstance(props, new Authenticator() {
+            @Override protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(sender, password);
+            }
+        });
+        MimeMessage message = new MimeMessage(session);
+        message.setFrom(new InternetAddress(sender));
+        message.setRecipient(Message.RecipientType.TO, new InternetAddress(email));
+        message.setSubject("Your QueueTees staff account has been approved");
+        message.setText("Hi " + username + ",\n\n"
+                + "Great news! Your QueueTees staff account has been reviewed and approved by an administrator.\n\n"
+                + "You can now sign in at any time using your registered email or username and password.\n\n"
+                + "Welcome to the team!\n\n"
+                + "— QueueTees");
+        Transport.send(message);
+    }
+
+    public static void sendStaffRejectionEmail(String email, String username) throws MessagingException {
+        String sender = "hakutorreta@gmail.com";
+        String password = "wqpmsajmyjinxnjc";
+        Properties props = new Properties();
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.starttls.required", "true");
+        props.put("mail.smtp.host", "smtp.gmail.com");
+        props.put("mail.smtp.port", "587");
+        props.put("mail.smtp.connectiontimeout", "10000");
+        props.put("mail.smtp.timeout", "10000");
+        props.put("mail.smtp.writetimeout", "10000");
+        Session session = Session.getInstance(props, new Authenticator() {
+            @Override protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(sender, password);
+            }
+        });
+        MimeMessage message = new MimeMessage(session);
+        message.setFrom(new InternetAddress(sender));
+        message.setRecipient(Message.RecipientType.TO, new InternetAddress(email));
+        message.setSubject("Update on your QueueTees staff application");
+        message.setText("Hi " + username + ",\n\n"
+                + "Thank you for your interest in joining QueueTees.\n\n"
+                + "After review, we regret to inform you that your staff application was not approved at this time.\n\n"
+                + "If you believe this is an error, please contact the administrator.\n\n"
+                + "— QueueTees");
+        Transport.send(message);
+    }
 }

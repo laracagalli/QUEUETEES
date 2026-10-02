@@ -61,7 +61,8 @@ final class StaffOrderActions {
         switch (order.getStatus()) {
             case CONFIRMED: return "Start preparing";
             case PREPARING: return "Mark ready";
-            case READY_FOR_PICKUP: return "Complete order";
+            case READY_FOR_PICKUP: return "Send for delivery";
+            case OUT_FOR_DELIVERY: return "Awaiting customer";
             default: return "Completed";
         }
     }

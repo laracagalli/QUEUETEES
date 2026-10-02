@@ -163,9 +163,19 @@ public final class StoreService {
         switch (order.getStatus()) {
             case CONFIRMED: order.setStatus(OrderStatus.PREPARING); break;
             case PREPARING: order.setStatus(OrderStatus.READY_FOR_PICKUP); break;
-            case READY_FOR_PICKUP: order.setStatus(OrderStatus.COMPLETED); break;
+            case READY_FOR_PICKUP: order.setStatus(OrderStatus.OUT_FOR_DELIVERY); break;
+            case OUT_FOR_DELIVERY: throw new IllegalStateException("This order is out for delivery. Waiting for customer to confirm receipt.");
             case COMPLETED: break;
         }
+        return order;
+    }
+
+    public synchronized Order completeOrder(int orderId) {
+        Order order = orders.stream().filter(item -> item.getId() == orderId).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Order was not found."));
+        if (order.getStatus() != OrderStatus.OUT_FOR_DELIVERY)
+            throw new IllegalStateException("Order cannot be completed at this stage.");
+        order.setStatus(OrderStatus.COMPLETED);
         return order;
     }
 }

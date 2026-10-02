@@ -25,6 +25,7 @@ public final class AdminDashboardPanel extends JPanel {
     private final SalesReportsPanel salesPanel;
     private final AdminOrdersPanel queuePanel;
     private final StaffApprovalsPanel staffPanel;
+    private final CustomerManagementPanel customerPanel;
 
     // Dynamic Metric Labels
     private final JLabel pendingMetricLabel = Ui.label("—", 20, Font.BOLD, Ui.FOREST);
@@ -60,7 +61,8 @@ public final class AdminDashboardPanel extends JPanel {
         this.staffPanel = new StaffApprovalsPanel(authService, user);
         content.add(staffPanel, "staff");
         content.add(productPanel, "products");
-        content.add(new CustomerManagementPanel(authService, user), "customers");
+        this.customerPanel = new CustomerManagementPanel(authService, user);
+        content.add(customerPanel, "customers");
         content.add(queuePanel, "queue");
         content.add(salesPanel, "reports");
         content.add(createProfilePanel(user), "profile");
@@ -134,6 +136,8 @@ public final class AdminDashboardPanel extends JPanel {
             productPanel.refresh();
         if ("reports".equals(key))
             salesPanel.refresh();
+        if ("customers".equals(key))
+            customerPanel.refresh();
         if ("queue".equals(key))
             queuePanel.refresh();
         navigation.forEach((name, button) -> button.setSelectedState(name.equals(key)));
@@ -628,6 +632,13 @@ public final class AdminDashboardPanel extends JPanel {
         cancelButton.setPreferredSize(new Dimension(85, 32));
         cancelButton.addActionListener(e -> dialog.dispose());
 
+        RoundedButton changePassButton = Ui.lightButton("Change Password");
+        changePassButton.setPreferredSize(new Dimension(140, 32));
+        changePassButton.addActionListener(e -> {
+            dialog.dispose();
+            gui.components.ChangePasswordDialog.show(this, authService, user);
+        });
+
         RoundedButton saveButton = Ui.primaryButton("Save Changes");
         saveButton.setPreferredSize(new Dimension(120, 32));
         saveButton.addActionListener(e -> {
@@ -655,13 +666,14 @@ public final class AdminDashboardPanel extends JPanel {
         });
 
         actionPanel.add(cancelButton);
+        actionPanel.add(changePassButton);
         actionPanel.add(saveButton);
 
         editCard.add(actionPanel);
 
         dialog.setContentPane(editCard);
         dialog.pack();
-        dialog.setSize(420, 290);
+        dialog.setSize(460, 290);
         dialog.setLocationRelativeTo(this);
         dialog.setResizable(false);
         dialog.setVisible(true);

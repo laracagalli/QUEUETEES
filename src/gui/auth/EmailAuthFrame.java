@@ -25,6 +25,7 @@ public class EmailAuthFrame extends JFrame {
     private boolean sendingCode;
     @FunctionalInterface interface CodeSender { void send(String email, String code) throws Exception; }
     private final CodeSender codeSender;
+    private final Runnable onVerified;
     private JButton resendCode;
     private RoundedButton enterButton;
     private JTextArea deliveryHint;
@@ -35,12 +36,25 @@ public class EmailAuthFrame extends JFrame {
     private int timeLeft = 300; // 5 minutes in seconds
 
     public EmailAuthFrame(AuthService authService, User user) {
-        this(authService, user, EmailService::sendOtpEmail);
+        this(authService, user,
+                () -> new CustomerFrame(authService, user).setVisible(true),
+                EmailService::sendOtpEmail);
+    }
+
+    public EmailAuthFrame(AuthService authService, User user, Runnable onVerified) {
+        this(authService, user, onVerified, EmailService::sendOtpEmail);
     }
 
     EmailAuthFrame(AuthService authService, User user, CodeSender codeSender) {
+        this(authService, user,
+                () -> new CustomerFrame(authService, user).setVisible(true),
+                codeSender);
+    }
+
+    EmailAuthFrame(AuthService authService, User user, Runnable onVerified, CodeSender codeSender) {
         this.authService = authService;
         this.user = user;
+        this.onVerified = onVerified;
         this.codeSender = codeSender;
 
         setTitle("Email Authentication");
@@ -401,15 +415,8 @@ public class EmailAuthFrame extends JFrame {
             countdownTimer.stop();
 
         authService.verifyEmail(user);
-
-        JOptionPane.showMessageDialog(
-                this,
-                "Email verified successfully!",
-                "QueueTees",
-                JOptionPane.INFORMATION_MESSAGE);
-
         dispose();
-        new CustomerFrame(authService, user).setVisible(true);
+        onVerified.run();
     }
 
     private String getEnteredCode() {

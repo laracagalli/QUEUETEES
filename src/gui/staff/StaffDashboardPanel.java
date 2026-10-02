@@ -39,7 +39,7 @@ public final class StaffDashboardPanel extends JPanel {
         content.add(detailsPanel, "orders");
         content.add(completedPanel, "completed");
         content.add(statusPanel, "status");
-        content.add(new StaffProfilePanel(user), "profile");
+        content.add(new StaffProfilePanel(user, authService), "profile");
         setOpaque(false);
         showPanel("overview");
     }

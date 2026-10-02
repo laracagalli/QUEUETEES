@@ -33,6 +33,7 @@ public final class QueueStatusPanel extends JPanel {
         heading.add(notice);
         add(heading, BorderLayout.NORTH);
         board.setOpaque(false);
+        board.setLayout(new GridLayout(1, 4, 16, 0));
         add(board);
         refresh();
     }
@@ -49,6 +50,7 @@ public final class QueueStatusPanel extends JPanel {
         board.add(lane("01", "Waiting", OrderStatus.CONFIRMED, orders, new Color(150, 112, 43)));
         board.add(lane("02", "Preparing", OrderStatus.PREPARING, orders, new Color(67, 104, 132)));
         board.add(lane("03", "Ready for pickup", OrderStatus.READY_FOR_PICKUP, orders, StaffStyles.FOREST));
+        board.add(lane("04", "Out for delivery", OrderStatus.OUT_FOR_DELIVERY, orders, new Color(120, 80, 140)));
         board.revalidate();
         board.repaint();
     }
@@ -64,7 +66,7 @@ public final class QueueStatusPanel extends JPanel {
         heading.setOpaque(false);
         JPanel titles = new JPanel(new GridLayout(2,1,0,5));titles.setOpaque(false);
         titles.add(StaffStyles.label(title,16,true,accent));
-        titles.add(StaffStyles.label(status == OrderStatus.CONFIRMED ? "In arrival order" : status == OrderStatus.PREPARING ? "Being prepared" : "Awaiting collection",11,false,StaffStyles.MUTED));
+        titles.add(StaffStyles.label(status == OrderStatus.CONFIRMED ? "In arrival order" : status == OrderStatus.PREPARING ? "Being prepared" : status == OrderStatus.READY_FOR_PICKUP ? "Awaiting collection" : "Awaiting customer receipt",11,false,StaffStyles.MUTED));
         heading.add(titles);
         JPanel badge = rounded(tint(accent),tint(accent),16);badge.setLayout(new GridBagLayout());badge.setPreferredSize(new Dimension(48,48));
         badge.add(StaffStyles.label(String.valueOf(matching.size()),22,true,accent));heading.add(badge,BorderLayout.EAST);
@@ -77,9 +79,9 @@ public final class QueueStatusPanel extends JPanel {
             JPanel empty = new JPanel(new GridBagLayout());empty.setOpaque(false);
             JPanel message = new JPanel();message.setOpaque(false);message.setLayout(new BoxLayout(message,BoxLayout.Y_AXIS));
             JPanel symbol = rounded(tint(accent),tint(accent),48);symbol.setLayout(new GridBagLayout());symbol.setMaximumSize(new Dimension(64,64));symbol.setPreferredSize(new Dimension(64,64));symbol.setAlignmentX(CENTER_ALIGNMENT);
-            symbol.add(StaffStyles.label(status == OrderStatus.CONFIRMED ? "1" : status == OrderStatus.PREPARING ? "2" : "3",24,true,accent));message.add(symbol);message.add(Box.createVerticalStrut(18));
-            JLabel titleLabel=StaffStyles.label(status == OrderStatus.CONFIRMED ? "No waiting orders" : status == OrderStatus.PREPARING ? "Nothing in preparation" : "No orders ready yet",14,true,StaffStyles.FOREST);titleLabel.setAlignmentX(CENTER_ALIGNMENT);message.add(titleLabel);message.add(Box.createVerticalStrut(8));
-            JLabel hint=StaffStyles.label(status == OrderStatus.CONFIRMED ? "New orders will appear here." : status == OrderStatus.PREPARING ? "Started orders appear here." : "Ready orders appear here.",11,false,StaffStyles.MUTED);hint.setAlignmentX(CENTER_ALIGNMENT);message.add(hint);
+            symbol.add(StaffStyles.label(status == OrderStatus.CONFIRMED ? "1" : status == OrderStatus.PREPARING ? "2" : status == OrderStatus.READY_FOR_PICKUP ? "3" : "4",24,true,accent));message.add(symbol);message.add(Box.createVerticalStrut(18));
+            JLabel titleLabel=StaffStyles.label(status == OrderStatus.CONFIRMED ? "No waiting orders" : status == OrderStatus.PREPARING ? "Nothing in preparation" : status == OrderStatus.READY_FOR_PICKUP ? "No orders ready yet" : "No deliveries in progress",14,true,StaffStyles.FOREST);titleLabel.setAlignmentX(CENTER_ALIGNMENT);message.add(titleLabel);message.add(Box.createVerticalStrut(8));
+            JLabel hint=StaffStyles.label(status == OrderStatus.CONFIRMED ? "New orders will appear here." : status == OrderStatus.PREPARING ? "Started orders appear here." : status == OrderStatus.READY_FOR_PICKUP ? "Ready orders appear here." : "Dispatched orders appear here.",11,false,StaffStyles.MUTED);hint.setAlignmentX(CENTER_ALIGNMENT);message.add(hint);
             empty.add(message);lane.add(empty);return lane;
         }
         for (int i = 0; i < matching.size(); i++) {

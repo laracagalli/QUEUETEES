@@ -7,10 +7,14 @@ import javax.swing.*;
 /** Customer account/profile page. */
 public final class CustomerProfilePanel extends JPanel {
     public CustomerProfilePanel() {
-        this(null);
+        this(null, null);
     }
 
     public CustomerProfilePanel(model.User user) {
+        this(user, null);
+    }
+
+    public CustomerProfilePanel(model.User user, service.AuthService authService) {
         setOpaque(false);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         Ui.addLeft(this, Ui.label("ACCOUNT", 10, Font.BOLD, Ui.FOREST));
@@ -20,9 +24,17 @@ public final class CustomerProfilePanel extends JPanel {
         Ui.addLeft(this, Ui.label("Review your QueueTees customer account.", 11, Font.PLAIN, Ui.MUTED));
         add(Box.createVerticalStrut(18));
 
-        // Replaced external ProfileCard with a self-contained profile display
-        // to guarantee local image loading executes perfectly on this panel.
         add(createProfileDisplay(user));
+        add(Box.createVerticalStrut(16));
+
+        if (authService != null && user != null) {
+            gui.components.RoundedButton changePassBtn = Ui.primaryButton("Change Password");
+            changePassBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
+            changePassBtn.setMaximumSize(new Dimension(160, 36));
+            changePassBtn.addActionListener(e ->
+                    gui.components.ChangePasswordDialog.show(this, authService, user));
+            add(changePassBtn);
+        }
     }
 
     private JPanel createProfileDisplay(model.User user) {

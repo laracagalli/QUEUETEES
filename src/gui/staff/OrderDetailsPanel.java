@@ -137,7 +137,7 @@ public final class OrderDetailsPanel extends JPanel {
             separator();
             fact(detailBody, "Preparation notes", order.getCheckoutDetails().getNotes() == null || order.getCheckoutDetails().getNotes().isBlank() ? "No notes provided." : order.getCheckoutDetails().getNotes());
             detailBody.add(Ui.label("Order status", 12, Font.BOLD, Ui.INK)); detailBody.add(Box.createVerticalStrut(10));
-            JPanel stages = new JPanel(new GridLayout(1, 4, 6, 0)); stages.setOpaque(false); stages.setAlignmentX(Component.LEFT_ALIGNMENT);
+            JPanel stages = new JPanel(new GridLayout(1, 5, 6, 0)); stages.setOpaque(false); stages.setAlignmentX(Component.LEFT_ALIGNMENT);
             for (OrderStatus status : OrderStatus.values()) {
                 JPanel stage = Ui.verticalBox(); boolean reached = status.ordinal() <= order.getStatus().ordinal();
                 stage.add(Ui.label(reached ? "●" : "○", 22, Font.BOLD, reached ? Ui.FOREST : Ui.MUTED));

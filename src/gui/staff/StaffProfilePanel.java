@@ -6,6 +6,10 @@ import javax.swing.*;
 /** Staff account/profile page. */
 public final class StaffProfilePanel extends JPanel {
     public StaffProfilePanel(model.User user) {
+        this(user, null);
+    }
+
+    public StaffProfilePanel(model.User user, service.AuthService authService) {
         setOpaque(false);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         Ui.addLeft(this, Ui.label("ACCOUNT", 10, Font.BOLD, Ui.FOREST));
@@ -30,6 +34,95 @@ public final class StaffProfilePanel extends JPanel {
         }
         profile.setMaximumSize(new Dimension(Integer.MAX_VALUE, 300));
         add(profile);
+        add(Box.createVerticalStrut(16));
+
+        if (authService != null) {
+            gui.components.RoundedButton editBtn = StaffStyles.button("Edit Profile");
+            editBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
+            editBtn.setMaximumSize(new Dimension(130, 36));
+            editBtn.addActionListener(e -> showEditDialog(this, authService, user));
+            add(editBtn);
+        }
+    }
+
+    private static void showEditDialog(java.awt.Component parent, service.AuthService authService, model.User user) {
+        java.awt.Window owner = javax.swing.SwingUtilities.getWindowAncestor(parent);
+        JDialog dialog = new JDialog(owner instanceof java.awt.Frame ? (java.awt.Frame) owner : null,
+                "Edit Profile", java.awt.Dialog.ModalityType.APPLICATION_MODAL);
+
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(new Color(252, 252, 247));
+        card.setBorder(new javax.swing.border.EmptyBorder(16, 18, 16, 18));
+
+        JLabel title = new JLabel("Edit Profile");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        title.setForeground(new Color(28, 31, 27));
+        title.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+        card.add(title);
+        card.add(Box.createVerticalStrut(12));
+
+        // Username field
+        JPanel usernameBox = new JPanel();
+        usernameBox.setLayout(new BoxLayout(usernameBox, BoxLayout.Y_AXIS));
+        usernameBox.setOpaque(false);
+        usernameBox.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+        JLabel usernameLabel = new JLabel("Username");
+        usernameLabel.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        usernameLabel.setForeground(new Color(99, 106, 96));
+        usernameBox.add(usernameLabel);
+        usernameBox.add(Box.createVerticalStrut(3));
+        JTextField usernameField = new JTextField(user.getUsername());
+        usernameField.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        usernameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        usernameField.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+        usernameBox.add(usernameField);
+        card.add(usernameBox);
+        card.add(Box.createVerticalStrut(16));
+
+        // Buttons
+        JPanel actions = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 6, 0));
+        actions.setOpaque(false);
+        actions.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+
+        gui.components.RoundedButton cancelBtn = StaffStyles.lightButton("Cancel");
+        cancelBtn.setPreferredSize(new Dimension(85, 32));
+        cancelBtn.addActionListener(e -> dialog.dispose());
+
+        gui.components.RoundedButton changePassBtn = StaffStyles.lightButton("Change Password");
+        changePassBtn.setPreferredSize(new Dimension(145, 32));
+        changePassBtn.addActionListener(e -> {
+            dialog.dispose();
+            gui.components.ChangePasswordDialog.show(parent, authService, user);
+        });
+
+        gui.components.RoundedButton saveBtn = StaffStyles.button("Save Changes");
+        saveBtn.setPreferredSize(new Dimension(120, 32));
+        saveBtn.addActionListener(e -> {
+            String newUsername = usernameField.getText().trim();
+            if (newUsername.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "Username cannot be empty.", "Validation Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            user.setUsername(newUsername);
+            try { authService.updateUser(user); } catch (Exception ignored) { }
+            JOptionPane.showMessageDialog(dialog, "Profile updated successfully!", "Success",
+                    JOptionPane.INFORMATION_MESSAGE);
+            dialog.dispose();
+        });
+
+        actions.add(cancelBtn);
+        actions.add(changePassBtn);
+        actions.add(saveBtn);
+        card.add(actions);
+
+        dialog.setContentPane(card);
+        dialog.pack();
+        dialog.setSize(420, 220);
+        dialog.setLocationRelativeTo(parent);
+        dialog.setResizable(false);
+        dialog.setVisible(true);
     }
 
     /** Styling owned by this panel so the screen can be configured independently. */

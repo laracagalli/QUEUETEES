@@ -356,8 +356,22 @@ public class LoginFrame extends JFrame implements ActionListener {
         clearPassword();
 
         if (result.getStatus() == AuthStatus.EMAIL_NOT_VERIFIED && result.getUser() != null) {
+            User u = result.getUser();
+            Runnable onVerified;
+            if (u.getRole() == model.UserRole.STAFF) {
+                onVerified = () -> {
+                    JOptionPane.showMessageDialog(null,
+                            "Thank you for verifying your email!\n\n"
+                            + "Your application is under review. We will notify you\n"
+                            + "by email once the administrator has made a decision.",
+                            "Application Submitted", JOptionPane.INFORMATION_MESSAGE);
+                    new LoginFrame(authService).setVisible(true);
+                };
+            } else {
+                onVerified = () -> new gui.customer.CustomerFrame(authService, u).setVisible(true);
+            }
             dispose();
-            new EmailAuthFrame(authService, result.getUser()).setVisible(true);
+            new EmailAuthFrame(authService, u, onVerified).setVisible(true);
             return;
         }
 

@@ -608,18 +608,17 @@ public class SignupFrame extends JFrame implements ActionListener {
         clearPassword();
 
         if (staffRegistration) {
-            JOptionPane.showMessageDialog(this,
-                    "Application submitted. Your account is pending administrator approval.\n"
-                    + "Once approved, sign in here with your username or email and password.",
-                    "QueueTees", JOptionPane.INFORMATION_MESSAGE);
             dispose();
-            new LoginFrame(authService).setVisible(true);
+            new EmailAuthFrame(authService, result.getUser(), () -> {
+                JOptionPane.showMessageDialog(null,
+                        "Thank you for verifying your email!\n\n"
+                        + "Your application is under review. We will notify you\n"
+                        + "by email once the administrator has made a decision.",
+                        "Application Submitted", JOptionPane.INFORMATION_MESSAGE);
+                new LoginFrame(authService).setVisible(true);
+            }).setVisible(true);
             return;
         }
-
-        JOptionPane.showMessageDialog(this,
-                "Account created successfully.\nPlease verify your email to continue.",
-                "QueueTees", JOptionPane.INFORMATION_MESSAGE);
 
         dispose();
         new EmailAuthFrame(authService, result.getUser()).setVisible(true);

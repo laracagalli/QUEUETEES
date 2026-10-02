@@ -64,6 +64,15 @@ public final class CartPanel extends JPanel {
         qrReference.setToolTipText("Enter the 6-24 digit payment reference number");
         email.setText(user.getEmail());
         email.setEditable(false);
+        // Pre-fill from user profile if available
+        if (user.getFullName() != null && !user.getFullName().trim().isEmpty())
+            fullName.setText(user.getFullName().trim());
+        if (user.getContactNumber() != null && !user.getContactNumber().trim().isEmpty()) {
+            String num = user.getContactNumber().trim().replaceAll("^0", "");
+            contact.setText(num.length() <= 10 ? num : num.substring(num.length() - 10));
+        }
+        if (user.getAddress() != null && !user.getAddress().trim().isEmpty())
+            address.setText(user.getAddress().trim());
         checkoutViews.setOpaque(false);
         checkoutViews.setAlignmentX(Component.LEFT_ALIGNMENT);
         checkoutViews.add(createCartCard(), "cart");

@@ -65,6 +65,14 @@ public class AuthService {
                         user);
             }
 
+            // QueueTees requirement: staff must verify their email before logging in.
+            if (user.getRole() == UserRole.STAFF && !user.isEmailVerified()) {
+                return LoginResult.failure(
+                        AuthStatus.EMAIL_NOT_VERIFIED,
+                        "Please verify your email before logging in.",
+                        user);
+            }
+
             // QueueTees requirement: staff must be approved by an administrator first.
             if (user.getRole() == UserRole.STAFF && user.getStatus() != AccountStatus.ACTIVE) {
                 return LoginResult.failure(
@@ -141,6 +149,41 @@ public class AuthService {
                 .collect(java.util.stream.Collectors.toList());
     }
 
+    public void changePassword(User user, char[] currentPassword, char[] newPassword, char[] confirmPassword) {
+        String current = currentPassword == null ? "" : new String(currentPassword);
+        String next = newPassword == null ? "" : new String(newPassword);
+        String confirm = confirmPassword == null ? "" : new String(confirmPassword);
+        try {
+            if (current.isEmpty() || next.isEmpty() || confirm.isEmpty())
+                throw new IllegalArgumentException("Please fill in all password fields.");
+            if (!PasswordUtil.verifyPassword(current, user.getPasswordHash()))
+                throw new IllegalArgumentException("Current password is incorrect.");
+            String validationMessage = PasswordUtil.getPasswordValidationMessage(next);
+            if (validationMessage != null)
+                throw new IllegalArgumentException(validationMessage + ".");
+            if (!next.equals(confirm))
+                throw new IllegalArgumentException("New passwords do not match.");
+            user.setPasswordHash(PasswordUtil.hashPassword(next));
+        } finally {
+            if (currentPassword != null) java.util.Arrays.fill(currentPassword, '\0');
+            if (newPassword != null) java.util.Arrays.fill(newPassword, '\0');
+            if (confirmPassword != null) java.util.Arrays.fill(confirmPassword, '\0');
+        }
+    }
+
+    public void suspendUser(User actor, int targetId, boolean suspend) {
+        requireAdministrator(actor);
+        User target = userRepository.findAll().stream().filter(u -> u.getId() == targetId).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Account was not found."));
+        if (target.getRole() == UserRole.ADMIN)
+            throw new IllegalStateException("Administrator accounts cannot be suspended.");
+        if (suspend && target.getStatus() == AccountStatus.SUSPENDED)
+            throw new IllegalStateException("This account is already suspended.");
+        if (!suspend && target.getStatus() != AccountStatus.SUSPENDED)
+            throw new IllegalStateException("This account is not suspended.");
+        target.setStatus(suspend ? AccountStatus.SUSPENDED : AccountStatus.ACTIVE);
+    }
+
     public void reviewStaff(User actor, int staffId, boolean approve) {
         requireAdministrator(actor);
         User staff = userRepository.findAll().stream().filter(u -> u.getId() == staffId).findFirst()
@@ -148,6 +191,15 @@ public class AuthService {
         if (staff.getRole() != UserRole.STAFF || staff.getStatus() != AccountStatus.PENDING_APPROVAL)
             throw new IllegalStateException("Only pending staff applications can be reviewed. Refresh and try again.");
         staff.setStatus(approve ? AccountStatus.ACTIVE : AccountStatus.REJECTED);
+        // Send email notification to staff in background
+        final String staffEmail = staff.getEmail();
+        final String staffUsername = staff.getUsername();
+        new Thread(() -> {
+            try {
+                if (approve) backend.EmailService.sendStaffApprovalEmail(staffEmail, staffUsername);
+                else backend.EmailService.sendStaffRejectionEmail(staffEmail, staffUsername);
+            } catch (Exception ignored) { }
+        }, "staff-notify").start();
     }
 
     private synchronized RegistrationResult register(

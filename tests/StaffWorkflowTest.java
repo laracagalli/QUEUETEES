@@ -49,8 +49,10 @@ public final class StaffWorkflowTest {
         store.advanceOrder(first.getId());
         check(first.getStatus() == OrderStatus.READY_FOR_PICKUP, "Preparation advances to ready");
         store.advanceOrder(first.getId());
+        check(first.getStatus() == OrderStatus.OUT_FOR_DELIVERY, "Ready advances to out for delivery");
+        store.completeOrder(first.getId());
         check(first.getCompletedAt() != null, "Completion records time");
-        expectFailure(() -> store.advanceOrder(first.getId()), "Cannot complete twice");
+        expectFailure(() -> store.completeOrder(first.getId()), "Cannot complete twice");
         check(store.getCompletedOrders().size() == 1 && store.getActiveOrders().size() == 1, "Completed order leaves active queue");
         check(store.getOrdersForCustomer(101).get(0).getStatus() == OrderStatus.COMPLETED, "Customer sees staff update");
         SwingUtilities.invokeAndWait(() -> {

@@ -241,6 +241,7 @@ public final class CustomerDashboardPanel extends JPanel {
         editProfileBtn.addActionListener(e -> showEditProfileDialog(user));
 
         page.add(editProfileBtn);
+        page.add(Box.createVerticalGlue());
         return page;
     }
 
@@ -334,6 +335,13 @@ public final class CustomerDashboardPanel extends JPanel {
         cancelButton.setPreferredSize(new Dimension(85, 32));
         cancelButton.addActionListener(e -> dialog.dispose());
 
+        RoundedButton changePassButton = Ui.lightButton("Change Password");
+        changePassButton.setPreferredSize(new Dimension(140, 32));
+        changePassButton.addActionListener(e -> {
+            dialog.dispose();
+            gui.components.ChangePasswordDialog.show(this, authService, user);
+        });
+
         RoundedButton saveButton = Ui.primaryButton("Save Changes");
         saveButton.setPreferredSize(new Dimension(120, 32));
         saveButton.addActionListener(e -> {
@@ -369,13 +377,14 @@ public final class CustomerDashboardPanel extends JPanel {
         });
 
         actionPanel.add(cancelButton);
+        actionPanel.add(changePassButton);
         actionPanel.add(saveButton);
 
         editCard.add(actionPanel);
 
         dialog.setContentPane(editCard);
         dialog.pack();
-        dialog.setSize(420, 290);
+        dialog.setSize(460, 290);
         dialog.setLocationRelativeTo(this);
         dialog.setResizable(false);
         dialog.setVisible(true);
