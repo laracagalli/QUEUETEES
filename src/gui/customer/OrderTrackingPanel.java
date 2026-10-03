@@ -148,8 +148,9 @@ public final class OrderTrackingPanel extends JPanel {
         JPanel card = card(); card.setLayout(new BorderLayout(0, 14)); card.add(label("ORDER UPDATES", 12, true, GREEN), BorderLayout.NORTH);
         JPanel text = vertical(); text.add(label(order.getStatus().getLabel(), 16, true, GREEN)); text.add(Box.createVerticalStrut(8));
         text.add(copy(statusDescription(order))); text.add(Box.createVerticalStrut(20));
+        text.add(label("Order confirmed", 12, true, INK)); text.add(copy(order.getPlacedAt().format(DATE))); text.add(Box.createVerticalStrut(16));
         if (order.getCompletedAt() != null) { text.add(label("Completed", 12, true, INK)); text.add(copy(order.getCompletedAt().format(DATE))); text.add(Box.createVerticalStrut(16)); }
-        text.add(label("Order received", 12, true, INK)); text.add(copy(order.getPlacedAt().format(DATE))); text.add(Box.createVerticalStrut(18));
+        text.add(Box.createVerticalStrut(2));
         if (order.getStatus() == OrderStatus.OUT_FOR_DELIVERY) {
             text.add(Box.createVerticalStrut(4));
             RoundedButton receivedBtn = new RoundedButton("Order Received", GREEN, Color.WHITE);
