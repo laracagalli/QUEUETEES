@@ -13,6 +13,24 @@ public final class CheckoutValidationTest {
                 JTextField name = field(panel, "fullName");
                 JTextField contact = field(panel, "contact");
                 JTextField reference = field(panel, "qrReference");
+                JTextArea address = field(panel, "address");
+                JTextArea notes = field(panel, "notes");
+                address.setText("A".repeat(100));
+                address.append("B");
+                check(address.getText().length() == 100, "Address rejects typing over 100 characters");
+                Field addressError = CartPanel.class.getDeclaredField("addressError"); addressError.setAccessible(true);
+                check(!((JLabel) addressError.get(panel)).getText().isEmpty(), "Address shows inline error");
+                address.selectAll(); address.replaceSelection("B".repeat(101));
+                check(address.getText().equals("A".repeat(100)), "Overlong address paste preserves previous value");
+                address.selectAll(); address.replaceSelection("123 Main Street\nManila");
+                check(((JLabel) addressError.get(panel)).getText().isEmpty(), "Valid multiline address clears error");
+                notes.setText("N".repeat(50));
+                notes.selectAll(); notes.replaceSelection("N".repeat(51));
+                check(notes.getText().length() == 50, "Notes reject paste over 50 characters");
+                Field notesError = CartPanel.class.getDeclaredField("notesError"); notesError.setAccessible(true);
+                check(!((JLabel) notesError.get(panel)).getText().isEmpty(), "Notes show inline error");
+                notes.setText("");
+                check(((JLabel) notesError.get(panel)).getText().isEmpty(), "Deleting notes clears error");
                 check(name.getText().isEmpty(), "Do not use a username as the full name");
                 name.setText("Maria Dela Cruz");
                 name.selectAll(); name.replaceSelection("Maria123!");
@@ -49,8 +67,9 @@ public final class CheckoutValidationTest {
         });
         System.out.println("PASS: checkout name, contact and reference restrictions, paste handling, submission and +63 receipt");
     }
-    private static JTextField field(CartPanel panel, String name) throws Exception {
-        Field f = CartPanel.class.getDeclaredField(name); f.setAccessible(true); return (JTextField) f.get(panel);
+    @SuppressWarnings("unchecked")
+    private static <T extends javax.swing.text.JTextComponent> T field(CartPanel panel, String name) throws Exception {
+        Field f = CartPanel.class.getDeclaredField(name); f.setAccessible(true); return (T) f.get(panel);
     }
     private static void check(boolean value, String description) { if (!value) throw new AssertionError(description); }
 }

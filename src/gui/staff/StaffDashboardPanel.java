@@ -20,6 +20,7 @@ public final class StaffDashboardPanel extends JPanel {
     private final CompletedOrdersPanel completedPanel;
     private final OrderDetailsPanel detailsPanel = new OrderDetailsPanel();
     private final QueueStatusPanel statusPanel = new QueueStatusPanel();
+    private final gui.components.ActivityLogPanel activityLogPanel = new gui.components.ActivityLogPanel();
 
     private final StaffOverviewPanel overviewPanel = new StaffOverviewPanel(() -> showPanel("queue"));
     private final javax.swing.Timer refreshTimer = new javax.swing.Timer(2000, e -> refreshVisiblePanel());
@@ -39,9 +40,11 @@ public final class StaffDashboardPanel extends JPanel {
         content.add(detailsPanel, "orders");
         content.add(completedPanel, "completed");
         content.add(statusPanel, "status");
+        content.add(activityLogPanel, "activity");
         content.add(new StaffProfilePanel(user, authService), "profile");
         setOpaque(false);
         showPanel("overview");
+        gui.components.ActivityTracking.track(this, user);
     }
 
     @Override
@@ -71,6 +74,7 @@ public final class StaffDashboardPanel extends JPanel {
         addNavigation(sidebar, "Order Details", "orders");
         addNavigation(sidebar, "Completed Orders", "completed");
         addNavigation(sidebar, "Queue Status", "status");
+        addNavigation(sidebar, "Activity Log", "activity");
         addNavigation(sidebar, "My Account", "profile");
         sidebar.add(Box.createVerticalGlue());
         Ui.addLeft(sidebar, Ui.label("STAFF  •  ONLINE", 10, Font.BOLD, new Color(221, 230, 216)));
@@ -116,6 +120,7 @@ public final class StaffDashboardPanel extends JPanel {
     }
 
     private void showPanel(String key) {
+        if ("activity".equals(key)) activityLogPanel.refresh();
         currentPanel = key;
         cardLayout.show(content, key);
         refreshPanel(key);
@@ -334,22 +339,7 @@ public final class StaffDashboardPanel extends JPanel {
             int choice = StaffStyles.confirm(parent, "Log out of QueueTees?", "Confirm Log Out",
                     JOptionPane.YES_NO_OPTION);
             if (choice == JOptionPane.YES_OPTION) {
-                String name = (currentUser != null && currentUser.getUsername() != null
-                        && !currentUser.getUsername().trim().isEmpty())
-                                ? currentUser.getUsername().trim()
-                                : "Staff";
-                String email = (currentUser != null && currentUser.getEmail() != null
-                        && !currentUser.getEmail().trim().isEmpty())
-                                ? currentUser.getEmail().trim()
-                                : name.toLowerCase().replaceAll("\\s+", "") + "@queuetees.local";
-                String role = (currentUser != null && currentUser.getRole() != null)
-                        ? currentUser.getRole().toString().toUpperCase()
-                        : "STAFF";
-                String date = LocalDateTime.now()
-                        .format(DateTimeFormatter.ofPattern("MMM dd, yyyy hh:mm a", Locale.ENGLISH));
-
-                // Pushes formatted log string so Admin Recent Activity updates properly
-                service.ActivityLogger.log(name + " | " + email + " | " + date + " | " + role + " | Logged out");
+                service.ActivityLogger.record(currentUser, "Logged out", "Signed out successfully");
 
                 Window window = SwingUtilities.getWindowAncestor(parent);
                 if (window != null)

@@ -8,6 +8,7 @@ import service.AuthService;
 public class CustomerFrame extends JFrame {
     public CustomerFrame(AuthService authService, User user) {
         setTitle("Customer Dashboard");
+        gui.components.AppTheme.applyWindowIcon(this);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(1100, 700));
         setSize(1440, 820);

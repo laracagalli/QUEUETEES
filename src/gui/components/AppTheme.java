@@ -12,10 +12,55 @@ import javax.swing.text.JTextComponent;
 /** Shared styling applied to existing and dynamically created Swing controls. */
 public final class AppTheme {
     public static final Color PAPER=new Color(252,252,247), GREEN=new Color(55,70,56), LINE=new Color(210,219,203);
+    private static final java.util.List<Image> WINDOW_ICONS = loadWindowIcons();
     private static boolean installed;
     private AppTheme(){}
+    /** Background-only treatment for the signup birthday calendar popup. */
+    public static void styleCalendarBackground(com.toedter.calendar.JCalendar calendar) {
+        calendar.putClientProperty("queuetees.calendarBackground", true);
+        Color cream = new Color(246, 247, 240);
+        setCalendarPanelBackground(calendar, cream);
+        calendar.setDecorationBackgroundVisible(true);
+        calendar.setDecorationBackgroundColor(new Color(230, 237, 223));
+    }
+    private static void setCalendarPanelBackground(Component component, Color color) {
+        if (component instanceof JPanel) component.setBackground(color);
+        if (component instanceof Container)
+            for (Component child : ((Container) component).getComponents()) setCalendarPanelBackground(child, color);
+    }
+    /** Apply the shared brand icon before a frame is shown. */
+    public static void applyWindowIcon(Window window) {
+        if (!WINDOW_ICONS.isEmpty()) window.setIconImages(WINDOW_ICONS);
+    }
+    private static java.util.List<Image> loadWindowIcons() {
+        java.net.URL resource = AppTheme.class.getResource("/Gui_Images/hirayalogo2.png");
+        if (resource == null) return java.util.Collections.emptyList();
+        ImageIcon logo = new ImageIcon(resource);
+        if (logo.getIconWidth() <= 0 || logo.getIconHeight() <= 0) return java.util.Collections.emptyList();
+        java.util.List<Image> icons = new java.util.ArrayList<>();
+        for (int size : new int[] {16, 20, 24, 32, 48, 64, 128, 256}) {
+            java.awt.image.BufferedImage icon = new java.awt.image.BufferedImage(
+                    size, size, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            // The wordmark's H remains recognizable at native title-bar icon sizes.
+            int left = (int) (logo.getIconWidth() * .025);
+            int top = (int) (logo.getIconHeight() * .15);
+            int right = (int) (logo.getIconWidth() * .25);
+            int bottom = (int) (logo.getIconHeight() * .87);
+            double scale = (double) (size - 2) / Math.max(right - left, bottom - top);
+            int width = Math.max(1, (int) Math.round((right - left) * scale));
+            int height = Math.max(1, (int) Math.round((bottom - top) * scale));
+            Graphics2D graphics = icon.createGraphics();
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            int x = (size - width) / 2, y = (size - height) / 2;
+            graphics.drawImage(logo.getImage(), x, y, x + width, y + height, left, top, right, bottom, null);
+            graphics.dispose();
+            icons.add(icon);
+        }
+        return java.util.Collections.unmodifiableList(icons);
+    }
     public static void install(){
         if(installed)return;installed=true;
+        UIManager.put("OptionPaneUI", "gui.components.AlignedOptionPaneUI");
         UIManager.put("OptionPane.background",PAPER);UIManager.put("Panel.background",PAPER);
         UIManager.put("OptionPane.messageForeground",GREEN);
         UIManager.put("OptionPane.messageFont",new Font("Segoe UI",Font.PLAIN,13));
@@ -26,10 +71,17 @@ public final class AppTheme {
         Toolkit.getDefaultToolkit().addAWTEventListener(event->{
             if(event instanceof ContainerEvent && event.getID()==ContainerEvent.COMPONENT_ADDED){
                 Component child=((ContainerEvent)event).getChild();SwingUtilities.invokeLater(()->apply(child));
-            }else if(event instanceof WindowEvent && event.getID()==WindowEvent.WINDOW_OPENED)apply(((WindowEvent)event).getWindow());
+            }else if(event instanceof WindowEvent && event.getID()==WindowEvent.WINDOW_OPENED){
+                Window window=((WindowEvent)event).getWindow();
+                apply(window);
+                if(window instanceof JDialog && containsOptionPane(window))window.setLocationRelativeTo(window.getOwner());
+            }
         },AWTEvent.CONTAINER_EVENT_MASK|AWTEvent.WINDOW_EVENT_MASK);
     }
     public static void apply(Component component){
+        if(component instanceof Window)applyWindowIcon((Window)component);
+        if(component instanceof JLabel && ((JLabel)component).getIcon() instanceof NoticeIcon)
+            ((JLabel)component).setVerticalAlignment(SwingConstants.CENTER);
         if(component instanceof JComponent){
             JComponent c=(JComponent)component;
             if(!Boolean.TRUE.equals(c.getClientProperty("queuetees.themed"))){
@@ -75,12 +127,19 @@ public final class AppTheme {
                     }
                 }
                 if(c instanceof com.toedter.calendar.JDateChooser){c.setOpaque(false);}
-                if(c instanceof JButton && insideCalendar(c)){JButton b=(JButton)c;b.setUI(new BasicButtonUI());b.setBackground(PAPER);b.setForeground(GREEN);b.setBorder(BorderFactory.createEmptyBorder(4,6,4,6));}
+                if(c instanceof JButton && insideCalendar(c)){JButton b=(JButton)c;b.setUI(new BasicButtonUI());if(!insideStyledCalendar(c))b.setBackground(PAPER);b.setForeground(GREEN);b.setBorder(BorderFactory.createEmptyBorder(4,6,4,6));}
                 if(c instanceof JOptionPane){JOptionPane pane=(JOptionPane)c;pane.setBackground(PAPER);}
                 if(c instanceof JCheckBox || c instanceof JRadioButton){AbstractButton b=(AbstractButton)c;b.setOpaque(false);b.setForeground(GREEN);b.setIcon(new ChoiceIcon(b,false));b.setSelectedIcon(new ChoiceIcon(b,true));}
             }
         }
         if(component instanceof Container)for(Component child:((Container)component).getComponents())apply(child);
+    }
+    private static boolean containsOptionPane(Component component) {
+        if (component instanceof JOptionPane) return true;
+        if (component instanceof Container)
+            for (Component child : ((Container) component).getComponents())
+                if (containsOptionPane(child)) return true;
+        return false;
     }
     public static void styleHeader(JTable table){
         JTableHeader header=table.getTableHeader();header.setOpaque(true);header.setBackground(new Color(232,238,226));header.setBorder(BorderFactory.createEmptyBorder());header.setPreferredSize(new Dimension(100,44));
@@ -102,6 +161,12 @@ public final class AppTheme {
         return c.hasFocus();
     }
     private static boolean insideCalendar(Component c){for(Component p=c;p!=null;p=p.getParent())if(p.getClass().getName().startsWith("com.toedter."))return true;return false;}
+    private static boolean insideStyledCalendar(Component c) {
+        for (Component p = c; p != null; p = p.getParent())
+            if (p instanceof com.toedter.calendar.JCalendar)
+                return Boolean.TRUE.equals(((JComponent)p).getClientProperty("queuetees.calendarBackground"));
+        return false;
+    }
     private static void paintField(Graphics graphics,JTextComponent c){Graphics2D g=(Graphics2D)graphics.create();g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);g.setColor(c.getBackground());g.fillRoundRect(1,1,c.getWidth()-3,c.getHeight()-3,14,14);g.dispose();}
     private static class DateSpinnerUI extends BasicSpinnerUI{
         protected Component createNextButton(){JButton b=arrow(true);installNextButtonListeners(b);return b;}

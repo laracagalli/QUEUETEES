@@ -24,6 +24,7 @@ public final class StoreService {
     private final AtomicInteger productIds = new AtomicInteger(1);
     private final AtomicInteger orderIds = new AtomicInteger(1);
     private final AtomicInteger queueNumbers = new AtomicInteger(1);
+    private boolean initializing = true;
 
     private StoreService() {
         // Men's catalog
@@ -56,6 +57,7 @@ public final class StoreService {
         addProduct("Classic Brown Handbag", "Accessories", "Accessories", 899.00, 9, "/Gui_Images/accessories3.png");
         addProduct("Floral Leather Belt", "Accessories", "Accessories", 399.00, 14, "/Gui_Images/accessories4.png");
         addProduct("Brown Floral Cadet Cap", "Accessories", "Accessories", 349.00, 15, "/Gui_Images/accessories5.png");
+        initializing = false;
     }
 
     public static StoreService getInstance() { return INSTANCE; }
@@ -67,6 +69,7 @@ public final class StoreService {
         Product product = new Product(productIds.getAndIncrement(), name.trim(), category,
                 subcategory, price, stock, imagePath == null ? "" : imagePath.trim());
         products.add(product);
+        if (!initializing) ActivityLogger.record("Product added", product.getName() + " (#" + product.getId() + "), initial stock: " + stock);
         return product;
     }
 
@@ -74,6 +77,20 @@ public final class StoreService {
 
     public synchronized Optional<Product> findProduct(int id) {
         return products.stream().filter(product -> product.getId() == id).findFirst();
+    }
+
+    public synchronized Product adjustStock(int productId, int delta, model.User actor) {
+        if (delta == 0) throw new IllegalArgumentException("Enter a nonzero stock adjustment.");
+        Product product = findProduct(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product was not found."));
+        long updated = (long) product.getStock() + delta;
+        if (updated < 0 || updated > Integer.MAX_VALUE)
+            throw new IllegalArgumentException("Stock must stay between 0 and " + Integer.MAX_VALUE + ".");
+        int before = product.getStock();
+        product.setStock((int) updated);
+        ActivityLogger.record(actor, "Stock adjusted", product.getName() + " (#" + productId + "): "
+                + before + " → " + updated + " (" + (delta > 0 ? "+" : "") + delta + ")");
+        return product;
     }
 
     public synchronized void addToCart(int customerId, int productId) {
@@ -160,6 +177,7 @@ public final class StoreService {
         if (order.getStatus() == OrderStatus.CONFIRMED && orders.stream().anyMatch(earlier ->
                 earlier.getStatus() == OrderStatus.CONFIRMED && earlier.getQueueNumber() < order.getQueueNumber()))
             throw new IllegalStateException("Start the earliest waiting order first.");
+        OrderStatus before = order.getStatus();
         switch (order.getStatus()) {
             case CONFIRMED: order.setStatus(OrderStatus.PREPARING); break;
             case PREPARING: order.setStatus(OrderStatus.READY_FOR_PICKUP); break;
@@ -167,6 +185,8 @@ public final class StoreService {
             case OUT_FOR_DELIVERY: throw new IllegalStateException("This order is out for delivery. Waiting for customer to confirm receipt.");
             case COMPLETED: break;
         }
+        if (before != order.getStatus()) ActivityLogger.record("Order updated", "Q-" + order.getQueueNumber()
+                + ": " + before.getLabel() + " → " + order.getStatus().getLabel());
         return order;
     }
 
@@ -176,6 +196,7 @@ public final class StoreService {
         if (order.getStatus() != OrderStatus.OUT_FOR_DELIVERY)
             throw new IllegalStateException("Order cannot be completed at this stage.");
         order.setStatus(OrderStatus.COMPLETED);
+        ActivityLogger.record("Order completed", "Q-" + order.getQueueNumber());
         return order;
     }
 }

@@ -7,6 +7,7 @@ import service.AuthService;
 public class StaffFrame extends JFrame {
     public StaffFrame(AuthService authService, model.User user) {
         setTitle("Staff Dashboard");
+        gui.components.AppTheme.applyWindowIcon(this);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(1100, 700));
         setSize(1440, 820);

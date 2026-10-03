@@ -23,6 +23,10 @@ public final class CompletedOrdersPanel extends JPanel {
     private final JButton print = StaffStyles.button("Preview / print report");
     private final JPanel content = new JPanel();
     private JPanel preview;
+    private final JComboBox<String> customerFilter = new gui.components.RoundedComboBox<>(new String[]{"All customers"});
+    private final JComboBox<String> paymentFilter = new gui.components.RoundedComboBox<>(new String[]{"All payment methods"});
+    private final JComboBox<String> fulfillmentFilter = new gui.components.RoundedComboBox<>(new String[]{"All fulfillment methods"});
+    private boolean updatingFilters;
 
     /** Enforces the same limit for arrows, typed dates and programmatic updates. */
     static final class PastDateModel extends SpinnerDateModel {
@@ -58,6 +62,8 @@ public final class CompletedOrdersPanel extends JPanel {
         Ui.addLeft(content, Ui.label("A record of orders completed by the staff team.", 11, Font.PLAIN, Ui.MUTED));
         content.add(Box.createVerticalStrut(18));
         content.add(StaffOrderActions.search(table));
+        content.add(orderFilters());
+        content.add(Box.createVerticalStrut(6));
         content.add(dateFilters());
         content.add(createTableCard());
         add(content, BorderLayout.CENTER);
@@ -94,6 +100,47 @@ public final class CompletedOrdersPanel extends JPanel {
         return filters;
     }
 
+    private JPanel orderFilters() {
+        JPanel row = new JPanel(new GridLayout(1, 3, 12, 0));
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 62));
+        JComboBox<?>[] filters = {customerFilter, paymentFilter, fulfillmentFilter};
+        String[] labels = {"Customer", "Payment method", "Fulfillment"};
+        for (int i = 0; i < filters.length; i++) {
+            JComboBox<?> filter = filters[i];
+            filter.getAccessibleContext().setAccessibleName("Filter completed orders by " + labels[i]);
+            filter.addActionListener(e -> { if (!updatingFilters) refresh(); });
+            JPanel field = new JPanel(new BorderLayout(0, 4));
+            field.setOpaque(false);
+            field.add(Ui.label(labels[i], 11, Font.PLAIN, Ui.FOREST), BorderLayout.NORTH);
+            field.add(filter);
+            row.add(field);
+        }
+        return row;
+    }
+
+    private static String paymentMethod(Order order) {
+        String method = order.getCheckoutDetails().getPaymentMethod();
+        return method.startsWith("GCash") ? "GCash" : method.startsWith("Card") ? "Card" : method;
+    }
+
+    private static boolean matches(JComboBox<String> filter, String value) {
+        return filter.getSelectedIndex() == 0 || java.util.Objects.equals(value, filter.getSelectedItem());
+    }
+
+    private static void updateOptions(JComboBox<String> filter, String all, java.util.List<String> values) {
+        java.util.List<String> options = new java.util.ArrayList<>();
+        options.add(all);
+        values.stream().filter(java.util.Objects::nonNull).distinct().sorted().forEach(options::add);
+        boolean same = filter.getItemCount() == options.size();
+        if (same) for (int i = 0; i < options.size(); i++) same &= options.get(i).equals(filter.getItemAt(i));
+        if (same) return;
+        Object selected = filter.getSelectedItem();
+        filter.setModel(new DefaultComboBoxModel<>(options.toArray(String[]::new)));
+        if (options.contains(selected)) filter.setSelectedItem(selected);
+    }
+
     private java.time.LocalDate date(JSpinner spinner) {
         return ((java.util.Date) spinner.getValue()).toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
     }
@@ -123,7 +170,11 @@ public final class CompletedOrdersPanel extends JPanel {
             String scope = allDates.isSelected() ? "All completion dates" : date(from) + " through " + date(to) + " (inclusive)";
             JTextField search = findSearch(this);
             if (search != null && !search.getText().trim().isEmpty()) scope += "; search: " + search.getText().trim();
+            if (customerFilter.getSelectedIndex() > 0) scope += "; customer: " + customerFilter.getSelectedItem();
+            if (paymentFilter.getSelectedIndex() > 0) scope += "; payment: " + paymentFilter.getSelectedItem();
+            if (fulfillmentFilter.getSelectedIndex() > 0) scope += "; fulfillment: " + fulfillmentFilter.getSelectedItem();
             JPanel nextPreview = ReportPreview.create(this, new CompletedOrdersReport(snapshot, staff, scope), this::closePreview);
+            service.ActivityLogger.record(staff, "Report previewed", "Completed orders: " + snapshot.size() + " rows; " + scope);
             preview = nextPreview;
             remove(content);
             add(preview, BorderLayout.CENTER);
@@ -185,11 +236,21 @@ public final class CompletedOrdersPanel extends JPanel {
     public void refresh() {
         // A report is a stable snapshot; leave it visible during the dashboard's timer ticks.
         if (preview != null) return;
+        java.util.List<Order> completedOrders = store.getCompletedOrders();
+        updatingFilters = true;
+        try {
+            updateOptions(customerFilter, "All customers", completedOrders.stream().map(Order::getCustomerName).toList());
+            updateOptions(paymentFilter, "All payment methods", completedOrders.stream().map(CompletedOrdersPanel::paymentMethod).toList());
+            updateOptions(fulfillmentFilter, "All fulfillment methods", completedOrders.stream()
+                    .map(order -> order.getCheckoutDetails().getFulfillmentMethod()).toList());
+        } finally { updatingFilters = false; }
         int selectedRow = table.getSelectedRow();
         Order selected = selectedRow < 0 ? null : rowOrders.get(table.convertRowIndexToModel(selectedRow));
         model.setRowCount(0);
         rowOrders.clear();
-        for (Order order : store.getCompletedOrders()) {
+        for (Order order : completedOrders) {
+            if (!matches(customerFilter, order.getCustomerName()) || !matches(paymentFilter, paymentMethod(order))
+                    || !matches(fulfillmentFilter, order.getCheckoutDetails().getFulfillmentMethod())) continue;
             java.time.LocalDate completed = order.getCompletedAt().toLocalDate();
             if (!allDates.isSelected() && (completed.isBefore(date(from)) || completed.isAfter(date(to)))) continue;
             rowOrders.add(order);

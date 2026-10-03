@@ -58,6 +58,7 @@ public class EmailAuthFrame extends JFrame {
         this.codeSender = codeSender;
 
         setTitle("Email Authentication");
+        gui.components.AppTheme.applyWindowIcon(this);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(900, 650));
         setSize(1100, 733);

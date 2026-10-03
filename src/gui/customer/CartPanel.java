@@ -39,6 +39,8 @@ public final class CartPanel extends JPanel {
     private final JLabel fullNameError = Ui.label("", 10, Font.PLAIN, new Color(170, 35, 35));
     private final JLabel contactError = Ui.label("", 10, Font.PLAIN, new Color(170, 35, 35));
     private final JLabel referenceError = Ui.label("", 10, Font.PLAIN, new Color(170, 35, 35));
+    private final JLabel addressError = Ui.label("", 10, Font.PLAIN, new Color(170, 35, 35));
+    private final JLabel notesError = Ui.label("", 10, Font.PLAIN, new Color(170, 35, 35));
     private List<CartItem> visibleItems;
 
     public CartPanel(User user, Runnable openTracking) {
@@ -58,6 +60,10 @@ public final class CartPanel extends JPanel {
                 "Enter 10 digits after +63 without a leading 0.", contactError::setText);
         CheckoutValidation.restrict(qrReference, 24, "[0-9]*",
                 "Numbers only (maximum 24 digits).", referenceError::setText);
+        CheckoutValidation.restrict(address, 100, "(?s).*",
+                "Delivery address: maximum 100 characters.", addressError::setText);
+        CheckoutValidation.restrict(notes, 50, "(?s).*",
+                "Order notes: maximum 50 characters.", notesError::setText);
         // Usernames are not verified full names and may contain digits or punctuation.
         fullName.setToolTipText("Full name: letters and spaces, up to 36 characters");
         contact.setToolTipText("Enter 10 digits after +63, without a leading country code");
@@ -169,10 +175,10 @@ public final class CartPanel extends JPanel {
         phone.add(contact, BorderLayout.CENTER);
         addFormField(form, gbc, "Contact number", validatedField(phone, contactError));
         address.setLineWrap(true); address.setWrapStyleWord(true);
-        addFormField(form, gbc, "Delivery address", new gui.components.ModernScrollPane(address));
+        addFormField(form, gbc, "Delivery address", validatedField(new gui.components.ModernScrollPane(address), addressError));
         addFormField(form, gbc, "Payment method", payment);
         notes.setLineWrap(true); notes.setWrapStyleWord(true);
-        addFormField(form, gbc, "Order notes (optional)", new gui.components.ModernScrollPane(notes));
+        addFormField(form, gbc, "Order notes (optional)", validatedField(new gui.components.ModernScrollPane(notes), notesError));
         gbc.gridy++;
         form.setMinimumSize(new Dimension(0,form.getPreferredSize().height));
         form.setMaximumSize(new Dimension(Integer.MAX_VALUE,form.getPreferredSize().height));
@@ -181,9 +187,10 @@ public final class CartPanel extends JPanel {
         configurePaymentDetails();
         paymentDetails.setOpaque(false);
         paymentDetails.setAlignmentX(Component.LEFT_ALIGNMENT);
-        paymentDetails.setPreferredSize(new Dimension(800, 190));
-        paymentDetails.setMinimumSize(new Dimension(300, 190));
-        paymentDetails.setMaximumSize(new Dimension(Integer.MAX_VALUE, 190));
+        int paymentHeight = Math.max(190, paymentDetails.getPreferredSize().height);
+        paymentDetails.setPreferredSize(new Dimension(800, paymentHeight));
+        paymentDetails.setMinimumSize(new Dimension(300, paymentHeight));
+        paymentDetails.setMaximumSize(new Dimension(Integer.MAX_VALUE, paymentHeight));
         formStack.add(paymentDetails);
         formStack.add(Box.createVerticalGlue());
         JScrollPane formScroll = new gui.components.ModernScrollPane(formStack);
@@ -258,7 +265,7 @@ public final class CartPanel extends JPanel {
         JPanel qrCopy = Ui.verticalBox();
         qrCopy.add(Ui.label("Scan to pay", 12, Font.BOLD, Ui.INK));
         qrCopy.add(Box.createVerticalStrut(5));
-        qrCopy.add(Ui.label("Replace payment_qr.png with your QR image.", 10, Font.PLAIN, Ui.MUTED));
+        qrCopy.add(Ui.label("Scan this InstaPay QR with your payment app.", 10, Font.PLAIN, Ui.MUTED));
         qrCopy.add(Box.createVerticalStrut(10));
         qrCopy.add(Ui.label("Payment reference number", 10, Font.BOLD, Ui.MUTED));
         qrCopy.add(Box.createVerticalStrut(6));
@@ -330,7 +337,11 @@ public final class CartPanel extends JPanel {
         }
         if (source != null && source.getIconWidth() > 0) {
             preview.setText("");
-            preview.setIcon(new ImageIcon(source.getImage().getScaledInstance(142, 142, Image.SCALE_SMOOTH)));
+            // Keep the supplied QR pixels sharp; smooth downscaling blurs its modules.
+            preview.setIcon(source);
+            preview.setPreferredSize(new Dimension(source.getIconWidth() + 24, source.getIconHeight() + 24));
+            preview.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+            preview.getAccessibleContext().setAccessibleName("InstaPay payment QR code");
         }
         return preview;
     }
@@ -346,7 +357,7 @@ public final class CartPanel extends JPanel {
         form.add(Ui.label(title, 10, Font.BOLD, Ui.MUTED), gbc);
         gbc.gridy++;
         gbc.insets = new Insets(0, 0, 0, 0);
-        field.setPreferredSize(new Dimension(100, Boolean.TRUE.equals(field.getClientProperty("validatedField")) ? 50
+        field.setPreferredSize(new Dimension(100, Boolean.TRUE.equals(field.getClientProperty("validatedField")) ? (Integer)field.getClientProperty("validatedFieldHeight")
                 : field instanceof JScrollPane ? 43 : 30));
         form.add(field, gbc);
     }
@@ -355,11 +366,13 @@ public final class CartPanel extends JPanel {
         JPanel wrapper = new JPanel(new BorderLayout(0, 3));
         wrapper.setOpaque(false);
         wrapper.putClientProperty("validatedField", true);
+        int height = field instanceof JScrollPane ? 63 : 50;
+        wrapper.putClientProperty("validatedFieldHeight", height);
         wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
         error.setPreferredSize(new Dimension(100, 17));
         wrapper.add(field, BorderLayout.CENTER);
         wrapper.add(error, BorderLayout.SOUTH);
-        wrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+        wrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
         return wrapper;
     }
 

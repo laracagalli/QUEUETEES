@@ -26,6 +26,7 @@ public final class AdminDashboardPanel extends JPanel {
     private final AdminOrdersPanel queuePanel;
     private final StaffApprovalsPanel staffPanel;
     private final CustomerManagementPanel customerPanel;
+    private final gui.components.ActivityLogPanel activityLogPanel = new gui.components.ActivityLogPanel();
 
     // Dynamic Metric Labels
     private final JLabel pendingMetricLabel = Ui.label("—", 20, Font.BOLD, Ui.FOREST);
@@ -65,10 +66,12 @@ public final class AdminDashboardPanel extends JPanel {
         content.add(customerPanel, "customers");
         content.add(queuePanel, "queue");
         content.add(salesPanel, "reports");
+        content.add(activityLogPanel, "activity");
         content.add(createProfilePanel(user), "profile");
 
         setOpaque(false);
         showPanel("overview");
+        gui.components.ActivityTracking.track(this, user);
     }
 
     @Override
@@ -99,6 +102,7 @@ public final class AdminDashboardPanel extends JPanel {
         addNavigation(sidebar, "Customers", "customers");
         addNavigation(sidebar, "Order Queue", "queue");
         addNavigation(sidebar, "Sales Reports", "reports");
+        addNavigation(sidebar, "Activity Log", "activity");
         addNavigation(sidebar, "My Account", "profile");
         sidebar.add(Box.createVerticalGlue());
         Ui.addLeft(sidebar, Ui.label("ADMIN  •  ONLINE", 10, Font.BOLD, new Color(221, 230, 216)));
@@ -126,6 +130,7 @@ public final class AdminDashboardPanel extends JPanel {
 
     private void showPanel(String key) {
         cardLayout.show(content, key);
+        if ("activity".equals(key)) activityLogPanel.refresh();
         if ("overview".equals(key)) {
             refreshOverview();
             SwingUtilities.invokeLater(() -> activityContainer.repaint());
@@ -570,30 +575,8 @@ public final class AdminDashboardPanel extends JPanel {
         JDialog dialog = new JDialog(ancestor instanceof Frame ? (Frame) ancestor : null, "Edit Profile",
                 Dialog.ModalityType.APPLICATION_MODAL);
 
-        JPanel editCard = Ui.card(Ui.PAPER, 0, false);
-        editCard.setLayout(new BoxLayout(editCard, BoxLayout.Y_AXIS));
-        editCard.setBorder(new EmptyBorder(16, 18, 16, 18));
-
-        Ui.addLeft(editCard, Ui.label("Edit Profile", 13, Font.BOLD, Ui.INK));
-        editCard.add(Box.createVerticalStrut(12));
-
-        JPanel formGrid = new JPanel(new GridLayout(2, 1, 12, 8));
-        formGrid.setOpaque(false);
-        formGrid.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        JPanel usernameBox = Ui.verticalBox();
-        usernameBox.add(Ui.label("Username", 10, Font.BOLD, Ui.MUTED));
-        usernameBox.add(Box.createVerticalStrut(3));
         JTextField usernameField = new JTextField(user != null && user.getUsername() != null ? user.getUsername() : "");
         usernameField.setFont(Ui.font(11, Font.PLAIN));
-        usernameBox.add(usernameField);
-
-        JPanel avatarBox = Ui.verticalBox();
-        avatarBox.add(Ui.label("Profile Picture", 10, Font.BOLD, Ui.MUTED));
-        avatarBox.add(Box.createVerticalStrut(3));
-
-        JPanel picChooserPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        picChooserPanel.setOpaque(false);
 
         JLabel picPathLabel = Ui.label("No picture selected", 10, Font.PLAIN, Ui.MUTED);
         RoundedButton choosePicBtn = Ui.lightButton("Choose Picture...");
@@ -614,19 +597,6 @@ public final class AdminDashboardPanel extends JPanel {
             }
         });
 
-        picChooserPanel.add(choosePicBtn);
-        picChooserPanel.add(picPathLabel);
-        avatarBox.add(picChooserPanel);
-
-        formGrid.add(usernameBox);
-        formGrid.add(avatarBox);
-
-        editCard.add(formGrid);
-        editCard.add(Box.createVerticalStrut(16));
-
-        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        actionPanel.setOpaque(false);
-        actionPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         RoundedButton cancelButton = Ui.lightButton("Cancel");
         cancelButton.setPreferredSize(new Dimension(85, 32));
@@ -657,6 +627,7 @@ public final class AdminDashboardPanel extends JPanel {
                 }
             }
 
+            service.ActivityLogger.record(user, "Profile updated", "Updated username or profile picture");
             JOptionPane.showMessageDialog(dialog, "Profile updated successfully!", "Success",
                     JOptionPane.INFORMATION_MESSAGE);
             dialog.dispose();
@@ -665,15 +636,10 @@ public final class AdminDashboardPanel extends JPanel {
             showPanel("profile");
         });
 
-        actionPanel.add(cancelButton);
-        actionPanel.add(changePassButton);
-        actionPanel.add(saveButton);
 
-        editCard.add(actionPanel);
-
-        dialog.setContentPane(editCard);
+        dialog.setContentPane(new gui.components.ProfileEditorPanel(usernameField, choosePicBtn, picPathLabel,
+                cancelButton, changePassButton, saveButton));
         dialog.pack();
-        dialog.setSize(460, 290);
         dialog.setLocationRelativeTo(this);
         dialog.setResizable(false);
         dialog.setVisible(true);
@@ -985,21 +951,7 @@ public final class AdminDashboardPanel extends JPanel {
             int choice = JOptionPane.showConfirmDialog(parent, "Log out of QueueTees?", "Confirm Log Out",
                     JOptionPane.YES_NO_OPTION);
             if (choice == JOptionPane.YES_OPTION) {
-                String name = (currentUser != null && currentUser.getUsername() != null
-                        && !currentUser.getUsername().trim().isEmpty())
-                                ? currentUser.getUsername().trim()
-                                : "User";
-                String email = (currentUser != null && currentUser.getEmail() != null
-                        && !currentUser.getEmail().trim().isEmpty())
-                                ? currentUser.getEmail().trim()
-                                : name.toLowerCase().replaceAll("\\s+", "") + "@queuetees.local";
-                String role = (currentUser != null && currentUser.getRole() != null)
-                        ? currentUser.getRole().toString().toUpperCase()
-                        : "ADMIN";
-                String date = LocalDateTime.now()
-                        .format(DateTimeFormatter.ofPattern("MMM dd, yyyy hh:mm a", Locale.ENGLISH));
-
-                service.ActivityLogger.log(name + " | " + email + " | " + date + " | " + role + " | Logged out");
+                service.ActivityLogger.record(currentUser, "Logged out", "Signed out successfully");
 
                 Window window = SwingUtilities.getWindowAncestor(parent);
                 if (window != null)

@@ -14,15 +14,23 @@ import service.StoreService;
 public final class ProductManagementPanel extends JPanel {
     private final StoreService store = StoreService.getInstance();
     private final DefaultTableModel model = new DefaultTableModel(
-            new String[] { "Product", "Category", "Subcategory", "Price", "Stock", "Picture", "Status" }, 0) {
+            new String[] { "Product", "Category", "Subcategory", "Price", "Stock", "Picture", "Status", "Adjust stock" }, 0) {
+        @Override public Class<?> getColumnClass(int column) {
+            return column == 4 ? Integer.class : String.class;
+        }
         @Override
         public boolean isCellEditable(int row, int column) {
-            return false;
+            return column == 7;
         }
     };
     private final JTable table = new JTable(model);
     private final JLabel emptyLabel = Ui.label("", 11, Font.PLAIN, Ui.MUTED);
     private final JTextField search = new JTextField();
+    private final JComboBox<String> categoryFilter = new gui.components.RoundedComboBox<>(new String[] {"All categories"});
+    private final JComboBox<String> subcategoryFilter = new gui.components.RoundedComboBox<>(new String[] {"All subcategories"});
+    private final JComboBox<String> statusFilter = new gui.components.RoundedComboBox<>(new String[] {"All statuses", "Available", "Out of stock"});
+    private boolean updatingFilters;
+    private final List<Product> rowProducts = new java.util.ArrayList<>();
 
     private final model.User user;
 
@@ -41,6 +49,8 @@ public final class ProductManagementPanel extends JPanel {
         Ui.addLeft(this, Ui.label("Maintain the catalog and monitor availability.", 11, Font.PLAIN, Ui.MUTED));
         add(Box.createVerticalStrut(18));
         add(createToolbar());
+        add(Box.createVerticalStrut(10));
+        add(createFilters());
         add(Box.createVerticalStrut(16));
         add(createTableCard());
         refresh();
@@ -55,6 +65,8 @@ public final class ProductManagementPanel extends JPanel {
         search.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Ui.LINE),
                 new javax.swing.border.EmptyBorder(0, 13, 0, 13)));
         search.setToolTipText("Search products");
+        search.putClientProperty("searchField", true);
+        search.getAccessibleContext().setAccessibleName("Search products");
         search.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             public void insertUpdate(javax.swing.event.DocumentEvent e) {
                 refresh();
@@ -88,6 +100,7 @@ public final class ProductManagementPanel extends JPanel {
         card.setLayout(new BorderLayout());
         card.setBorder(new javax.swing.border.EmptyBorder(12, 12, 12, 12));
         AdminUi.style(table);
+        table.getRowSorter().setSortKeys(List.of(new RowSorter.SortKey(4, SortOrder.ASCENDING)));
         table.setRowHeight(48);
         table.getColumnModel().getColumn(0).setPreferredWidth(260);
 
@@ -111,6 +124,14 @@ public final class ProductManagementPanel extends JPanel {
             }
         });
 
+        javax.swing.table.TableColumn stockActions = table.getColumnModel().getColumn(7);
+        stockActions.setIdentifier("stockActions");
+        stockActions.setMinWidth(125);
+        stockActions.setPreferredWidth(135);
+        stockActions.setMaxWidth(150);
+        stockActions.setCellRenderer(new gui.components.StockAdjustmentCell(rowProducts::get, this::adjustStock));
+        stockActions.setCellEditor(new gui.components.StockAdjustmentCell(rowProducts::get, this::adjustStock));
+        ((javax.swing.table.TableRowSorter<?>) table.getRowSorter()).setSortable(7, false);
         table.removeColumn(table.getColumnModel().getColumn(5));
         JScrollPane scroll = new gui.components.ModernScrollPane(table);
         scroll.setColumnHeaderView(table.getTableHeader());
@@ -120,6 +141,7 @@ public final class ProductManagementPanel extends JPanel {
         emptyLabel.setHorizontalAlignment(SwingConstants.CENTER);
         emptyLabel.setBorder(new javax.swing.border.EmptyBorder(12, 8, 12, 8));
         card.add(emptyLabel, BorderLayout.NORTH);
+
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         card.setPreferredSize(new Dimension(1000, 520));
         return card;
@@ -219,21 +241,105 @@ public final class ProductManagementPanel extends JPanel {
     }
 
     public void refresh() {
-        String query = search.getText().trim().toLowerCase();
-        model.setRowCount(0);
+        if (updatingFilters) return;
+        Product selected = selectedProduct();
         List<Product> products = store.getProducts();
+        updatingFilters = true;
+        try {
+            updateOptions(categoryFilter, "All categories", products.stream().map(Product::getCategory).toList());
+            updateOptions(subcategoryFilter, "All subcategories", products.stream().map(Product::getSubcategory).toList());
+        } finally { updatingFilters = false; }
+        String query = search.getText().trim().toLowerCase(java.util.Locale.ROOT);
+        model.setRowCount(0);
+        rowProducts.clear();
         for (Product product : products) {
             String haystack = (product.getName() + " " + product.getCategory() + " " + product.getSubcategory())
                     .toLowerCase();
             if (!haystack.contains(query))
                 continue;
+            if (!matches(categoryFilter, product.getCategory()) || !matches(subcategoryFilter, product.getSubcategory())
+                    || !matches(statusFilter, product.isAvailable() ? "Available" : "Out of stock")) continue;
             String picture = product.getImagePath().isEmpty() ? "None" : product.getImagePath();
+            rowProducts.add(product);
             model.addRow(new Object[] { product.getName(), product.getCategory(), product.getSubcategory(),
                     String.format("₱%,.2f", product.getPrice()), product.getStock(), picture,
-                    product.isAvailable() ? "Available" : "Out of stock" });
+                    product.isAvailable() ? "Available" : "Out of stock", "" });
         }
         emptyLabel.setText(model.getRowCount() == 0 ? "No matching products are available."
                 : model.getRowCount() + " product(s) in the catalog");
+        if (selected != null) {
+            for (int row = 0; row < rowProducts.size(); row++) {
+                if (rowProducts.get(row).getId() == selected.getId()) {
+                    int view = table.convertRowIndexToView(row);
+                    if (view >= 0) table.setRowSelectionInterval(view, view);
+                    break;
+                }
+            }
+        }
+
+    }
+
+    private Product selectedProduct() {
+        int view = table.getSelectedRow();
+        if (view < 0) return null;
+        int row = table.convertRowIndexToModel(view);
+        return row >= 0 && row < rowProducts.size() ? rowProducts.get(row) : null;
+    }
+
+    private void adjustStock(Product product, int delta) {
+        long next = (long) product.getStock() + delta;
+        if (next < 0 || next > Integer.MAX_VALUE) {
+            JOptionPane.showMessageDialog(this, "Stock cannot go below zero or exceed the stock limit.", "Invalid stock adjustment", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        String message = product.getName() + "\nCurrent stock: " + product.getStock()
+                + "\n" + (delta > 0 ? "Add: " : "Remove: ") + Math.abs((long) delta)
+                + "\nNew stock: " + next;
+        if (JOptionPane.showConfirmDialog(this, message, "Confirm stock adjustment", JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE) != JOptionPane.OK_OPTION) return;
+        try {
+            store.adjustStock(product.getId(), delta, user);
+            refresh();
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Unable to adjust stock", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+    private JPanel createFilters() {
+        JPanel row = new JPanel(new GridLayout(1, 3, 12, 0));
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 62));
+        JComboBox<?>[] filters = {categoryFilter, subcategoryFilter, statusFilter};
+        String[] labels = {"Category", "Subcategory", "Status"};
+        for (int i = 0; i < filters.length; i++) {
+            JComboBox<?> filter = filters[i];
+            filter.getAccessibleContext().setAccessibleName("Filter by " + labels[i]);
+            filter.addActionListener(e -> refresh());
+            JPanel field = new JPanel(new BorderLayout(0, 4));
+            field.setOpaque(false);
+            field.add(AdminUi.label(labels[i], 11, false), BorderLayout.NORTH);
+            field.add(filter);
+            row.add(field);
+        }
+        return row;
+    }
+
+    private static boolean matches(JComboBox<String> filter, String value) {
+        return filter.getSelectedIndex() == 0 || value.equals(filter.getSelectedItem());
+    }
+
+    private static void updateOptions(JComboBox<String> filter, String all, List<String> values) {
+        java.util.List<String> options = new java.util.ArrayList<>();
+        options.add(all);
+        values.stream().filter(java.util.Objects::nonNull).distinct().sorted().forEach(options::add);
+        if (filter.getItemCount() == options.size()) {
+            boolean same = true;
+            for (int i = 0; i < options.size(); i++) same &= options.get(i).equals(filter.getItemAt(i));
+            if (same) return;
+        }
+        Object selected = filter.getSelectedItem();
+        filter.setModel(new DefaultComboBoxModel<>(options.toArray(String[]::new)));
+        if (options.contains(selected)) filter.setSelectedItem(selected);
     }
 
     /**
@@ -351,7 +457,7 @@ public final class ProductManagementPanel extends JPanel {
             javax.swing.table.DefaultTableModel model = new javax.swing.table.DefaultTableModel(columns, 0) {
                 @Override
                 public boolean isCellEditable(int row, int column) {
-                    return false;
+                    return column == 7;
                 }
             };
             JTable table = new JTable(model);

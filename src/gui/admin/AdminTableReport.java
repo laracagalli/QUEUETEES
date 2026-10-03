@@ -15,8 +15,11 @@ final class AdminTableReport implements Printable {
     final int rows;
     AdminTableReport(JTable source,String title,User user) {
         this.title=title;by=user==null?"Administrator (identity unavailable)":user.getUsername()+" | "+user.getEmail();rows=source.getRowCount();
-        String[] columns=new String[source.getColumnCount()];Object[][] data=new Object[rows][columns.length];
-        for(int c=0;c<columns.length;c++){columns[c]=source.getColumnName(c);for(int r=0;r<rows;r++)data[r][c]=source.getValueAt(r,c);}
+        java.util.List<Integer> visibleColumns = new java.util.ArrayList<>();
+        for(int c=0;c<source.getColumnCount();c++)
+            if(!"stockActions".equals(source.getColumnModel().getColumn(c).getIdentifier()))visibleColumns.add(c);
+        String[] columns=new String[visibleColumns.size()];Object[][] data=new Object[rows][columns.length];
+        for(int c=0;c<columns.length;c++){int sourceColumn=visibleColumns.get(c);columns[c]=source.getColumnName(sourceColumn);for(int r=0;r<rows;r++)data[r][c]=source.getValueAt(r,sourceColumn);}
         snapshot=new JTable(new DefaultTableModel(data,columns));AdminUi.style(snapshot);snapshot.setRowHeight(44);snapshot.setSize(Math.max(900,source.getWidth()),rows*44);snapshot.doLayout();
         snapshot.getTableHeader().setSize(snapshot.getWidth(),42);
         java.net.URL url=getClass().getResource("/Gui_Images/hirayalogo2.png");logo=url==null?null:new ImageIcon(url).getImage();
@@ -31,13 +34,14 @@ final class AdminTableReport implements Printable {
     }
     BufferedImage page(int index)throws PrinterException {BufferedImage image=new BufferedImage(842,595,BufferedImage.TYPE_INT_RGB);Graphics2D g=image.createGraphics();g.setColor(Color.WHITE);g.fillRect(0,0,842,595);int result=print(g,format(),index);g.dispose();return result==PAGE_EXISTS?image:null;}
     static void open(JPanel host,JTable table,String title,User user) {
+        service.ActivityLogger.record(user, "Report previewed", title);
         AdminTableReport report=new AdminTableReport(table,title,user);
         Component[] originals=host.getComponents();LayoutManager layout=host.getLayout();host.removeAll();host.setLayout(new BorderLayout(0,12));
         JPanel preview=new JPanel(new BorderLayout(0,12));preview.setOpaque(false);preview.setName("adminReportPreview");JLabel image=new JLabel();image.setHorizontalAlignment(SwingConstants.CENTER);JLabel count=AdminUi.label("",11,false);
         JButton back=AdminUi.button("Back to table"),previous=AdminUi.button("Previous"),next=AdminUi.button("Next"),print=AdminUi.button("Print report");int[] index={0};
         Runnable update=()->{try{image.setIcon(new ImageIcon(report.page(index[0])));previous.setEnabled(index[0]>0);next.setEnabled(report.page(index[0]+1)!=null);count.setText("Page "+(index[0]+1));}catch(PrinterException e){JOptionPane.showMessageDialog(host,"Cannot preview report: "+e.getMessage());}};
         previous.addActionListener(e->{index[0]--;update.run();});next.addActionListener(e->{index[0]++;update.run();});back.addActionListener(e->{host.removeAll();host.setLayout(layout);for(Component c:originals)host.add(c);host.revalidate();host.repaint();});
-        print.addActionListener(e->{PrinterJob job=PrinterJob.getPrinterJob();job.setJobName(title);job.setPrintable(report,format());if(job.getPrintService()==null){JOptionPane.showMessageDialog(host,"Set up a printer or Microsoft Print to PDF first.");return;}if(!job.printDialog())return;print.setEnabled(false);back.setEnabled(false);new SwingWorker<Void,Void>(){protected Void doInBackground()throws Exception{job.print();return null;}protected void done(){print.setEnabled(true);back.setEnabled(true);try{get();}catch(Exception ex){JOptionPane.showMessageDialog(host,"Printing failed: "+ex.getMessage());}}}.execute();});
+        print.addActionListener(e->{PrinterJob job=PrinterJob.getPrinterJob();job.setJobName(title);job.setPrintable(report,format());if(job.getPrintService()==null){JOptionPane.showMessageDialog(host,"Set up a printer or Microsoft Print to PDF first.");return;}if(!job.printDialog())return;print.setEnabled(false);back.setEnabled(false);new SwingWorker<Void,Void>(){protected Void doInBackground()throws Exception{job.print();return null;}protected void done(){print.setEnabled(true);back.setEnabled(true);try{get();service.ActivityLogger.record(user,"Report printed",title + " sent to printer");}catch(Exception ex){JOptionPane.showMessageDialog(host,"Printing failed: "+ex.getMessage());}}}.execute();});
         JPanel heading=new JPanel(new BorderLayout());heading.setOpaque(false);heading.add(AdminUi.label(title,25,true));heading.add(back,BorderLayout.EAST);preview.add(heading,BorderLayout.NORTH);preview.add(new gui.components.ModernScrollPane(image));JPanel actions=new JPanel(new FlowLayout());actions.add(previous);actions.add(count);actions.add(next);actions.add(print);preview.add(actions,BorderLayout.SOUTH);host.add(preview);update.run();host.revalidate();host.repaint();
     }
 }

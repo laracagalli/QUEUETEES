@@ -57,7 +57,10 @@ public final class StaffReportTest {
             Order o = store.checkout(500 + i, new CheckoutDetails("Customer " + (i + 1), "test@example.com", "09123456789", "Pickup", "", "Cash", ""));
             if (i < 3) store.advanceOrder(o.getId());
             if (i < 2) store.advanceOrder(o.getId());
-            if (i == 0) store.advanceOrder(o.getId());
+            if (i == 0) {
+                store.advanceOrder(o.getId());
+                store.completeOrder(o.getId());
+            }
         }
         SwingUtilities.invokeAndWait(() -> {
             try {

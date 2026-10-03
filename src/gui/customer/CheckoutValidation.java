@@ -1,14 +1,13 @@
 package gui.customer;
 
 import java.util.function.Consumer;
-import javax.swing.JTextField;
 import javax.swing.text.*;
 
 /** Signup-compatible input limits, applied atomically to typing and pasted replacements. */
 final class CheckoutValidation {
     private CheckoutValidation() { }
 
-    static void restrict(JTextField field, int limit, String allowed, String message, Consumer<String> feedback) {
+    static void restrict(JTextComponent field, int limit, String allowed, String message, Consumer<String> feedback) {
         ((AbstractDocument) field.getDocument()).setDocumentFilter(new DocumentFilter() {
             @Override public void insertString(FilterBypass fb, int offset, String text, AttributeSet attributes)
                     throws BadLocationException {

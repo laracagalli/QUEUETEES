@@ -42,6 +42,7 @@ final class ReportPreview {
                 Window owner = SwingUtilities.getWindowAncestor(parent);
                 if (owner != null) attributes.add(new javax.print.attribute.standard.DialogOwner(owner));
                 if (!job.printDialog(attributes)) return;
+                model.User printingUser = service.ActivityLogger.getActor();
                 print.setEnabled(false);
                 back.setEnabled(false);
                 counter.setText("Sending report to printer...");
@@ -53,6 +54,7 @@ final class ReportPreview {
                         update.run();
                         try {
                             get();
+                            service.ActivityLogger.record(printingUser, "Report printed", "Completed orders report sent to printer");
                             StaffStyles.showMessage(parent, "Report sent to the selected printer.");
                         } catch (Exception ex) {
                             Throwable cause = ex.getCause() == null ? ex : ex.getCause();

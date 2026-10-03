@@ -268,30 +268,8 @@ public final class CustomerDashboardPanel extends JPanel {
         JDialog dialog = new JDialog(ancestor instanceof Frame ? (Frame) ancestor : null, "Edit Profile",
                 Dialog.ModalityType.APPLICATION_MODAL);
 
-        JPanel editCard = Ui.card(Ui.PAPER, 0, false);
-        editCard.setLayout(new BoxLayout(editCard, BoxLayout.Y_AXIS));
-        editCard.setBorder(new EmptyBorder(16, 18, 16, 18));
-
-        Ui.addLeft(editCard, Ui.label("Edit Profile", 13, Font.BOLD, Ui.INK));
-        editCard.add(Box.createVerticalStrut(12));
-
-        JPanel formGrid = new JPanel(new GridLayout(2, 1, 12, 8));
-        formGrid.setOpaque(false);
-        formGrid.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        JPanel usernameBox = Ui.verticalBox();
-        usernameBox.add(Ui.label("Username", 10, Font.BOLD, Ui.MUTED));
-        usernameBox.add(Box.createVerticalStrut(3));
         JTextField usernameField = new JTextField(user != null && user.getUsername() != null ? user.getUsername() : "");
         usernameField.setFont(Ui.font(11, Font.PLAIN));
-        usernameBox.add(usernameField);
-
-        JPanel avatarBox = Ui.verticalBox();
-        avatarBox.add(Ui.label("Profile Picture", 10, Font.BOLD, Ui.MUTED));
-        avatarBox.add(Box.createVerticalStrut(3));
-
-        JPanel picChooserPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        picChooserPanel.setOpaque(false);
 
         String currentPhotoName = (user != null && user.getProfilePicture() != null
                 && !user.getProfilePicture().trim().isEmpty())
@@ -317,19 +295,6 @@ public final class CustomerDashboardPanel extends JPanel {
             }
         });
 
-        picChooserPanel.add(choosePicBtn);
-        picChooserPanel.add(picPathLabel);
-        avatarBox.add(picChooserPanel);
-
-        formGrid.add(usernameBox);
-        formGrid.add(avatarBox);
-
-        editCard.add(formGrid);
-        editCard.add(Box.createVerticalStrut(16));
-
-        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        actionPanel.setOpaque(false);
-        actionPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         RoundedButton cancelButton = Ui.lightButton("Cancel");
         cancelButton.setPreferredSize(new Dimension(85, 32));
@@ -376,15 +341,10 @@ public final class CustomerDashboardPanel extends JPanel {
             SwingUtilities.invokeLater(this::refreshProfileView);
         });
 
-        actionPanel.add(cancelButton);
-        actionPanel.add(changePassButton);
-        actionPanel.add(saveButton);
 
-        editCard.add(actionPanel);
-
-        dialog.setContentPane(editCard);
+        dialog.setContentPane(new gui.components.ProfileEditorPanel(usernameField, choosePicBtn, picPathLabel,
+                cancelButton, changePassButton, saveButton));
         dialog.pack();
-        dialog.setSize(460, 290);
         dialog.setLocationRelativeTo(this);
         dialog.setResizable(false);
         dialog.setVisible(true);

@@ -86,6 +86,8 @@ public class AuthService {
                         "This account cannot log in right now.");
             }
 
+            ActivityLogger.setActor(user);
+            ActivityLogger.record(user, "Logged in", "Signed in successfully");
             return LoginResult.success(user);
         } finally {
             if (passwordChars != null) {
@@ -110,6 +112,7 @@ public class AuthService {
     public void updateUser(User user) {
         if (user != null) {
             userRepository.save(user);
+            ActivityLogger.record(user, "Profile updated", "Updated account profile");
         }
     }
 
@@ -164,6 +167,7 @@ public class AuthService {
             if (!next.equals(confirm))
                 throw new IllegalArgumentException("New passwords do not match.");
             user.setPasswordHash(PasswordUtil.hashPassword(next));
+            ActivityLogger.record(user, "Password changed", "Changed account password");
         } finally {
             if (currentPassword != null) java.util.Arrays.fill(currentPassword, '\0');
             if (newPassword != null) java.util.Arrays.fill(newPassword, '\0');
@@ -182,6 +186,7 @@ public class AuthService {
         if (!suspend && target.getStatus() != AccountStatus.SUSPENDED)
             throw new IllegalStateException("This account is not suspended.");
         target.setStatus(suspend ? AccountStatus.SUSPENDED : AccountStatus.ACTIVE);
+        ActivityLogger.record(actor, suspend ? "Account suspended" : "Account reactivated", target.getUsername() + " (#" + targetId + ")");
     }
 
     public void reviewStaff(User actor, int staffId, boolean approve) {
@@ -191,6 +196,7 @@ public class AuthService {
         if (staff.getRole() != UserRole.STAFF || staff.getStatus() != AccountStatus.PENDING_APPROVAL)
             throw new IllegalStateException("Only pending staff applications can be reviewed. Refresh and try again.");
         staff.setStatus(approve ? AccountStatus.ACTIVE : AccountStatus.REJECTED);
+        ActivityLogger.record(actor, approve ? "Staff approved" : "Staff rejected", staff.getUsername() + " (#" + staffId + ")");
         // Send email notification to staff in background
         final String staffEmail = staff.getEmail();
         final String staffUsername = staff.getUsername();

@@ -70,6 +70,7 @@ public class SignupFrame extends JFrame implements ActionListener {
         this.staffRegistration = staffRegistration;
 
         setTitle(staffRegistration ? "Staff Registration" : "Sign Up");
+        gui.components.AppTheme.applyWindowIcon(this);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(1100, 733);
         setLocationRelativeTo(null);
@@ -288,6 +289,7 @@ public class SignupFrame extends JFrame implements ActionListener {
         birthday.setBounds(30, 418, 490, 36);
         birthday.setFont(fieldFont);
         birthday.setBackground(fieldBg);
+        gui.components.AppTheme.styleCalendarBackground(birthday.getJCalendar());
         leftPanel.add(birthday);
 
         birthdayError = new JLabel("");

@@ -8,6 +8,7 @@ public class AdminFrame extends JFrame {
     public AdminFrame(AuthService authService) { this(authService,null); }
     public AdminFrame(AuthService authService, model.User user) {
         setTitle("Admin Dashboard");
+        gui.components.AppTheme.applyWindowIcon(this);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(1100, 700));
         setSize(1440, 820);

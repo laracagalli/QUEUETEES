@@ -34,9 +34,11 @@ public class LoginFrame extends JFrame implements ActionListener {
     private int currentSlide = 0;
 
     public LoginFrame(AuthService authService) {
+        service.ActivityLogger.setActor(null);
         this.authService = authService;
 
         setTitle("Log In");
+        gui.components.AppTheme.applyWindowIcon(this);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(1100, 733);
         setLocationRelativeTo(null);
@@ -145,6 +147,7 @@ public class LoginFrame extends JFrame implements ActionListener {
             @Override
             public void mouseClicked(MouseEvent e) {
                 JFrame frame = new JFrame("Forgot Password");
+                gui.components.AppTheme.applyWindowIcon(frame);
                 frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
                 frame.setContentPane(new ForgotPasswordPanel(authService.passwordResets(), frame::dispose));
                 frame.setMinimumSize(new Dimension(1000, 733));
@@ -403,12 +406,10 @@ public class LoginFrame extends JFrame implements ActionListener {
         switch (user.getRole()) {
             case ADMIN:
                 // Added activity logging for Admin login
-                service.ActivityLogger.log("Admin logged in: " + user.getUsername());
                 new AdminFrame(authService, user).setVisible(true);
                 break;
             case STAFF:
                 // Added activity logging for Staff login
-                service.ActivityLogger.log("Staff logged in: " + user.getUsername());
                 new StaffFrame(authService, user).setVisible(true);
                 break;
             case CUSTOMER:
