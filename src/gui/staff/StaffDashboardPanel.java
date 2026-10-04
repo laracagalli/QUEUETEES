@@ -20,7 +20,6 @@ public final class StaffDashboardPanel extends JPanel {
     private final CompletedOrdersPanel completedPanel;
     private final OrderDetailsPanel detailsPanel = new OrderDetailsPanel();
     private final QueueStatusPanel statusPanel = new QueueStatusPanel();
-    private final gui.components.ActivityLogPanel activityLogPanel = new gui.components.ActivityLogPanel();
 
     private final StaffOverviewPanel overviewPanel = new StaffOverviewPanel(() -> showPanel("queue"));
     private final javax.swing.Timer refreshTimer = new javax.swing.Timer(2000, e -> refreshVisiblePanel());
@@ -40,7 +39,6 @@ public final class StaffDashboardPanel extends JPanel {
         content.add(detailsPanel, "orders");
         content.add(completedPanel, "completed");
         content.add(statusPanel, "status");
-        content.add(activityLogPanel, "activity");
         content.add(new StaffProfilePanel(user, authService), "profile");
         setOpaque(false);
         showPanel("overview");
@@ -74,7 +72,6 @@ public final class StaffDashboardPanel extends JPanel {
         addNavigation(sidebar, "Order Details", "orders");
         addNavigation(sidebar, "Completed Orders", "completed");
         addNavigation(sidebar, "Queue Status", "status");
-        addNavigation(sidebar, "Activity Log", "activity");
         addNavigation(sidebar, "My Account", "profile");
         sidebar.add(Box.createVerticalGlue());
         Ui.addLeft(sidebar, Ui.label("STAFF  •  ONLINE", 10, Font.BOLD, new Color(221, 230, 216)));
@@ -120,7 +117,6 @@ public final class StaffDashboardPanel extends JPanel {
     }
 
     private void showPanel(String key) {
-        if ("activity".equals(key)) activityLogPanel.refresh();
         currentPanel = key;
         cardLayout.show(content, key);
         refreshPanel(key);
