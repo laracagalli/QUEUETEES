@@ -101,8 +101,6 @@ public final class CustomerManagementPanel extends JPanel {
         if (confirm != JOptionPane.YES_OPTION) return;
         try {
             authService.suspendUser(adminUser, u.getId(), suspend);
-            service.ActivityLogger.record(adminUser, suspend ? "Account suspended" : "Account unsuspended",
-                    "Customer: " + u.getUsername() + " (" + u.getEmail() + ")");
             refresh();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.WARNING_MESSAGE);

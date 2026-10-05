@@ -78,8 +78,6 @@ public final class StaffApprovalsPanel extends JPanel {
         if (confirm != JOptionPane.YES_OPTION) return;
         try {
             authService.suspendUser(administrator, user.getId(), suspend);
-            service.ActivityLogger.record(administrator, suspend ? "Account suspended" : "Account unsuspended",
-                    "Staff: " + user.getUsername() + " (" + user.getEmail() + ")");
             refresh();
             message.setText("Account " + (suspend ? "suspended" : "unsuspended") + ": " + user.getUsername());
         } catch (Exception ex) {
@@ -146,8 +144,6 @@ public final class StaffApprovalsPanel extends JPanel {
         if (choice != 0 && choice != 1) return;
         try {
             authService.reviewStaff(administrator, user.getId(), choice == 0);
-            service.ActivityLogger.record(administrator, choice == 0 ? "Staff approved" : "Staff rejected",
-                    "Account: " + user.getUsername() + " (" + user.getEmail() + ")");
             refresh();
             message.setText("Application " + (choice == 0 ? "approved. Staff can now sign in." : "rejected. Staff access remains blocked."));
         } catch (IllegalArgumentException | IllegalStateException ex) {

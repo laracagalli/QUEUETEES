@@ -406,12 +406,10 @@ public class LoginFrame extends JFrame implements ActionListener {
         switch (user.getRole()) {
             case ADMIN:
                 service.ActivityLogger.setActor(user);
-                service.ActivityLogger.record(user, "Logged in", "Admin signed in");
                 new AdminFrame(authService, user).setVisible(true);
                 break;
             case STAFF:
                 service.ActivityLogger.setActor(user);
-                service.ActivityLogger.record(user, "Logged in", "Staff signed in");
                 new StaffFrame(authService, user).setVisible(true);
                 break;
             case CUSTOMER:

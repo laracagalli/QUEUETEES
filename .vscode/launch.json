@@ -6,6 +6,7 @@
             "name": "Run QueueTees",
             "request": "launch",
             "mainClass": "main",
+            "javaExec": "C:/Program Files/Java/jdk-24/bin/java.exe",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"
         }

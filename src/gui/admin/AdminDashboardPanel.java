@@ -36,6 +36,7 @@ public final class AdminDashboardPanel extends JPanel {
     // Dynamic Overview Containers
     private final JPanel lowStockContainer = new JPanel(new BorderLayout());
     private final JPanel activityContainer = new JPanel(new BorderLayout());
+    private final gui.components.ActivityLogPanel recentActivityPanel = new gui.components.ActivityLogPanel(true);
 
     // Dynamic Profile Container
     private final JPanel profileContainer = new JPanel(new BorderLayout());
@@ -329,70 +330,18 @@ public final class AdminDashboardPanel extends JPanel {
     }
 
     private void refreshRecentActivity() {
-        activityContainer.removeAll();
-        java.util.List<service.ActivityLogger.Entry> entries = service.ActivityLogger.getEntries();
-
-        if (entries == null || entries.isEmpty()) {
-            activityContainer.add(Ui.emptyState("Recent activity", "No operational activity is available yet."),
-                    BorderLayout.CENTER);
-        } else {
+        if (recentActivityPanel.getParent() == null) {
             JPanel card = Ui.card(Ui.PAPER, 22, true);
             card.setLayout(new BorderLayout());
-            card.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
-            card.setPreferredSize(new Dimension(1000, 300));
+            card.setPreferredSize(new Dimension(1000, 380));
             card.setBorder(new EmptyBorder(16, 16, 16, 16));
-
-            JPanel heading = new JPanel(new BorderLayout());
-            heading.setOpaque(false);
-            heading.setBorder(new EmptyBorder(0, 0, 12, 0));
-            heading.add(Ui.label("Recent activity", 17, Font.BOLD, Ui.INK), BorderLayout.WEST);
-            heading.add(Ui.label("All activity logs / newest first", 11, Font.PLAIN, Ui.MUTED), BorderLayout.EAST);
-            card.add(heading, BorderLayout.NORTH);
-
-            String[] columns = { "Username", "Role", "Date", "Action", "Details" };
-            DefaultTableModel model = new DefaultTableModel(columns, 0) {
-                @Override public boolean isCellEditable(int row, int column) { return false; }
-            };
-
-            java.time.format.DateTimeFormatter fmt =
-                    java.time.format.DateTimeFormatter.ofPattern("MMM dd, yyyy hh:mm a", java.util.Locale.ENGLISH);
-
-            for (service.ActivityLogger.Entry entry : entries) {
-                model.addRow(new Object[]{
-                        entry.username(),
-                        entry.role(),
-                        entry.time().format(fmt),
-                        entry.action(),
-                        entry.details()
-                });
-            }
-
-            JTable table = new JTable(model);
-            Ui.styleTable(table);
-            table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-            table.setBackground(Ui.PAPER);
-            table.getTableHeader().setBackground(new Color(238, 239, 230));
-            table.getTableHeader().setBorder(null);
-
-            JScrollPane scroll = new gui.components.ModernScrollPane(table);
-            scroll.setBorder(null);
-            scroll.setBackground(Ui.PAPER);
-            scroll.getViewport().setBackground(Ui.PAPER);
-
-            card.add(scroll, BorderLayout.CENTER);
-
-            JPanel footer = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 10));
-            footer.setOpaque(false);
-            footer.add(Ui.label(entries.size() + " activity record(s) logged.", 11, Font.PLAIN, Ui.MUTED));
-            card.add(footer, BorderLayout.SOUTH);
-
+            card.add(recentActivityPanel);
             activityContainer.add(card, BorderLayout.CENTER);
         }
-
+        recentActivityPanel.refresh();
         activityContainer.revalidate();
         activityContainer.repaint();
     }
-
     private JPanel createDashboardPanel() {
         JPanel page = Ui.page("Good day!", "Administrator dashboard", "Monitor QueueTees operations from one place.");
 

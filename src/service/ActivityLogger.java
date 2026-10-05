@@ -15,6 +15,8 @@ public class ActivityLogger {
     public static synchronized model.User getActor() { return actor; }
     public static synchronized void record(model.User user, String action, String details) {
         if (user == null || (user.getRole() != model.UserRole.ADMIN && user.getRole() != model.UserRole.STAFF)) return;
+        // Navigation and table controls are not account or operational changes.
+        if (java.util.Set.of("UI command", "Search changed", "Table sorted", "Filter changed", "Date filter changed").contains(action)) return;
         Entry entry = new Entry(LocalDateTime.now(), user.getUsername(), user.getRole().name(), action, details);
         entries.add(0, entry);
         log(user.getUsername() + " | " + user.getEmail() + " | " + TIME_FORMAT.format(entry.time())
