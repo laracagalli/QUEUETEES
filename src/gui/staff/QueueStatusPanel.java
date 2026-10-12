@@ -6,7 +6,7 @@ import model.Order;
 import model.OrderStatus;
 import service.StoreService;
 
-/** Staff queue board with one column for each active fulfillment stage. */
+
 public final class QueueStatusPanel extends JPanel {
     private final StoreService store = StoreService.getInstance();
     private final JPanel board = new JPanel(new GridLayout(1, 3, 16, 0));

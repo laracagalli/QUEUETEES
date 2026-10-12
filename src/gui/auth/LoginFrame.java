@@ -1,15 +1,14 @@
 package gui.auth;
 
-import gui.components.RoundedButton;
-import gui.components.OutlineButton;
+import gui.admin.AdminFrame;
 import gui.components.LimitedDocument;
-
+import gui.components.OutlineButton;
+import gui.components.RoundedButton;
+import gui.customer.CustomerFrame;
+import gui.staff.StaffFrame;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
-import gui.admin.AdminFrame;
-import gui.customer.CustomerFrame;
-import gui.staff.StaffFrame;
 import model.User;
 import service.AuthService;
 import service.AuthStatus;

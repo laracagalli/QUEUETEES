@@ -7,7 +7,7 @@ import javax.swing.table.DefaultTableModel;
 import model.Order;
 import service.StoreService;
 
-/** Staff page containing completed order records. */
+
 public final class CompletedOrdersPanel extends JPanel {
     private final java.util.List<Order> rowOrders = new java.util.ArrayList<>();
     private final StoreService store = StoreService.getInstance();
@@ -28,7 +28,7 @@ public final class CompletedOrdersPanel extends JPanel {
     private final JComboBox<String> fulfillmentFilter = new gui.components.RoundedComboBox<>(new String[]{"All fulfillment methods"});
     private boolean updatingFilters;
 
-    /** Enforces the same limit for arrows, typed dates and programmatic updates. */
+    
     static final class PastDateModel extends SpinnerDateModel {
         PastDateModel() {
             super(today(), null, today(), java.util.Calendar.DAY_OF_MONTH);

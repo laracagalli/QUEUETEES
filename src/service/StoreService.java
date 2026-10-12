@@ -25,6 +25,12 @@ public final class StoreService {
     private final AtomicInteger orderIds = new AtomicInteger(1);
     private final AtomicInteger queueNumbers = new AtomicInteger(1);
     private boolean initializing = true;
+    private repository.JdbcStoreRepository persistence;
+    public synchronized void useDatabase(database.Database database) {
+        repository.JdbcStoreRepository repository = new repository.JdbcStoreRepository(database);
+        repository.seedCatalog(new ArrayList<>(products));
+        persistence = repository;
+    }
 
     private StoreService() {
         // Men's catalog
@@ -63,7 +69,8 @@ public final class StoreService {
     public static StoreService getInstance() { return INSTANCE; }
 
     public synchronized Product addProduct(String name, String category, String subcategory,
-                                           double price, int stock, String imagePath) {
+                double price, int stock, String imagePath) {
+        if (persistence != null) return persistence.addProduct(name,category,subcategory,price,stock,imagePath);
         if (name == null || name.trim().isEmpty()) throw new IllegalArgumentException("Product name is required.");
         if (price < 0 || stock < 0) throw new IllegalArgumentException("Price and stock cannot be negative.");
         Product product = new Product(productIds.getAndIncrement(), name.trim(), category,
@@ -73,13 +80,15 @@ public final class StoreService {
         return product;
     }
 
-    public synchronized List<Product> getProducts() { return new ArrayList<>(products); }
+    public synchronized List<Product> getProducts() { return persistence == null ? new ArrayList<>(products) : persistence.products(); }
 
     public synchronized Optional<Product> findProduct(int id) {
+        if (persistence != null) return persistence.findProduct(id);
         return products.stream().filter(product -> product.getId() == id).findFirst();
     }
 
     public synchronized Product adjustStock(int productId, int delta, model.User actor) {
+        if (persistence != null) return persistence.adjustStock(productId,delta,actor);
         if (delta == 0) throw new IllegalArgumentException("Enter a nonzero stock adjustment.");
         Product product = findProduct(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product was not found."));
@@ -98,6 +107,7 @@ public final class StoreService {
     }
 
     public synchronized void addToCart(int customerId, int productId, int amount) {
+        if (persistence != null) { persistence.addToCart(customerId,productId,amount); return; }
         if (amount < 1) throw new IllegalArgumentException("Quantity must be at least 1.");
         Product product = findProduct(productId).orElseThrow(() -> new IllegalArgumentException("Product was not found."));
         List<CartItem> cart = carts.computeIfAbsent(customerId, key -> new ArrayList<>());
@@ -112,15 +122,18 @@ public final class StoreService {
     }
 
     public synchronized List<CartItem> getCart(int customerId) {
+        if (persistence != null) return persistence.cart(customerId);
         return new ArrayList<>(carts.getOrDefault(customerId, new ArrayList<>()));
     }
 
     public synchronized void removeFromCart(int customerId, int productId) {
+        if (persistence != null) { persistence.removeFromCart(customerId,productId); return; }
         carts.computeIfAbsent(customerId, key -> new ArrayList<>())
                 .removeIf(item -> item.getProduct().getId() == productId);
     }
 
     public synchronized Order checkout(int customerId, CheckoutDetails details) {
+        if (persistence != null) return persistence.checkout(customerId,details);
         List<CartItem> cart = carts.getOrDefault(customerId, new ArrayList<>());
         if (cart.isEmpty()) throw new IllegalStateException("Your cart is empty.");
         if (details == null || details.getFullName() == null || details.getFullName().trim().isEmpty())
@@ -146,27 +159,29 @@ public final class StoreService {
         return order;
     }
 
-    public synchronized List<Order> getOrders() { return new ArrayList<>(orders); }
+    public synchronized List<Order> getOrders() { return persistence == null ? new ArrayList<>(orders) : persistence.orders(); }
 
     public synchronized List<Order> getOrdersForCustomer(int customerId) {
-        return orders.stream().filter(order -> order.getCustomerId() == customerId).collect(Collectors.toList());
+        return getOrders().stream().filter(order -> order.getCustomerId() == customerId).collect(Collectors.toList());
     }
 
     public synchronized List<Order> getActiveOrders() {
-        return orders.stream().filter(order -> order.getStatus() != OrderStatus.COMPLETED).collect(Collectors.toList());
+        return getOrders().stream().filter(order -> order.getStatus() != OrderStatus.COMPLETED).collect(Collectors.toList());
     }
 
     public synchronized List<Order> getCompletedOrders() {
-        return orders.stream().filter(order -> order.getStatus() == OrderStatus.COMPLETED).collect(Collectors.toList());
+        return getOrders().stream().filter(order -> order.getStatus() == OrderStatus.COMPLETED).collect(Collectors.toList());
     }
 
     public synchronized Order advanceOrder(int orderId) {
+        if (persistence != null) return persistence.advance(orderId,null,false);
         Order order = orders.stream().filter(item -> item.getId() == orderId).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Order was not found."));
         return advanceOrder(orderId, order.getStatus());
     }
 
     public synchronized Order advanceOrder(int orderId, OrderStatus expectedStatus) {
+        if (persistence != null) return persistence.advance(orderId,expectedStatus,false);
         Order order = orders.stream().filter(item -> item.getId() == orderId).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Order was not found."));
         if (order.getStatus() != expectedStatus)
@@ -191,6 +206,7 @@ public final class StoreService {
     }
 
     public synchronized Order completeOrder(int orderId) {
+        if (persistence != null) return persistence.advance(orderId,null,true);
         Order order = orders.stream().filter(item -> item.getId() == orderId).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Order was not found."));
         if (order.getStatus() != OrderStatus.OUT_FOR_DELIVERY)

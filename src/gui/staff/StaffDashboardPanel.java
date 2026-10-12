@@ -2,14 +2,12 @@ package gui.staff;
 
 import gui.components.RoundedButton;
 import java.awt.*;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import service.AuthService;
 
-/** All staff navigation and operational pages. */
+
 public final class StaffDashboardPanel extends JPanel {
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel content = new JPanel(cardLayout);

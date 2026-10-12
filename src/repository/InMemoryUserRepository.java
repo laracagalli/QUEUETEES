@@ -27,6 +27,7 @@ public class InMemoryUserRepository implements UserRepository {
 
     @Override
     public void save(User user) {
+        users.removeIf(existing -> existing.getId() == user.getId());
         users.add(user);
     }
 }

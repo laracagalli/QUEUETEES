@@ -399,6 +399,7 @@ public final class AdminDashboardPanel extends JPanel {
         return page;
     }
 
+    //profile panel
     private JPanel createProfilePanel(model.User user) {
         JPanel page = Ui.page("ACCOUNT", "My account", "Review and update administrator account details.");
         profileContainer.setOpaque(false);
@@ -575,7 +576,8 @@ public final class AdminDashboardPanel extends JPanel {
                 }
             }
 
-            service.ActivityLogger.record(user, "Profile updated", "Updated username or profile picture");
+            try { authService.updateUser(user); }
+            catch (RuntimeException ex) { JOptionPane.showMessageDialog(dialog, ex.getMessage(), "Profile update", JOptionPane.ERROR_MESSAGE); return; }
             JOptionPane.showMessageDialog(dialog, "Profile updated successfully!", "Success",
                     JOptionPane.INFORMATION_MESSAGE);
             dialog.dispose();

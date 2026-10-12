@@ -13,9 +13,12 @@ public class main {
         public static void main(String[] args) {
                 SwingUtilities.invokeLater(() -> {
                         gui.components.AppTheme.install();
-                        UserRepository userRepository = createTestUsers();
-                        AuthService authService = new AuthService(userRepository);
-                        new LoginFrame(authService).setVisible(true);
+                        if ("memory".equals(System.getProperty("queuetees.storage"))) {
+                                new LoginFrame(new AuthService(createTestUsers())).setVisible(true);
+                        } else {
+                                database.DatabaseStartup.start(auth -> new LoginFrame(auth).setVisible(true),
+                                        () -> createTestUsers().findAll().stream().filter(user -> java.util.Set.of("admin","staff","verifiedcustomer").contains(user.getUsername())).toList());
+                        }
                 });
         }
 

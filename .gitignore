@@ -3,3 +3,4 @@
 
 # Java build output is generated locally from src.
 /bin/
+/database/database.local.properties

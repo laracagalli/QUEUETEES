@@ -17,7 +17,7 @@ public final class Order {
     private LocalDateTime completedAt;
 
     public Order(int id, int queueNumber, int customerId, String customerName,
-                 List<CartItem> items, LocalDateTime placedAt, CheckoutDetails checkoutDetails) {
+                List<CartItem> items, LocalDateTime placedAt, CheckoutDetails checkoutDetails) {
         this.id = id;
         this.queueNumber = queueNumber;
         this.customerId = customerId;
@@ -36,6 +36,11 @@ public final class Order {
     }
 
     public int getId() { return id; }
+    public static Order restore(int id, int queueNumber, int customerId, String customerName, List<CartItem> items,
+                                LocalDateTime placedAt, CheckoutDetails details, OrderStatus status, LocalDateTime completedAt) {
+        Order order = new Order(id, queueNumber, customerId, customerName, items, placedAt, details);
+        order.status = status; order.completedAt = completedAt; return order;
+    }
     public int getQueueNumber() { return queueNumber; }
     public int getCustomerId() { return customerId; }
     public String getCustomerName() { return customerName; }

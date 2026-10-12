@@ -106,7 +106,8 @@ public final class StaffProfilePanel extends JPanel {
                 return;
             }
             user.setUsername(newUsername);
-            try { authService.updateUser(user); } catch (Exception ignored) { }
+            try { authService.updateUser(user); }
+            catch (RuntimeException ex) { JOptionPane.showMessageDialog(dialog,ex.getMessage(),"Profile update",JOptionPane.ERROR_MESSAGE);return; }
             JOptionPane.showMessageDialog(dialog, "Profile updated successfully!", "Success",
                     JOptionPane.INFORMATION_MESSAGE);
             dialog.dispose();

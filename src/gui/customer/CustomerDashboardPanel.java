@@ -7,10 +7,10 @@ import java.util.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import service.AuthService;
 import model.User;
+import service.AuthService;
 
-/** All customer shop navigation and pages. */
+
 public final class CustomerDashboardPanel extends JPanel {
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel content = new JPanel(cardLayout);
@@ -23,7 +23,7 @@ public final class CustomerDashboardPanel extends JPanel {
     private final OrderTrackingPanel trackingPanel;
     private final OrderHistoryPanel historyPanel;
 
-    // Dynamic container for profile
+
     private final JPanel profileContainer = new JPanel(new BorderLayout());
 
     public CustomerDashboardPanel(AuthService authService, User user) {
@@ -47,7 +47,7 @@ public final class CustomerDashboardPanel extends JPanel {
         content.add(trackingPanel, "tracking");
         content.add(historyPanel, "history");
 
-        // Initialize dynamic Profile Panel
+
         profileContainer.setOpaque(false);
         profileContainer.add(createProfilePanel(currentUser), BorderLayout.CENTER);
         content.add(profileContainer, "profile");
@@ -145,13 +145,12 @@ public final class CustomerDashboardPanel extends JPanel {
     private JPanel createProfilePanel(model.User user) {
         JPanel page = Ui.page("ACCOUNT", "My account", "Review and update customer account details.");
 
-        // White Profile Card Background matching the mockup
         JPanel profileCard = Ui.card(Ui.PAPER, 14, false);
         profileCard.setLayout(new BoxLayout(profileCard, BoxLayout.Y_AXIS));
         profileCard.setBorder(new EmptyBorder(32, 32, 38, 32));
         profileCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 450));
 
-        // 1. Top Section: Avatar and Name Row
+        //Top Section: Avatar and Name Row
         JPanel headerRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 0));
         headerRow.setOpaque(false);
         headerRow.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -207,7 +206,6 @@ public final class CustomerDashboardPanel extends JPanel {
         profileCard.add(headerRow);
         profileCard.add(Box.createVerticalStrut(46));
 
-        // 2. Data Grid Section mapping to mockup values
         JPanel grid = new JPanel(new GridLayout(3, 2, 40, 28));
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -223,7 +221,6 @@ public final class CustomerDashboardPanel extends JPanel {
 
         profileCard.add(grid);
 
-        // Enforce the card styling within the layout constraints
         JPanel cardWrap = new JPanel(new BorderLayout());
         cardWrap.setOpaque(false);
         cardWrap.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -232,7 +229,7 @@ public final class CustomerDashboardPanel extends JPanel {
         page.add(cardWrap);
         page.add(Box.createVerticalStrut(24));
 
-        // 3. Edit Button below the card
+        //BUTTONS
         RoundedButton editProfileBtn = Ui.primaryButton("Edit Profile");
         editProfileBtn.setPreferredSize(new Dimension(135, 36));
         editProfileBtn.setMinimumSize(new Dimension(135, 36));
@@ -288,7 +285,6 @@ public final class CustomerDashboardPanel extends JPanel {
             int result = fileChooser.showOpenDialog(dialog);
             if (result == JFileChooser.APPROVE_OPTION) {
                 File file = fileChooser.getSelectedFile();
-                // FIX: Use the OS native absolute path without manual string replacements
                 selectedPath[0] = file.getAbsolutePath();
                 picPathLabel.setText(file.getName());
                 picPathLabel.setForeground(Ui.INK);
@@ -328,7 +324,7 @@ public final class CustomerDashboardPanel extends JPanel {
                     try {
                         authService.updateUser(user);
                     } catch (Exception ex) {
-                        System.err.println("Failed to save user updates: " + ex.getMessage());
+                        JOptionPane.showMessageDialog(dialog,ex.getMessage(),"Profile update",JOptionPane.ERROR_MESSAGE);return;
                     }
                 }
             }
@@ -337,7 +333,6 @@ public final class CustomerDashboardPanel extends JPanel {
                     JOptionPane.INFORMATION_MESSAGE);
             dialog.dispose();
 
-            // Refresh on Event Dispatch Thread to ensure proper UI update
             SwingUtilities.invokeLater(this::refreshProfileView);
         });
 
@@ -417,9 +412,6 @@ public final class CustomerDashboardPanel extends JPanel {
         }
     }
 
-    /**
-     * Styling owned by this panel so the screen can be configured independently.
-     */
     private static final class Ui {
         static final Color INK = new Color(28, 31, 27);
         static final Color MUTED = new Color(99, 106, 96);

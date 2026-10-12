@@ -65,7 +65,10 @@ public final class PasswordResetService {
             String value = new String(password);
             String error = PasswordUtil.getPasswordValidationMessage(value);
             if (error != null) throw new IllegalArgumentException(error);
+            String before = c.user.getPasswordHash();
             c.user.setPasswordHash(PasswordUtil.hashPassword(value));
+            try { users.saveWithActivity(c.user,c.user,"Password reset","Reset account password after email verification"); }
+            catch (RuntimeException ex) { c.user.setPasswordHash(before); throw ex; }
             challenges.values().removeIf(other -> other.user == c.user);
         } finally { Arrays.fill(password, '\0'); Arrays.fill(confirmation, '\0'); }
     }

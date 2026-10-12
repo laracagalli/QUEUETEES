@@ -1,7 +1,7 @@
 package model;
 
 public class User {
-    private final int id;
+    private int id;
     private String username; // Removed 'final' so you can change the username
     private final String email;
     private volatile String passwordHash;
@@ -13,7 +13,7 @@ public class User {
     private String contactNumber = "";
     private String gender = "";
     private java.time.LocalDate birthday;
-    private final java.time.LocalDateTime registeredAt = java.time.LocalDateTime.now();
+    private java.time.LocalDateTime registeredAt = java.time.LocalDateTime.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
 
     // Added profile picture field
     private String profilePicture = "";
@@ -49,6 +49,16 @@ public class User {
 
     public int getId() {
         return id;
+    }
+    public void assignDatabaseId(int id) {
+        if (this.id != 0 || id <= 0) throw new IllegalStateException("Only new accounts can receive a database ID.");
+        this.id = id;
+    }
+    public User(int id, String username, String email, String passwordHash, UserRole role,
+                boolean emailVerified, AccountStatus status, String fullName, String address,
+                String contactNumber, String gender, java.time.LocalDate birthday, java.time.LocalDateTime registeredAt) {
+        this(id, username, email, passwordHash, role, emailVerified, status, fullName, address, contactNumber, gender, birthday);
+        this.registeredAt = java.util.Objects.requireNonNull(registeredAt);
     }
 
     public String getUsername() {

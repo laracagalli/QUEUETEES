@@ -1,3 +1,17 @@
+## MySQL storage
+
+Run `database/queuetees.sql`, then `database/seed-defense-users.sql` in MySQL Workbench.
+Set the MySQL password once in ignored `database/database.local.properties`.
+**Run QueueTees** connects quietly to `127.0.0.1:3306/queuetees` without a startup
+password popup. Database mode preserves accounts, catalog/stock, carts,
+orders and staff/admin activity across restarts. The default defense logins are
+`admin` / `Admin123!`, `staff` / `Staff123!`, and `verifiedcustomer` / `Customer123!`.
+Existing accounts and passwords are preserved on later launches.
+
+See [database setup](database/README.md) for configuration and checks. Older notes
+below describing temporary storage apply to the explicit in-memory demonstration
+mode (`-Dqueuetees.storage=memory`), not the default database launch. Email/reset
+verification requests remain temporary; verified flags and new passwords persist.
 ## Getting Started
 
 ## Staff panel

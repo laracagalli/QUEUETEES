@@ -10,7 +10,7 @@ import model.Order;
 import model.User;
 import service.StoreService;
 
-/** Customer shopping cart page. */
+
 public final class CartPanel extends JPanel {
     private final StoreService store = StoreService.getInstance();
     private final User user;

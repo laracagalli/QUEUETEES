@@ -103,7 +103,10 @@ public class AuthService {
     }
 
     public void verifyEmail(User user) {
+        boolean before = user.isEmailVerified();
         user.setEmailVerified(true);
+        try { userRepository.save(user); }
+        catch (RuntimeException ex) { user.setEmailVerified(before); throw ex; }
     }
 
     // ==========================================
@@ -111,8 +114,7 @@ public class AuthService {
     // ==========================================
     public void updateUser(User user) {
         if (user != null) {
-            userRepository.save(user);
-            ActivityLogger.record(user, "Profile updated", "Updated account profile");
+            userRepository.saveWithActivity(user,user,"Profile updated","Updated account profile");
         }
     }
 
@@ -132,7 +134,8 @@ public class AuthService {
 
     private void requireAdministrator(User actor) {
         if (actor == null || actor.getRole() != UserRole.ADMIN || actor.getStatus() != AccountStatus.ACTIVE
-                || userRepository.findByEmailOrUsername(actor.getEmail()).orElse(null) != actor)
+                || userRepository.findByEmailOrUsername(actor.getEmail()).filter(saved -> saved.getId() == actor.getId()
+                    && saved.getRole() == UserRole.ADMIN && saved.getStatus() == AccountStatus.ACTIVE).isEmpty())
             throw new IllegalStateException("An active administrator account is required.");
     }
 
@@ -166,8 +169,10 @@ public class AuthService {
                 throw new IllegalArgumentException(validationMessage + ".");
             if (!next.equals(confirm))
                 throw new IllegalArgumentException("New passwords do not match.");
+            String before = user.getPasswordHash();
             user.setPasswordHash(PasswordUtil.hashPassword(next));
-            ActivityLogger.record(user, "Password changed", "Changed account password");
+            try { userRepository.saveWithActivity(user,user,"Password changed","Changed account password"); }
+            catch (RuntimeException ex) { user.setPasswordHash(before); throw ex; }
         } finally {
             if (currentPassword != null) java.util.Arrays.fill(currentPassword, '\0');
             if (newPassword != null) java.util.Arrays.fill(newPassword, '\0');
@@ -186,7 +191,7 @@ public class AuthService {
         if (!suspend && target.getStatus() != AccountStatus.SUSPENDED)
             throw new IllegalStateException("This account is not suspended.");
         target.setStatus(suspend ? AccountStatus.SUSPENDED : AccountStatus.ACTIVE);
-        ActivityLogger.record(actor, suspend ? "Account suspended" : "Account reactivated", target.getUsername() + " (#" + targetId + ")");
+        userRepository.saveWithActivity(target,actor,suspend ? "Account suspended" : "Account reactivated",target.getUsername() + " (#" + targetId + ")");
     }
 
     public void reviewStaff(User actor, int staffId, boolean approve) {
@@ -196,7 +201,7 @@ public class AuthService {
         if (staff.getRole() != UserRole.STAFF || staff.getStatus() != AccountStatus.PENDING_APPROVAL)
             throw new IllegalStateException("Only pending staff applications can be reviewed. Refresh and try again.");
         staff.setStatus(approve ? AccountStatus.ACTIVE : AccountStatus.REJECTED);
-        ActivityLogger.record(actor, approve ? "Staff approved" : "Staff rejected", staff.getUsername() + " (#" + staffId + ")");
+        userRepository.saveWithActivity(staff,actor,approve ? "Staff approved" : "Staff rejected",staff.getUsername() + " (#" + staffId + ")");
         // Send email notification to staff in background
         final String staffEmail = staff.getEmail();
         final String staffUsername = staff.getUsername();
@@ -265,7 +270,7 @@ public class AuthService {
                         "Enter your address and a 10-digit contact number.");
             }
 
-            int newId = userRepository.findAll().stream().mapToInt(User::getId).max().orElse(0) + 1;
+            int newId = userRepository.nextId();
             User newUser = new User(
                     newId,
                     cleanUsername,

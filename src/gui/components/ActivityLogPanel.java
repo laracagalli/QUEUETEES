@@ -20,6 +20,7 @@ public final class ActivityLogPanel extends JPanel {
     private final JButton print = new RoundedButton("Print activity log", new Color(28,31,27), Color.WHITE);
     private final Timer timer = new Timer(2000, e -> { if (isShowing()) refresh(); });
     private boolean updating;
+    private final java.util.List<String> countIdentities = new java.util.ArrayList<>();
     public ActivityLogPanel() {
         this(false);
     }
@@ -127,8 +128,14 @@ public final class ActivityLogPanel extends JPanel {
             action.putClientProperty("activity.suppress", false);
         }
         model.setRowCount(0);
+        countIdentities.clear();
+        java.util.Map<Integer,String> identities = new java.util.HashMap<>();
         DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        for (var entry : entries) model.addRow(new Object[]{format.format(entry.time()), entry.username(), entry.role(), entry.action(), entry.details()});
+        for (var entry : entries) {
+            String identity = entry.username() + " (" + entry.role() + ")";
+            countIdentities.add(entry.userId() > 0 ? identities.computeIfAbsent(entry.userId(),id -> identity) : identity);
+            model.addRow(new Object[]{format.format(entry.time()), entry.username(), entry.role(), entry.action(), entry.details()});
+        }
         filter();
     }
     private void filter() {
@@ -151,7 +158,7 @@ public final class ActivityLogPanel extends JPanel {
         java.util.Map<String, Integer> totals = new java.util.TreeMap<>();
         for (int row = 0; row < table.getRowCount(); row++) {
             int index = table.convertRowIndexToModel(row);
-            String identity = model.getValueAt(index, 1) + " (" + model.getValueAt(index, 2) + ")";
+            String identity = countIdentities.get(index);
             totals.merge(identity, 1, Integer::sum);
         }
         userCounts.removeAll();

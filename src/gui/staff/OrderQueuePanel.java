@@ -9,7 +9,7 @@ import model.Order;
 import model.OrderStatus;
 import service.StoreService;
 
-/** Staff page for processing the FCFS order queue. */
+
 public final class OrderQueuePanel extends JPanel {
     private final StoreService store = StoreService.getInstance();
     private final DefaultTableModel model = new DefaultTableModel(

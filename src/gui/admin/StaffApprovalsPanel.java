@@ -3,7 +3,7 @@ package gui.admin;
 import java.awt.*;
 import javax.swing.*;
 
-/** Administrator page for reviewing pending staff registrations. */
+
 public final class StaffApprovalsPanel extends JPanel {
     private final service.AuthService authService;
     private final model.User administrator;
