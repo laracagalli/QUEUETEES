@@ -36,7 +36,7 @@ public final class PasswordResetService {
         if (c.user != null) sender.send(c.user.getEmail(), c.code);
         c.expires = clock.millis() + LIFETIME;
         lastSent.put(clean, clock.millis());
-        challenges.values().removeIf(old -> old.user != null && old.user == c.user);
+        challenges.values().removeIf(old -> old.user != null && c.user!=null && old.user.getId()==c.user.getId());
         String token = UUID.randomUUID().toString();
         challenges.put(token, c);
         return token;
@@ -53,8 +53,13 @@ public final class PasswordResetService {
         Challenge c = current(token);
         if (code == null || !code.matches("[0-9]{6}"))
             throw new IllegalArgumentException("Please enter all six digits.");
-        if (++c.attempts > 5) { challenges.remove(token); throw new IllegalArgumentException("Too many attempts. Request a new code."); }
-        if (c.user == null || !c.code.equals(code)) throw new IllegalArgumentException("Incorrect code. Check your email and try again.");
+        if (c.user == null || !c.code.equals(code)) {
+            if (++c.attempts >= 5) {
+                challenges.remove(token);
+                throw new IllegalArgumentException("Too many attempts. Request a new code.");
+            }
+            throw new IllegalArgumentException("Incorrect code. Check your email and try again.");
+        }
         c.verified = true;
     }
     public synchronized void reset(String token, char[] password, char[] confirmation) {
@@ -65,11 +70,8 @@ public final class PasswordResetService {
             String value = new String(password);
             String error = PasswordUtil.getPasswordValidationMessage(value);
             if (error != null) throw new IllegalArgumentException(error);
-            String before = c.user.getPasswordHash();
-            c.user.setPasswordHash(PasswordUtil.hashPassword(value));
-            try { users.saveWithActivity(c.user,c.user,"Password reset","Reset account password after email verification"); }
-            catch (RuntimeException ex) { c.user.setPasswordHash(before); throw ex; }
-            challenges.values().removeIf(other -> other.user == c.user);
+            users.updatePassword(c.user.getId(),c.user.getPasswordHash(),PasswordUtil.hashPassword(value),true);
+            challenges.values().removeIf(other -> other.user!=null && other.user.getId()==c.user.getId());
         } finally { Arrays.fill(password, '\0'); Arrays.fill(confirmation, '\0'); }
     }
 }

@@ -20,14 +20,14 @@ public final class StaffQueuePresentationTest {
                     if (i == 1) store.addToCart(800 + i, store.getProducts().get(1).getId());
                     Order order = store.checkout(800 + i, new CheckoutDetails("Customer " + i, "test@example.com",
                             "+639123456789", "Pickup", "", "GCash", ""));
-                    if (i == 0) store.advanceOrder(order.getId());
+                    support.TestFlow.verify(store,order);if (i == 0) store.advanceOrder(order.getId());
                 }
                 OrderQueuePanel queue = new OrderQueuePanel();
                 JTable table = field(queue, "table", JTable.class);
                 check(table.getValueAt(0, 0) == null, "Preparing order has no waiting position");
-                check(table.getValueAt(1, 0).equals(1) && table.getValueAt(2, 0).equals(2), "Waiting orders numbered in FIFO order");
+                check(table.getValueAt(1, 0).equals(2) && table.getValueAt(2, 0).equals(1), "Fewer pieces receive first packing position");
                 JTextField search = search(queue);
-                search.setText("Customer 2");
+                search.setText("Customer 1");
                 check(table.getRowCount() == 1 && table.getValueAt(0, 0).equals(2), "Filtering does not renumber the queue");
                 table.setRowSelectionInterval(0, 0);
                 check(!field(queue, "advance", JButton.class).isEnabled(), "Later waiting order cannot start");
@@ -45,20 +45,34 @@ public final class StaffQueuePresentationTest {
                 }
                 OrderDetailsPanel details = new OrderDetailsPanel();
                 JTable detailTable = field(details, "table", JTable.class);
-                check(detailTable.getValueAt(1, 0).equals(1) && detailTable.getValueAt(2, 0).equals(1), "Multiple items share their order's position");
-                detailTable.setRowSelectionInterval(3, 3);
-                check(!field(details, "advance", JButton.class).isEnabled(), "Details pane blocks later waiting orders");
+                check(detailTable.getValueAt(1, 0).equals(2) && detailTable.getValueAt(2, 0).equals(2), "Multiple items share their order's position");
                 detailTable.setRowSelectionInterval(1, 1);
+                check(!field(details, "advance", JButton.class).isEnabled(), "Details pane blocks later waiting orders");
+                detailTable.setRowSelectionInterval(3, 3);
                 check(field(details, "advance", JButton.class).isEnabled(), "Details pane allows first waiting order");
                 details.refresh();
-                check(detailTable.getSelectedRow() == 1, "Details refresh preserves selection");
+                check(detailTable.getSelectedRow() == 3, "Details refresh preserves selection");
                 render(queue, "order-queue-screen.png");
                 render(details, "order-details-screen.png");
                 render(new StaffOverviewPanel(() -> {}), "overview-orders.png");
+                for(Order waiting:PackingPriority.queue(store.getOrders()))store.advanceOrder(waiting.getId());
+                Product pendingProduct=store.addProduct("Payment refresh test","Men","Tops",25,2,"");
+                store.addToCart(9901,pendingProduct.getId());Order pending=store.checkout(9901,new CheckoutDetails("Payment Customer","payment@example.com","09123456789","Pickup","","GCash",""));
+                queue=new OrderQueuePanel();details=new OrderDetailsPanel();
+                JTable pendingQueue=field(queue,"table",JTable.class),pendingDetails=field(details,"table",JTable.class);
+                int queueRow=modelRow(pendingQueue,pending.getControlNumber()),detailsRow=modelRow(pendingDetails,pending.getControlNumber());
+                pendingQueue.setRowSelectionInterval(pendingQueue.convertRowIndexToView(queueRow),pendingQueue.convertRowIndexToView(queueRow));
+                pendingDetails.setRowSelectionInterval(pendingDetails.convertRowIndexToView(detailsRow),pendingDetails.convertRowIndexToView(detailsRow));
+                check(pendingQueue.getModel().getValueAt(queueRow,0)==null&&!field(queue,"advance",JButton.class).isEnabled(),"Unverified order stays outside packing queue");
+                support.TestFlow.verify(store,pending);queue.refresh();details.refresh();
+                queueRow=modelRow(pendingQueue,pending.getControlNumber());detailsRow=modelRow(pendingDetails,pending.getControlNumber());
+                check(Integer.valueOf(1).equals(pendingQueue.getModel().getValueAt(queueRow,0))&&field(queue,"advance",JButton.class).isEnabled(),"Payment verification immediately refreshes queue rank and preparation action");
+                check(Integer.valueOf(1).equals(pendingDetails.getModel().getValueAt(detailsRow,0))&&field(details,"advance",JButton.class).isEnabled(),"Payment verification immediately refreshes order details rank and action");
             } catch (Exception ex) { throw new RuntimeException(ex); }
         });
         System.out.println("PASS: queue ranking, filtered/sorted priority, next-order shortcut, status colors and repeated item positions");
     }
+    private static int modelRow(JTable table,String control){for(int row=0;row<table.getModel().getRowCount();row++)if(control.equals(table.getModel().getValueAt(row,1)))return row;throw new AssertionError("Order missing from table");}
     private static JTextField search(Container parent) {
         for (Component child : parent.getComponents()) {
             if (child instanceof JTextField) return (JTextField) child;

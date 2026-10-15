@@ -21,7 +21,10 @@ public class PasswordResetTest {
         fails(()->reset.verify(token,code.get()));
         PasswordResetService locked = new PasswordResetService(repo,(email,value)->code.set(value));
         String lockToken = locked.request(user.getEmail());
-        for(int i=0;i<5;i++) fails(()->locked.verify(lockToken,"000000"));
+        String wrongCode=code.get().equals("000000")?"111111":"000000";
+        for(int i=0;i<4;i++) fails(()->locked.verify(lockToken,wrongCode));
+        try { locked.verify(lockToken,wrongCode); throw new AssertionError("Fifth failure must lock challenge"); }
+        catch(IllegalArgumentException expected) { if(!expected.getMessage().contains("Too many attempts"))throw new AssertionError("Lock must happen immediately on fifth wrong code"); }
         fails(()->locked.verify(lockToken,code.get()));
         final long[] now = {0};
         Clock clock = new Clock() { public ZoneId getZone(){return ZoneOffset.UTC;} public Clock withZone(ZoneId z){return this;} public Instant instant(){return Instant.ofEpochMilli(now[0]);} };

@@ -60,6 +60,8 @@ public final class AppTheme {
     }
     public static void install(){
         if(installed)return;installed=true;
+        javax.swing.plaf.FontUIResource bodyFont=new javax.swing.plaf.FontUIResource("Segoe UI",Font.PLAIN,13);
+        for(String key:new String[]{"Label.font","Button.font","Table.font","ComboBox.font","CheckBox.font","TextField.font","TextArea.font","Spinner.font"})UIManager.put(key,bodyFont);
         UIManager.put("OptionPaneUI", "gui.components.AlignedOptionPaneUI");
         UIManager.put("OptionPane.background",PAPER);UIManager.put("Panel.background",PAPER);
         UIManager.put("OptionPane.messageForeground",GREEN);
@@ -74,7 +76,23 @@ public final class AppTheme {
             }else if(event instanceof WindowEvent && event.getID()==WindowEvent.WINDOW_OPENED){
                 Window window=((WindowEvent)event).getWindow();
                 apply(window);
-                if(window instanceof JDialog && containsOptionPane(window))window.setLocationRelativeTo(window.getOwner());
+                if(window instanceof JDialog && containsOptionPane(window)){
+                    // Styling changes field/button sizes after JOptionPane's initial pack.
+                    // Repack before layout so the bottom fields and actions stay visible.
+                    window.pack();
+                    GraphicsConfiguration configuration=window.getGraphicsConfiguration();
+                    Rectangle available=new Rectangle(configuration.getBounds());
+                    Insets screenInsets=Toolkit.getDefaultToolkit().getScreenInsets(configuration);
+                    available.x+=screenInsets.left+12;available.y+=screenInsets.top+12;
+                    available.width-=screenInsets.left+screenInsets.right+24;
+                    available.height-=screenInsets.top+screenInsets.bottom+24;
+                    window.setSize(Math.min(window.getWidth(),available.width),Math.min(window.getHeight(),available.height));
+                    ((JDialog)window).setResizable(true);
+                    window.setLocationRelativeTo(window.getOwner());
+                    window.setLocation(Math.max(available.x,Math.min(window.getX(),available.x+available.width-window.getWidth())),
+                            Math.max(available.y,Math.min(window.getY(),available.y+available.height-window.getHeight())));
+                    window.validate();
+                }
             }
         },AWTEvent.CONTAINER_EVENT_MASK|AWTEvent.WINDOW_EVENT_MASK);
     }
@@ -124,6 +142,10 @@ public final class AppTheme {
                     JButton b=(JButton)c;
                     if(!b.getClass().getSimpleName().endsWith("NavButton") && !insideCalendar(b) && !(b.getParent() instanceof JComboBox) && !(b.getParent() instanceof JScrollBar) && !(b.getParent() instanceof JSpinner)){
                         b.setUI(new PillUI());b.setOpaque(false);b.setContentAreaFilled(false);b.setBorderPainted(false);b.setBorder(BorderFactory.createEmptyBorder(9,18,9,18));b.setForeground(Color.WHITE);b.setBackground(new Color(28,31,27));b.setRolloverEnabled(true);b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                        String action=java.util.Objects.toString(b.getText(),"").toLowerCase(java.util.Locale.ROOT);
+                        if(action.equals("cancel")||action.startsWith("cancel ")||action.startsWith("reject"))b.setBackground(ActionButtons.RED);
+                        else if(action.startsWith("approve")||action.startsWith("confirm")||action.equals("yes"))b.setBackground(ActionButtons.GREEN);
+                        else if(action.startsWith("record refund"))b.setBackground(ActionButtons.BLUE);
                     }
                 }
                 if(c instanceof com.toedter.calendar.JDateChooser){c.setOpaque(false);}
@@ -185,6 +207,12 @@ public final class AppTheme {
         protected void paintThumb(Graphics graphics,JComponent c,Rectangle r){if(r.isEmpty()||!scrollbar.isEnabled())return;Graphics2D g=(Graphics2D)graphics.create();g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);g.setColor(isThumbRollover()?GREEN:new Color(156,172,148));g.fillRoundRect(r.x+2,r.y+2,Math.max(4,r.width-4),Math.max(4,r.height-4),8,8);g.dispose();}
     }
     private static class PillUI extends BasicButtonUI{
+        @Override protected void paintText(Graphics graphics,AbstractButton button,Rectangle bounds,String text){
+            Graphics2D g=(Graphics2D)graphics.create();
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g.setFont(button.getFont());g.setColor(button.isEnabled()?button.getForeground():new Color(55,65,52));
+            BasicGraphicsUtils.drawStringUnderlineCharAt(g,text,button.getDisplayedMnemonicIndex(),bounds.x,bounds.y+g.getFontMetrics().getAscent());g.dispose();
+        }
         public void paint(Graphics graphics,JComponent c){AbstractButton b=(AbstractButton)c;Graphics2D g=(Graphics2D)graphics.create();g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);g.setColor(!b.isEnabled()?new Color(158,166,153):b.getModel().isRollover()?GREEN:b.getBackground());g.fillRoundRect(0,0,c.getWidth(),c.getHeight(),24,24);if(b.hasFocus()){g.setColor(new Color(192,208,181));g.drawRoundRect(3,3,c.getWidth()-7,c.getHeight()-7,20,20);}g.dispose();super.paint(graphics,c);}
     }
     private static class ChoiceIcon implements Icon{

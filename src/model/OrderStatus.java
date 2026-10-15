@@ -4,8 +4,13 @@ public enum OrderStatus {
     CONFIRMED("Confirmed"),
     PREPARING("Preparing"),
     READY_FOR_PICKUP("Ready for pickup"),
+    TRANSFERRING("Transferring to delivery point"),
+    AT_DELIVERY_POINT("At delivery point"),
     OUT_FOR_DELIVERY("Out for delivery"),
-    COMPLETED("Completed");
+    DELIVERED("Delivered / awaiting acknowledgment"),
+    COMPLETED("Completed"),
+    CANCELLED("Cancelled"),
+    LOST("Lost");
 
     private final String label;
     OrderStatus(String label) { this.label = label; }

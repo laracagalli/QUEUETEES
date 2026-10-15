@@ -6,30 +6,37 @@ import java.util.List;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import model.Order;
+import model.OrderStatus;
 import model.User;
+import model.ReturnRequest;
+import model.ReturnPresentation;
 import service.StoreService;
 
 /** Customer order-history page. */
 public final class OrderHistoryPanel extends JPanel {
     private final StoreService store = StoreService.getInstance();
     private final User user;
-    private final DefaultTableModel model = new DefaultTableModel(new String[]{"Queue no.", "Placed", "Items", "Total", "Status"}, 0) {
+    private final DefaultTableModel model = new DefaultTableModel(new String[]{"Order no.", "Placed", "Items", "Total", "Status", "Delivery point", "Method"}, 0) {
         @Override public boolean isCellEditable(int row, int column) { return false; }
     };
     private final JTable table = new JTable(model);
     private final JLabel message = Ui.label("", 11, Font.PLAIN, Ui.MUTED);
+    private List<Order> rowOrders = java.util.List.of();
+    private final Timer timer=new Timer(2000,e->{if(isShowing())refresh();});
+    @Override public void addNotify(){super.addNotify();timer.start();}
+    @Override public void removeNotify(){timer.stop();super.removeNotify();}
 
     public OrderHistoryPanel(User user) {
         this.user = user;
         setOpaque(false);
-        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        Ui.addLeft(this, Ui.label("ORDERS", 10, Font.BOLD, Ui.FOREST));
-        add(Box.createVerticalStrut(4));
-        Ui.addLeft(this, Ui.label("Order history", 25, Font.BOLD, Ui.INK));
-        add(Box.createVerticalStrut(5));
-        Ui.addLeft(this, Ui.label("Review your previous QueueTees orders.", 11, Font.PLAIN, Ui.MUTED));
-        add(Box.createVerticalStrut(18));
-        add(createTableCard());
+        setLayout(new BorderLayout(0,18));
+        JPanel heading=Ui.verticalBox();
+        Ui.addLeft(heading, Ui.label("ORDERS", 11, Font.BOLD, Ui.FOREST));
+        heading.add(Box.createVerticalStrut(4));
+        Ui.addLeft(heading, Ui.label("Order history", 25, Font.BOLD, Ui.INK));
+        heading.add(Box.createVerticalStrut(5));
+        Ui.addLeft(heading, Ui.label("Review your previous QueueTees orders.", 13, Font.PLAIN, Ui.MUTED));
+        add(heading,BorderLayout.NORTH);add(createTableCard(),BorderLayout.CENTER);
         refresh();
     }
 
@@ -37,6 +44,9 @@ public final class OrderHistoryPanel extends JPanel {
         JPanel card = Ui.card(Ui.PAPER, 22, true);
         card.setLayout(new BorderLayout());
         Ui.styleTable(table);
+        table.getColumnModel().getColumn(0).setMinWidth(170);table.getColumnModel().getColumn(0).setPreferredWidth(190);
+        table.getColumnModel().getColumn(4).setPreferredWidth(205);
+        table.getColumnModel().getColumn(5).setPreferredWidth(225);
         table.setDefaultRenderer(Object.class,new javax.swing.table.DefaultTableCellRenderer(){
             public Component getTableCellRendererComponent(JTable t,Object value,boolean selected,boolean focus,int row,int column){
                 super.getTableCellRendererComponent(t,value,selected,focus,row,column);setBorder(BorderFactory.createEmptyBorder(8,14,8,14));setHorizontalAlignment(LEFT);setFont(t.getFont());setBackground(selected?t.getSelectionBackground():Ui.PAPER);setForeground(Ui.INK);
@@ -49,20 +59,31 @@ public final class OrderHistoryPanel extends JPanel {
         message.setHorizontalAlignment(SwingConstants.CENTER);
         message.setBorder(new javax.swing.border.EmptyBorder(12, 8, 12, 8));
         card.add(message, BorderLayout.NORTH);
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 350));
-        card.setPreferredSize(new Dimension(1000, 350));
+        JPanel actions=new JPanel(new FlowLayout(FlowLayout.RIGHT));actions.setOpaque(false);
+        JButton view=new JButton("View order details"),returns=new JButton("Request return / refund");
+        view.addActionListener(e->{Order order=selected();if(order!=null)CustomerOrderDetails.show(this,user,order);});
+        returns.addActionListener(e->{Order order=selected();if(order!=null)gui.components.ReturnsPanel.submit(this,user,order,this::refresh);});
+        actions.add(view);actions.add(returns);card.add(actions,BorderLayout.SOUTH);
+        view.setEnabled(false);returns.setEnabled(false);table.getSelectionModel().addListSelectionListener(e->{view.setEnabled(selected()!=null);returns.setEnabled(selected()!=null&&selected().getStatus()==OrderStatus.COMPLETED);});
+        card.setBorder(BorderFactory.createEmptyBorder(4,8,10,8));
         return card;
     }
 
     public void refresh() {
+        Order selected=selected();
         model.setRowCount(0);
-        List<Order> orders = store.getOrdersForCustomer(user.getId());
+        List<Order> orders = store.getOrdersForCustomer(user.getId()).stream().filter(service.RefundService::terminal).toList();
+        rowOrders=orders;
+        List<ReturnRequest> requests=service.ReturnsService.requests(user);
+        List<model.RefundRecord> refunds=service.RefundService.records(user);
         for (Order order : orders) {
-            model.addRow(new Object[]{String.format("Q-%03d", order.getQueueNumber()), order.getPlacedAt().format(DateTimeFormatter.ofPattern("MMM d, h:mm a")),
-                    order.getItemCount(), String.format("₱%,.2f", order.getTotal()), order.getStatus().getLabel()});
+            model.addRow(new Object[]{order.getControlNumber(), order.getPlacedAt().format(DateTimeFormatter.ofPattern("MMM d, h:mm a")),
+                    order.getItemCount(), String.format("₱%,.2f", order.getTotal()), order.getStatus()==OrderStatus.COMPLETED?ReturnPresentation.history(order,requests):service.RefundService.outcome(order,refunds), order.getCheckoutDetails().getDeliveryPoint().getLabel(), order.getCheckoutDetails().getFulfillmentMethod()});
         }
         message.setText(model.getRowCount() == 0 ? "You have no previous orders yet." : model.getRowCount() + " order(s)");
+        if(selected!=null)for(int i=0;i<rowOrders.size();i++)if(rowOrders.get(i).getId()==selected.getId()){gui.components.TablePagination.showModelRow(table,i);int view=table.convertRowIndexToView(i);if(view>=0)table.setRowSelectionInterval(view,view);break;}
     }
+    private Order selected(){int row=table.getSelectedRow();return row<0?null:rowOrders.get(table.convertRowIndexToModel(row));}
 
     /** Styling owned by this panel so the screen can be configured independently. */
     private static final class Ui {
@@ -74,7 +95,7 @@ public final class OrderHistoryPanel extends JPanel {
         static final Color PAPER = new Color(252, 252, 247);
         static final Color LINE = new Color(218, 220, 209);
 
-        static Font font(int size, int style) { return new Font("Fira Code", style, size);
+        static Font font(int size, int style) { return new Font("Segoe UI", style, size);
         }
         static JLabel label(String value, int size, int style, Color color) {
             JLabel label = new JLabel(value);

@@ -11,7 +11,7 @@ import service.StoreService;
 public final class CompletedOrdersPanel extends JPanel {
     private final java.util.List<Order> rowOrders = new java.util.ArrayList<>();
     private final StoreService store = StoreService.getInstance();
-    private final DefaultTableModel model = new DefaultTableModel(new String[]{"Queue no.", "Customer", "Completed", "Items", "Total"}, 0) {
+    private final DefaultTableModel model = new DefaultTableModel(new String[]{"Control no.", "Customer", "Completed", "Items", "Total"}, 0) {
         @Override public boolean isCellEditable(int row, int column) { return false; }
     };
     private final JTable table = new JTable(model);
@@ -165,8 +165,8 @@ public final class CompletedOrdersPanel extends JPanel {
                 return;
             }
             java.util.List<Order> snapshot = new java.util.ArrayList<>();
-            for (int row = 0; row < table.getRowCount(); row++)
-                snapshot.add(rowOrders.get(table.convertRowIndexToModel(row)));
+            for (int row : gui.components.TablePagination.matchingRows(table))
+                snapshot.add(rowOrders.get(row));
             String scope = allDates.isSelected() ? "All completion dates" : date(from) + " through " + date(to) + " (inclusive)";
             JTextField search = findSearch(this);
             if (search != null && !search.getText().trim().isEmpty()) scope += "; search: " + search.getText().trim();
@@ -254,7 +254,7 @@ public final class CompletedOrdersPanel extends JPanel {
             java.time.LocalDate completed = order.getCompletedAt().toLocalDate();
             if (!allDates.isSelected() && (completed.isBefore(date(from)) || completed.isAfter(date(to)))) continue;
             rowOrders.add(order);
-            model.addRow(new Object[]{"Q-" + String.format("%03d", order.getQueueNumber()), order.getCustomerName(),
+            model.addRow(new Object[]{order.getControlNumber(), order.getCustomerName(),
                     order.getCompletedAt().format(DateTimeFormatter.ofPattern("MMM d, h:mm a")), order.getItemCount(),
                     String.format("₱%,.2f", order.getTotal())});
         }

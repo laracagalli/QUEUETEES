@@ -46,6 +46,7 @@ public final class CustomerDashboardPanel extends JPanel {
         content.add(cartPanel, "cart");
         content.add(trackingPanel, "tracking");
         content.add(historyPanel, "history");
+        content.add(new gui.components.ReturnsPanel(user),"returns");
 
 
         profileContainer.setOpaque(false);
@@ -66,7 +67,14 @@ public final class CustomerDashboardPanel extends JPanel {
     }
 
     private JPanel createHeader() {
-        JPanel header = new JPanel(new BorderLayout(20, 0));
+        gui.components.WrappingFlowLayout navLayout=new gui.components.WrappingFlowLayout();navLayout.setAlignment(FlowLayout.CENTER);navLayout.setHgap(5);navLayout.setVgap(2);
+        JPanel nav=new JPanel(navLayout);nav.setOpaque(false);
+        JPanel header = new JPanel(new BorderLayout(20, 0)) {
+            @Override public void doLayout(){
+                super.doLayout();int needed=Math.max(84,nav.getPreferredSize().height+20);
+                if(getPreferredSize().height!=needed){setPreferredSize(new Dimension(0,needed));revalidate();}
+            }
+        };
         header.setBackground(new Color(250, 250, 244));
         header.setBorder(new EmptyBorder(10, 36, 10, 36));
         header.setPreferredSize(new Dimension(0, 84));
@@ -82,12 +90,11 @@ public final class CustomerDashboardPanel extends JPanel {
         brand.add(brandName);
         header.add(brand, BorderLayout.WEST);
 
-        JPanel nav = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
-        nav.setOpaque(false);
         addNavigation(nav, "Shop", "shop");
         addNavigation(nav, "My Cart", "cart");
         addNavigation(nav, "Track Order", "tracking");
         addNavigation(nav, "Order History", "history");
+        addNavigation(nav, "Returns", "returns");
         addNavigation(nav, "Account", "profile");
         header.add(nav);
 
@@ -99,9 +106,10 @@ public final class CustomerDashboardPanel extends JPanel {
         logout.setHoverColor(new Color(65, 65, 65));
         logout.addActionListener(e -> Ui.confirmLogout(header, authService));
 
-        JPanel logoutWrap = new JPanel(new GridBagLayout());
+        JPanel logoutWrap = new JPanel(new FlowLayout(FlowLayout.CENTER,12,12));
         logoutWrap.setOpaque(false);
         logoutWrap.setPreferredSize(new Dimension(210, 64));
+        logoutWrap.add(new CustomerMailButton(currentUser));
         logoutWrap.add(logout);
         header.add(logoutWrap, BorderLayout.EAST);
 
@@ -110,6 +118,7 @@ public final class CustomerDashboardPanel extends JPanel {
 
     private void addNavigation(JPanel parent, String title, String key) {
         CustomerNavButton button = new CustomerNavButton(title);
+        button.setIcon(new gui.components.NavigationIcon(key));button.setIconTextGap(8);
         button.addActionListener(e -> showPanel(key));
         navigation.put(key, button);
         parent.add(button);
@@ -125,6 +134,7 @@ public final class CustomerDashboardPanel extends JPanel {
             trackingPanel.refresh();
         if ("history".equals(key))
             historyPanel.refresh();
+        if("returns".equals(key))for(Component child:content.getComponents())if(child instanceof gui.components.ReturnsPanel panel)panel.refresh();
         if ("profile".equals(key)) {
             refreshProfileView();
         }
@@ -211,13 +221,13 @@ public final class CustomerDashboardPanel extends JPanel {
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         grid.add(createProfileField("Username", username));
-        grid.add(createProfileField("Email address", "verified@queuetees.local"));
+        grid.add(createProfileField("Email address",user.getEmail()));
 
         grid.add(createProfileField("Role", "Customer"));
-        grid.add(createProfileField("Account status", "Active"));
+        grid.add(createProfileField("Account status",user.getStatus().name()));
 
-        grid.add(createProfileField("Email verification", "Verified"));
-        grid.add(createProfileField("Account ID", "1"));
+        grid.add(createProfileField("Email verification",user.isEmailVerified()?"Verified":"Not verified"));
+        grid.add(createProfileField("Account ID",String.valueOf(user.getId())));
 
         profileCard.add(grid);
 
@@ -315,6 +325,7 @@ public final class CustomerDashboardPanel extends JPanel {
             }
 
             if (user != null) {
+                String beforeUsername=user.getUsername(),beforePicture=user.getProfilePicture();
                 user.setUsername(newUsername);
                 if (selectedPath[0] != null) {
                     user.setProfilePicture(selectedPath[0]);
@@ -324,6 +335,7 @@ public final class CustomerDashboardPanel extends JPanel {
                     try {
                         authService.updateUser(user);
                     } catch (Exception ex) {
+                        user.setUsername(beforeUsername);user.setProfilePicture(beforePicture);
                         JOptionPane.showMessageDialog(dialog,ex.getMessage(),"Profile update",JOptionPane.ERROR_MESSAGE);return;
                     }
                 }

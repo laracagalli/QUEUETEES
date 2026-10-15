@@ -37,6 +37,7 @@ public final class StaffDashboardPanel extends JPanel {
         content.add(detailsPanel, "orders");
         content.add(completedPanel, "completed");
         content.add(statusPanel, "status");
+        content.add(new gui.components.ReturnsPanel(user),"returns");
         content.add(new StaffProfilePanel(user, authService), "profile");
         setOpaque(false);
         showPanel("overview");
@@ -65,11 +66,12 @@ public final class StaffDashboardPanel extends JPanel {
         sidebar.add(Box.createVerticalStrut(8));
         Ui.addLeft(sidebar, Ui.label("QUEUETEES: A Queuing Management System", 8, Font.BOLD, Color.WHITE));
         sidebar.add(Box.createVerticalStrut(30));
-        addNavigation(sidebar, "Overview", "overview");
+        addNavigation(sidebar, "Dashboard", "overview");
         addNavigation(sidebar, "Order Queue", "queue");
         addNavigation(sidebar, "Order Details", "orders");
         addNavigation(sidebar, "Completed Orders", "completed");
-        addNavigation(sidebar, "Queue Status", "status");
+        addNavigation(sidebar, "Delivery Points", "status");
+        addNavigation(sidebar,"Order Returns","returns");
         addNavigation(sidebar, "My Account", "profile");
         sidebar.add(Box.createVerticalGlue());
         Ui.addLeft(sidebar, Ui.label("STAFF  •  ONLINE", 10, Font.BOLD, new Color(221, 230, 216)));
@@ -85,6 +87,8 @@ public final class StaffDashboardPanel extends JPanel {
 
     private void addNavigation(JPanel sidebar, String title, String key) {
         Ui.NavButton button = Ui.navButton(title);
+        button.setIcon(new gui.components.NavigationIcon(key));
+        button.setIconTextGap(10);
         button.setPreferredSize(new Dimension(186, 36));
         button.setMinimumSize(new Dimension(186, 36));
         button.setMaximumSize(new Dimension(186, 36));
@@ -132,6 +136,7 @@ public final class StaffDashboardPanel extends JPanel {
             completedPanel.refresh();
         if ("status".equals(key))
             statusPanel.refresh();
+        if("returns".equals(key))for(Component child:content.getComponents())if(child instanceof gui.components.ReturnsPanel panel)panel.refresh();
     }
 
     /**

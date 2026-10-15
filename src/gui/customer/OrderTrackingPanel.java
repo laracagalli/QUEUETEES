@@ -29,8 +29,8 @@ public final class OrderTrackingPanel extends JPanel {
         setLayout(new BorderLayout(0, 16));
         JPanel header = new JPanel(new BorderLayout(15, 0)); header.setOpaque(false);
         JPanel title = vertical();
-        title.add(label("QUEUE TRACKING", 10, true, GREEN)); title.add(Box.createVerticalStrut(5));
-        title.add(label("My queue", 26, true, INK)); title.add(Box.createVerticalStrut(5));
+        title.add(label("ORDER TRACKING", 10, true, GREEN)); title.add(Box.createVerticalStrut(5));
+        title.add(label("Track Order", 26, true, INK)); title.add(Box.createVerticalStrut(5));
         title.add(label("Track your order and see its latest progress.", 12, false, MUTED));
         header.add(title);
         JPanel choice = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12)); choice.setOpaque(false);
@@ -43,7 +43,7 @@ public final class OrderTrackingPanel extends JPanel {
         selector.setRenderer((list, value, index, selected, focus) -> {
             Component component = roundedRenderer.getListCellRendererComponent(list, value, index, selected, focus);
             if (component instanceof JLabel) {
-                ((JLabel) component).setText(value == null ? "No orders yet" : ticket(value) + " / " + value.getStatus().getLabel());
+                ((JLabel) component).setText(value == null ? "No orders yet" : ticket(value) + " / " + value.getStatusLabel());
             }
             return component;
         });
@@ -53,7 +53,7 @@ public final class OrderTrackingPanel extends JPanel {
         }});
         choice.add(selector); header.add(choice, BorderLayout.EAST); add(header, BorderLayout.NORTH);
         body.setOpaque(false); body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
-        JScrollPane scroll = new gui.components.ModernScrollPane(body); scroll.setBorder(null); scroll.setOpaque(false);
+        JScrollPane scroll = new gui.components.ModernScrollPane(new gui.components.ScrollableContent(body)); scroll.setBorder(null); scroll.setOpaque(false);
         scroll.getViewport().setOpaque(false); scroll.getVerticalScrollBar().setUnitIncrement(24);
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         add(scroll); refresh();
@@ -62,13 +62,12 @@ public final class OrderTrackingPanel extends JPanel {
     @Override public void removeNotify() { timer.stop(); super.removeNotify(); }
 
     public void refresh() {
-        List<Order> orders = store.getOrdersForCustomer(user.getId());
+        List<Order> orders = store.getOrdersForCustomer(user.getId()).stream().filter(o -> !service.RefundService.terminal(o)).toList();
         Order selected = orders.stream().filter(o -> selectedId != null && o.getId() == selectedId).findFirst().orElse(null);
-        if (selected == null) selected = orders.stream().filter(o -> o.getStatus() != OrderStatus.COMPLETED).findFirst()
+        if (selected == null) selected = orders.stream().filter(o -> !service.RefundService.terminal(o)).findFirst()
                 .orElse(orders.isEmpty() ? null : orders.get(orders.size() - 1));
         selectedId = selected == null ? null : selected.getId();
-        long ahead = selected == null ? 0 : ordersAhead(selected);
-        String state = selectedId + ":" + ahead + ":" + orders.stream().map(o -> o.getId() + ":" + o.getStatus())
+        String state = selectedId + ":" + orders.stream().map(o -> o.getId() + ":" + o.getStatus() + ":" + o.getCheckoutDetails().getAddress() + ":" + o.getDeliveryIssue()+":"+o.getDeliveryIssueStatus()+":"+o.getDeliveryIssueResponse()+":"+o.getPaymentStatus()+":"+o.getPaymentReference()+":"+o.getPaidAmount())
                 .collect(java.util.stream.Collectors.joining("|"));
         if (state.equals(lastState)) return;
         lastState = state;
@@ -78,11 +77,11 @@ public final class OrderTrackingPanel extends JPanel {
         body.removeAll();
         if (selected == null) {
             JPanel empty = card(); empty.setLayout(new GridBagLayout());
-            JPanel text = vertical(); text.add(label("Your queue ticket will appear here", 20, true, GREEN));
+            JPanel text = vertical(); text.add(label("Your active orders will appear here", 20, true, GREEN));
             text.add(Box.createVerticalStrut(12)); text.add(label("Complete checkout to follow your order from confirmation to completion.", 13, false, MUTED));
             empty.add(text); empty.setPreferredSize(new Dimension(900, 340)); body.add(empty);
         } else {
-            body.add(summary(selected, ahead)); body.add(Box.createVerticalStrut(16));
+            body.add(summary(selected)); body.add(Box.createVerticalStrut(16));
             JPanel columns = new JPanel(new BorderLayout(16, 0)); columns.setOpaque(false);
             JPanel left = vertical(); left.add(progress(selected)); left.add(Box.createVerticalStrut(16));
             JPanel lower = new JPanel(new GridLayout(1, 2, 16, 0)); lower.setOpaque(false); lower.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -93,21 +92,14 @@ public final class OrderTrackingPanel extends JPanel {
         }
         body.revalidate(); body.repaint();
     }
-    long ordersAhead(Order order) {
-        if (order.getStatus() != OrderStatus.CONFIRMED) return 0;
-        return store.getActiveOrders().stream().filter(o -> o.getStatus() == OrderStatus.CONFIRMED
-                && o.getQueueNumber() < order.getQueueNumber()).count();
-    }
-    private JPanel summary(Order order, long ahead) {
-        JPanel card = card(); card.setLayout(new GridLayout(1, 4, 16, 0));
-        JPanel ticket = vertical(); ticket.add(label("YOUR QUEUE NUMBER", 11, true, GREEN)); ticket.add(Box.createVerticalStrut(9));
-        ticket.add(label(ticket(order), 36, true, GREEN)); ticket.add(Box.createVerticalStrut(8));
+    private JPanel summary(Order order) {
+        JPanel card = card(); card.setLayout(new GridLayout(1, 3, 16, 0));
+        JPanel ticket = vertical(); ticket.add(label("CONTROL NUMBER", 11, true, GREEN)); ticket.add(Box.createVerticalStrut(9));
+        ticket.add(label(ticket(order), 26, true, GREEN)); ticket.add(Box.createVerticalStrut(8));
         ticket.add(label("Placed " + order.getPlacedAt().format(DateTimeFormatter.ofPattern("MMM d / h:mm a")), 11, false, MUTED));
         card.add(ticket);
-        card.add(metric("CURRENT STAGE", order.getStatus().getLabel(), statusDescription(order)));
-        card.add(metric("WAITING ORDERS AHEAD", order.getStatus() == OrderStatus.CONFIRMED ? String.valueOf(ahead) : "—",
-                order.getStatus() == OrderStatus.CONFIRMED ? (ahead == 0 ? "You are next to start preparation." : "Before your order starts preparation.") : "Your order is no longer waiting to start."));
-        card.add(metric("FULFILLMENT", order.getCheckoutDetails().getFulfillmentMethod(), "This page updates automatically."));
+        card.add(metric("CURRENT STAGE", order.getStatus()==OrderStatus.DELIVERED ? "Delivered" : order.getStatusLabel(), statusDescription(order)));
+        card.add(metric("FULFILLMENT", order.getCheckoutDetails().getFulfillmentMethod(), order.getCheckoutDetails().getDeliveryPoint().getLabel() + ". Other regions do not block this order."));
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 170)); card.setPreferredSize(new Dimension(1000, 160));
         return card;
     }
@@ -118,15 +110,15 @@ public final class OrderTrackingPanel extends JPanel {
     }
     private JPanel progress(Order order) {
         JPanel panel = card(); panel.setLayout(new BorderLayout(0, 14)); panel.add(label("ORDER PROGRESS", 12, true, GREEN), BorderLayout.NORTH);
-        JPanel steps = new JPanel(new GridLayout(1, 5, 10, 0)); steps.setOpaque(false);
-        OrderStatus[] statuses = OrderStatus.values();
+        OrderStatus[] statuses = Fulfillment.stages(order);
+        JPanel steps = new JPanel(new GridLayout(1, statuses.length, 8, 0)); steps.setOpaque(false);
         for (int i = 0; i < statuses.length; i++) {
-            boolean reached = i <= order.getStatus().ordinal();
+            boolean reached = statuses[i].ordinal() <= order.getStatus().ordinal();
             JPanel step = vertical(); JLabel number = label(String.valueOf(i + 1), 19, true, reached ? Color.WHITE : MUTED);
             number.setOpaque(true); number.setBackground(reached ? GREEN : new Color(230, 234, 225));
             number.setHorizontalAlignment(SwingConstants.CENTER); number.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
-            step.add(number); step.add(Box.createVerticalStrut(8)); step.add(label(statuses[i].getLabel(), 11, true, reached ? GREEN : MUTED));
-            step.add(Box.createVerticalStrut(4)); step.add(label(i == order.getStatus().ordinal() ? "Current stage" : reached ? "Done" : "Upcoming", 10, false, MUTED)); steps.add(step);
+            step.add(number); step.add(Box.createVerticalStrut(8)); step.add(copy(statuses[i] == OrderStatus.READY_FOR_PICKUP && !order.getCheckoutDetails().isPickup() ? "Ready for dispatch" : statuses[i] == OrderStatus.TRANSFERRING ? "Transfer to point" : statuses[i] == OrderStatus.DELIVERED ? "Delivered" : statuses[i].getLabel()));
+            step.add(Box.createVerticalStrut(4)); step.add(label(statuses[i] == order.getStatus() ? "Current stage" : reached ? "Done" : "Upcoming", 10, false, MUTED)); steps.add(step);
         }
         panel.add(steps); panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160)); panel.setPreferredSize(new Dimension(650, 150)); return panel;
     }
@@ -137,7 +129,7 @@ public final class OrderTrackingPanel extends JPanel {
             JPanel row = new JPanel(new BorderLayout(10, 0)); row.setOpaque(false); row.setAlignmentX(Component.LEFT_ALIGNMENT); row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90)); row.setBorder(new EmptyBorder(8, 0, 10, 0));
             java.net.URL url = getClass().getResource(item.getProduct().getImagePath());
             if (url != null) { JLabel photo = new JLabel(new ImageIcon(new ImageIcon(url).getImage().getScaledInstance(48, 54, Image.SCALE_SMOOTH))); row.add(photo, BorderLayout.WEST); }
-            JPanel info = vertical(); info.add(copy(item.getProduct().getName())); info.add(label("Qty " + item.getQuantity() + " / " + money(item.getSubtotal()), 11, false, MUTED)); row.add(info);
+            JPanel info = vertical(); info.add(copy(item.getProduct().getDisplayName())); info.add(label("Qty " + item.getQuantity() + " / " + money(item.getSubtotal()), 11, false, MUTED)); row.add(info);
             rows.add(row);
         }
         JScrollPane scroll = new gui.components.ModernScrollPane(rows); scroll.setBorder(null); scroll.getViewport().setBackground(PAPER);
@@ -146,18 +138,31 @@ public final class OrderTrackingPanel extends JPanel {
     }
     private JPanel updates(Order order) {
         JPanel card = card(); card.setLayout(new BorderLayout(0, 14)); card.add(label("ORDER UPDATES", 12, true, GREEN), BorderLayout.NORTH);
-        JPanel text = vertical(); text.add(label(order.getStatus().getLabel(), 16, true, GREEN)); text.add(Box.createVerticalStrut(8));
+        JPanel text = vertical(); text.add(label(order.getStatusLabel(), 16, true, GREEN)); text.add(Box.createVerticalStrut(8));
         text.add(copy(statusDescription(order))); text.add(Box.createVerticalStrut(20));
+        if(!order.getDeliveryIssue().isBlank()){
+            text.add(copy("Delivery report: "+service.DeliveryIssueReview.label(order.getDeliveryIssueStatus())));
+            if(!order.getDeliveryIssueResponse().isBlank())text.add(copy("Staff response: "+order.getDeliveryIssueResponse()));
+            text.add(Box.createVerticalStrut(10));
+        }
+        text.add(label("Payment: "+order.getPaymentStatus(),12,true,INK));
+        text.add(copy(order.canStartPacking()?"Packing prioritizes fewer pieces; earlier orders break ties.":"Awaiting payment verification before packing."));
         text.add(label("Order confirmed", 12, true, INK)); text.add(copy(order.getPlacedAt().format(DATE))); text.add(Box.createVerticalStrut(16));
         if (order.getCompletedAt() != null) { text.add(label("Completed", 12, true, INK)); text.add(copy(order.getCompletedAt().format(DATE))); text.add(Box.createVerticalStrut(16)); }
         text.add(Box.createVerticalStrut(2));
-        if (order.getStatus() == OrderStatus.OUT_FOR_DELIVERY) {
+        if(order.getStatus()==OrderStatus.CONFIRMED){
+            RoundedButton cancel=new RoundedButton("Cancel order",gui.components.ActionButtons.RED,Color.WHITE);cancel.setFont(new Font("Segoe UI",Font.PLAIN,13));cancel.setPreferredSize(new Dimension(200,40));cancel.setMaximumSize(new Dimension(200,40));cancel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            cancel.addActionListener(e->{String reason=JOptionPane.showInputDialog(this,"Cancellation reason (5–1000 characters). Reserved stock will be restored; any recorded payment goes to refund pending.","Cancel waiting order",JOptionPane.QUESTION_MESSAGE);if(reason==null)return;try{store.cancelOrder(order.getId(),reason,user);lastState="";refresh();JOptionPane.showMessageDialog(this,"Order cancelled. See Order History for refund progress.");}catch(RuntimeException ex){JOptionPane.showMessageDialog(this,ex.getMessage(),"Unable to cancel",JOptionPane.WARNING_MESSAGE);}});text.add(cancel);
+        }
+        if (Fulfillment.canConfirmReceipt(order)) {
             text.add(Box.createVerticalStrut(4));
-            RoundedButton receivedBtn = new RoundedButton("Order Received", GREEN, Color.WHITE);
+            RoundedButton receivedBtn = new RoundedButton(order.getCheckoutDetails().isPickup() ? "Order Collected" : "Order Received", GREEN, Color.WHITE);
             receivedBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
             receivedBtn.setHoverColor(new Color(40, 55, 40));
-            receivedBtn.setPreferredSize(new Dimension(200, 40));
-            receivedBtn.setMaximumSize(new Dimension(200, 40));
+            Dimension receiptActionSize = new Dimension(220, 40);
+            receivedBtn.setPreferredSize(receiptActionSize);
+            receivedBtn.setMinimumSize(receiptActionSize);
+            receivedBtn.setMaximumSize(receiptActionSize);
             receivedBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
             receivedBtn.addActionListener(e -> {
                 int confirm = JOptionPane.showConfirmDialog(this,
@@ -174,6 +179,23 @@ public final class OrderTrackingPanel extends JPanel {
             });
             text.add(receivedBtn);
             text.add(Box.createVerticalStrut(8));
+            if(order.getStatus()==OrderStatus.DELIVERED) {
+                gui.components.OutlineButton issueBtn=new gui.components.OutlineButton("I haven't received this", GREEN, GREEN);
+                issueBtn.setFont(new Font("Segoe UI",Font.PLAIN,13));
+                issueBtn.setPreferredSize(receiptActionSize);
+                issueBtn.setMinimumSize(receiptActionSize);
+                issueBtn.setMaximumSize(receiptActionSize);
+                issueBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
+                if(java.util.Set.of("OPEN","REVIEWING").contains(order.getDeliveryIssueStatus())){issueBtn.setText("Report awaiting review");issueBtn.setEnabled(false);}
+                issueBtn.addActionListener(e->{
+                    String note=JOptionPane.showInputDialog(this,"Describe the delivery problem (5–1000 characters):","Report non-receipt",JOptionPane.QUESTION_MESSAGE);
+                    if(note==null)return;
+                    try{store.reportDeliveryIssue(order.getId(),note,user);lastState="";refresh();}
+                    catch(IllegalArgumentException|IllegalStateException ex){JOptionPane.showMessageDialog(this,ex.getMessage(),"Delivery issue",JOptionPane.WARNING_MESSAGE);}
+                });
+                text.add(issueBtn);
+                if(!order.getDeliveryIssue().isBlank())text.add(copy("Reported to staff: "+order.getDeliveryIssue()+". Receipt acknowledgment remains pending."));
+            }
         } else {
             text.add(copy("Keep this page open for status changes from staff."));
         }
@@ -188,7 +210,7 @@ public final class OrderTrackingPanel extends JPanel {
         text.append("          QUEUETEES\n");
         text.append("--------------------------------\n");
         text.append(order.getPlacedAt().format(DateTimeFormatter.ofPattern("MMM d, yyyy  h:mm a"))).append("\n");
-        text.append("Queue:    ").append(ticket(order)).append("\n");
+        text.append("Control:  ").append(ticket(order)).append("\n");
         text.append("Customer: ").append(abbrev(order.getCustomerName(), 21)).append("\n");
         text.append("Contact:  ").append(d.getContactNumber()).append("\n");
         text.append("--------------------------------\n");
@@ -196,7 +218,7 @@ public final class OrderTrackingPanel extends JPanel {
         for (CartItem item : order.getItems()) {
             total += item.getSubtotal();
             text.append(String.format("%-19s x%-2d %8s\n",
-                    abbrev(item.getProduct().getName(), 19), item.getQuantity(),
+                    abbrev(item.getProduct().getDisplayName(), 19), item.getQuantity(),
                     String.format("₱%,.2f", item.getSubtotal())));
         }
         text.append("--------------------------------\n");
@@ -204,6 +226,7 @@ public final class OrderTrackingPanel extends JPanel {
         text.append(String.format("%-23s %8s\n", "TOTAL", String.format("₱%,.2f", total)));
         text.append("\nPayment: ").append(d.getPaymentMethod());
         if (d.getFulfillmentMethod() != null) text.append("\nFulfillment: ").append(d.getFulfillmentMethod());
+        text.append("\nDelivery point: ").append(d.getDeliveryPoint().getLabel());
         if ("Delivery".equals(d.getFulfillmentMethod()) && d.getAddress() != null && !d.getAddress().isBlank())
             text.append("\nAddress: ").append(d.getAddress());
         if (d.getNotes() != null && !d.getNotes().isBlank())
@@ -225,6 +248,7 @@ public final class OrderTrackingPanel extends JPanel {
 
         JTextArea receiptArea = new JTextArea(text.toString());
         receiptArea.setEditable(false);
+        receiptArea.setLineWrap(true); receiptArea.setWrapStyleWord(true);
         receiptArea.setOpaque(false);
         receiptArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         receiptArea.setForeground(INK);
@@ -245,16 +269,10 @@ public final class OrderTrackingPanel extends JPanel {
         printBtn.setPreferredSize(new Dimension(200, 38));
         printBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
         printBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        printBtn.addActionListener(e -> {
-            try {
-                receiptArea.print();
-            } catch (java.awt.print.PrinterException ex) {
-                JOptionPane.showMessageDialog(this, "Printing failed: " + ex.getMessage(),
-                        "Print error", JOptionPane.ERROR_MESSAGE);
-            }
-        });
+        printBtn.setText("View receipt / print");
+        printBtn.addActionListener(e -> CustomerOrderDetails.show(this,user,order));
 
-        RoundedButton copyBtn = new RoundedButton("Copy queue number", new Color(237, 240, 231), INK);
+        RoundedButton copyBtn = new RoundedButton("Copy control number", new Color(237, 240, 231), INK);
         copyBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
         copyBtn.setHoverColor(new Color(220, 226, 213));
         copyBtn.setPreferredSize(new Dimension(200, 38));
@@ -266,8 +284,8 @@ public final class OrderTrackingPanel extends JPanel {
                         .setContents(new java.awt.datatransfer.StringSelection(ticket(order)), null);
                 copyBtn.setText("Copied!");
             } catch (RuntimeException ex) {
-                JOptionPane.showMessageDialog(this, "Your queue number is " + ticket(order),
-                        "Queue number", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Your control number is " + ticket(order),
+                        "Control number", JOptionPane.INFORMATION_MESSAGE);
             }
         });
 
@@ -288,12 +306,16 @@ public final class OrderTrackingPanel extends JPanel {
         switch (o.getStatus()) {
             case CONFIRMED: return "Your order is confirmed and waiting for preparation.";
             case PREPARING: return "Staff are preparing your order.";
-            case READY_FOR_PICKUP: return "Delivery".equals(o.getCheckoutDetails().getFulfillmentMethod()) ? "Your order is ready and will be dispatched for delivery soon." : "Your order is ready for pickup at the store.";
-            case OUT_FOR_DELIVERY: return "Your order is on its way! Click \"Order Received\" once you receive it.";
+            case READY_FOR_PICKUP: return o.getCheckoutDetails().isPickup() ? "Ready for collection at the Central Luzon main hub. Confirm receipt after collecting."
+                : "Ready at the main hub for dispatch to " + o.getCheckoutDetails().getDeliveryPoint().getLabel() + ".";
+            case TRANSFERRING: return "Your order is being transferred to " + o.getCheckoutDetails().getDeliveryPoint().getLabel() + ".";
+            case AT_DELIVERY_POINT: return "Your order has arrived at its delivery point and is awaiting local dispatch.";
+            case OUT_FOR_DELIVERY: return "Your order is on its way. Staff will record delivery before you can acknowledge receipt.";
+            case DELIVERED: return "Delivery has been recorded. Select Order Received only if you have the package, or report that it has not arrived.";
             default: return "Your order has been completed. Thank you!";
         }
     }
-    private static String ticket(Order o) { return String.format("Q-%03d", o.getQueueNumber()); }
+    private static String ticket(Order o) { return o.getControlNumber(); }
     private static String money(double amount) { return String.format("₱%,.2f", amount); }
     private static JLabel label(String text, int size, boolean bold, Color color) {
         JLabel label = new JLabel(text); label.putClientProperty("html.disable", true);

@@ -2,6 +2,7 @@ package service;
 
 public enum AuthStatus {
     SUCCESS,
+    REGISTRATION_INCOMPLETE,
     EMPTY_FIELDS,
     INVALID_CREDENTIALS,
     EMAIL_NOT_VERIFIED,

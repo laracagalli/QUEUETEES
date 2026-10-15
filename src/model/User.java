@@ -8,6 +8,17 @@ public class User {
     private final UserRole role;
     private boolean emailVerified;
     private AccountStatus status;
+    private String termsVersion = "";
+    private java.time.LocalDateTime termsAcceptedAt;
+    private boolean termsRequired;
+    public boolean isTermsRequired(){return termsRequired;}
+    public void setTermsRequired(boolean required){termsRequired=required;}
+    public String getTermsVersion() { return termsVersion; }
+    public java.time.LocalDateTime getTermsAcceptedAt() { return termsAcceptedAt; }
+    public void setTermsAcceptance(String version,java.time.LocalDateTime acceptedAt) {
+        termsVersion=version==null?"":version;
+        termsAcceptedAt=acceptedAt;
+    }
     private String fullName = "";
     private String address = "";
     private String contactNumber = "";

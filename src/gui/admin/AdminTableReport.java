@@ -13,13 +13,22 @@ public final class AdminTableReport implements Printable {
     private final String title, by, date=java.time.ZonedDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm z"));
     private final Image logo;
     final int rows;
+    private final java.util.List<String> details = new java.util.ArrayList<>();
     AdminTableReport(JTable source,String title,User user) {
-        this.title=title;by=user==null?"Administrator (identity unavailable)":user.getUsername()+" | "+user.getEmail();rows=source.getRowCount();
+        this.title=title;by=user==null?"Administrator (identity unavailable)":user.getUsername()+" | "+user.getEmail();
+        Object facts=source.getClientProperty("report.details");
+        if(facts!=null)for(String line:String.valueOf(facts).split("\n")){while(line.length()>125){details.add(line.substring(0,125));line=line.substring(125);}details.add(line);}
+        java.util.List<Integer> reportRows=gui.components.TablePagination.matchingRows(source);rows=reportRows.size();
         java.util.List<Integer> visibleColumns = new java.util.ArrayList<>();
         for(int c=0;c<source.getColumnCount();c++)
-            if(!"stockActions".equals(source.getColumnModel().getColumn(c).getIdentifier()))visibleColumns.add(c);
+            if(!"stockActions".equals(source.getColumnModel().getColumn(c).getIdentifier()))visibleColumns.add(source.convertColumnIndexToModel(c));
+        for(int c=0;c<source.getModel().getColumnCount();c++)
+            if("Picture".equals(source.getModel().getColumnName(c))&&!visibleColumns.contains(c))visibleColumns.add(c);
         String[] columns=new String[visibleColumns.size()];Object[][] data=new Object[rows][columns.length];
-        for(int c=0;c<columns.length;c++){int sourceColumn=visibleColumns.get(c);columns[c]=String.valueOf(source.getColumnModel().getColumn(sourceColumn).getHeaderValue());for(int r=0;r<rows;r++)data[r][c]=source.getValueAt(r,sourceColumn);}
+        for(int c=0;c<columns.length;c++){int sourceColumn=visibleColumns.get(c);columns[c]=source.getModel().getColumnName(sourceColumn);for(int r=0;r<rows;r++){
+            Object value=source.getModel().getValueAt(reportRows.get(r),sourceColumn);
+            data[r][c]="Picture".equals(columns[c]) ? gui.components.ProductImages.load(String.valueOf(value),42,42) : value;
+        }}
         snapshot=new JTable(new DefaultTableModel(data,columns));AdminUi.style(snapshot);
         snapshot.setFont(new Font("SansSerif",Font.PLAIN,12));snapshot.setForeground(Color.BLACK);
         snapshot.setRowHeight(32);snapshot.setSize(782,Math.max(32,rows*32));
@@ -31,6 +40,7 @@ public final class AdminTableReport implements Printable {
             }
         });
         javax.swing.table.TableCellRenderer body=(t,value,selected,focus,row,col)->{
+            if(value instanceof Icon){JLabel label=new JLabel((Icon)value);label.setHorizontalAlignment(SwingConstants.CENTER);label.setPreferredSize(new Dimension(50,54));return label;}
             JTextArea text=new JTextArea(String.valueOf(value));text.setFont(t.getFont());text.setForeground(Color.BLACK);
             text.setLineWrap(true);text.setWrapStyleWord(true);text.setBackground(row%2==0?Color.WHITE:new Color(245,247,241));
             text.setBorder(BorderFactory.createEmptyBorder(6,8,6,8));return text;
@@ -57,13 +67,15 @@ public final class AdminTableReport implements Printable {
     }
     static PageFormat format(){Paper paper=new Paper();paper.setSize(842,595);paper.setImageableArea(30,30,782,535);PageFormat f=new PageFormat();f.setPaper(paper);return f;}
     public int print(Graphics graphics,PageFormat format,int page) throws PrinterException {
-        PageFormat bodyFormat=(PageFormat)format.clone();Paper p=bodyFormat.getPaper();p.setImageableArea(format.getImageableX(),format.getImageableY()+110,format.getImageableWidth(),format.getImageableHeight()-110);bodyFormat.setPaper(p);
+        int headerHeight=110+details.size()*11;
+        PageFormat bodyFormat=(PageFormat)format.clone();Paper p=bodyFormat.getPaper();p.setImageableArea(format.getImageableX(),format.getImageableY()+headerHeight,format.getImageableWidth(),format.getImageableHeight()-headerHeight);bodyFormat.setPaper(p);
         Graphics2D g=(Graphics2D)graphics.create();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_RENDERING,RenderingHints.VALUE_RENDER_QUALITY);int result;
         if(rows==0){if(page>0){g.dispose();return NO_SUCH_PAGE;}result=PAGE_EXISTS;g.setColor(Color.DARK_GRAY);g.drawString("No records in this report.",(int)format.getImageableX(),(int)format.getImageableY()+135);}else result=snapshot.getPrintable(JTable.PrintMode.FIT_WIDTH,null,new java.text.MessageFormat("Page {0}")).print(g,bodyFormat,page);
         if(result==PAGE_EXISTS){int x=(int)format.getImageableX(),y=(int)format.getImageableY(),w=(int)format.getImageableWidth();g.setColor(Color.BLACK);if(logo!=null)g.drawImage(logo,x+w/2-60,y,120,42,null);g.setFont(new Font("Fira Code",Font.BOLD,13));g.drawString(title,x,y+60);g.setFont(new Font("Fira Code",Font.PLAIN,9));g.drawString("Printed: "+date+"   |   Prepared by: "+by,x,y+77);g.drawString("Visible table snapshot | "+rows+" records",x,y+92);}
+        if(result==PAGE_EXISTS){g.setFont(new Font("SansSerif",Font.PLAIN,9));int y=(int)format.getImageableY()+108;for(String detail:details){g.drawString(detail,(int)format.getImageableX(),y);y+=11;}}
         g.dispose();return result;
     }
     BufferedImage page(int index)throws PrinterException {BufferedImage image=new BufferedImage(1684,1190,BufferedImage.TYPE_INT_RGB);Graphics2D g=image.createGraphics();g.setColor(Color.WHITE);g.fillRect(0,0,1684,1190);g.scale(2,2);int result=print(g,format(),index);g.dispose();return result==PAGE_EXISTS?image:null;}

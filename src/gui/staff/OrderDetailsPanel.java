@@ -6,6 +6,7 @@ import javax.swing.table.DefaultTableModel;
 import model.CartItem;
 import model.Order;
 import model.OrderStatus;
+import model.Fulfillment;
 import service.StoreService;
 
 /** Staff page for inspecting and updating a selected order. */
@@ -13,7 +14,7 @@ public final class OrderDetailsPanel extends JPanel {
     private final java.util.List<Order> rowOrders = new java.util.ArrayList<>();
     private final StoreService store = StoreService.getInstance();
     private final DefaultTableModel model = new DefaultTableModel(
-            new String[]{"Waiting #", "Queue no.", "Customer", "Product", "Qty", "Payment", "Status"}, 0) {
+            new String[]{"Waiting #", "Control no.", "Customer", "Product", "Qty", "Payment", "Status"}, 0) {
         @Override public boolean isCellEditable(int row, int column) { return false; }
         @Override public Class<?> getColumnClass(int column) { return column == 0 ? Integer.class : Object.class; }
     };
@@ -40,7 +41,7 @@ public final class OrderDetailsPanel extends JPanel {
         header.add(Box.createVerticalStrut(4));
         Ui.addLeft(header, Ui.label("Order details", 25, Font.BOLD, Ui.INK));
         header.add(Box.createVerticalStrut(5));
-        Ui.addLeft(header, Ui.label("Review queued orders and prepare items in first-come, first-served order.", 11, Font.PLAIN, Ui.MUTED));
+        Ui.addLeft(header, Ui.label("Review queued orders. Verified orders with fewer pieces enter packing first.", 11, Font.PLAIN, Ui.MUTED));
         header.add(Box.createVerticalStrut(16)); header.add(StaffOrderActions.search(table));
         add(header, BorderLayout.NORTH);
         JPanel list = createTableCard(); JPanel detail = createDetailsCard();
@@ -84,9 +85,10 @@ public final class OrderDetailsPanel extends JPanel {
         detailBody.setOpaque(false); detailBody.setLayout(new BoxLayout(detailBody, BoxLayout.Y_AXIS));
         JScrollPane scroll = new gui.components.ModernScrollPane(detailBody); scroll.setBorder(null); scroll.getViewport().setBackground(Ui.PAPER);
         scroll.getVerticalScrollBar().setUnitIncrement(22); card.add(scroll);
-        JPanel actions = new JPanel(new GridLayout(1, 2, 10, 0)); actions.setOpaque(false);
+        JPanel actions = new JPanel(new GridLayout(0, 1, 10, 6)); actions.setOpaque(false);
         advance.addActionListener(e -> { Order order = selectedOrder(); if (order != null) StaffOrderActions.advance(this, order, this::refresh); });
         actions.add(advance);
+        actions.add(StaffOrderActions.shortcutButton(this,this::selectedOrder,this::refresh));
         actions.add(StaffOrderActions.detailsButton(this, table, this::selectedOrder, this::refresh));
         card.add(actions, BorderLayout.SOUTH); return card;
     }
@@ -99,18 +101,18 @@ public final class OrderDetailsPanel extends JPanel {
     private void showSelectedDetails() {
         Order order = selectedOrder(); detailBody.removeAll();
         Integer position = order == null ? null : StaffQueuePresentation.waitingPositions(store.getActiveOrders()).get(order.getId());
-        boolean eligible = order != null && (order.getStatus() != OrderStatus.CONFIRMED || Integer.valueOf(1).equals(position));
+        boolean eligible = order != null && order.getStatus()!=OrderStatus.DELIVERED && (order.getStatus() != OrderStatus.CONFIRMED || Integer.valueOf(1).equals(position));
         advance.setEnabled(eligible); advance.setText(order == null ? "Select an order" : StaffOrderActions.nextAction(order));
-        advance.setToolTipText(eligible ? "Update the selected order" : "Select the first waiting order to start preparation.");
+        advance.setToolTipText(order != null && order.getStatus()==OrderStatus.DELIVERED ? "The customer must acknowledge receipt." : eligible ? "Update the selected order" : "Select the first waiting order to start preparation.");
         if (order == null) {
             detailBody.add(Ui.label("Order details", 19, Font.BOLD, Ui.INK)); detailBody.add(Box.createVerticalStrut(16));
             detailBody.add(text("Select an order on the left to review its items and preparation details.", false));
         } else {
             JPanel title = new JPanel(new BorderLayout(10, 0)); title.setOpaque(false); title.setAlignmentX(Component.LEFT_ALIGNMENT);
             title.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
-            title.add(Ui.label(String.format("Q-%03d", order.getQueueNumber()), 26, Font.BOLD, Ui.INK));
-            title.add(Ui.label(position == null ? order.getStatus().getLabel() : "Waiting #" + position, 12, Font.BOLD,
-                    StaffQueuePresentation.statusColor(order.getStatus().getLabel())), BorderLayout.EAST);
+            title.add(Ui.label("" + order.getControlNumber() + "", 26, Font.BOLD, Ui.INK));
+            title.add(Ui.label(position == null ? order.getStatusLabel() : "Waiting #" + position, 12, Font.BOLD,
+                    StaffQueuePresentation.statusColor(order.getStatusLabel())), BorderLayout.EAST);
             detailBody.add(title); separator();
             JPanel facts = new JPanel(new GridLayout(1, 2, 16, 0)); facts.setOpaque(false); facts.setAlignmentX(Component.LEFT_ALIGNMENT);
             JPanel customer = Ui.verticalBox(), payment = Ui.verticalBox();
@@ -118,10 +120,12 @@ public final class OrderDetailsPanel extends JPanel {
             fact(customer, "Contact number", order.getCheckoutDetails().getContactNumber());
             fact(customer, "Order time", order.getPlacedAt().format(java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy / h:mm a")));
             fact(payment, "Payment method", order.getCheckoutDetails().getPaymentMethod());
-            fact(payment, "Queue position", position == null ? "Already in progress" : "Waiting #" + position);
+            fact(payment, "Queue position", order.getStatus()==OrderStatus.CONFIRMED&&!order.canStartPacking()?"Awaiting payment verification":position == null ? "Already in progress" : "Waiting #" + position);
             fact(payment, "Fulfillment", order.getCheckoutDetails().getFulfillmentMethod());
             facts.add(customer); facts.add(payment); facts.setMaximumSize(new Dimension(Integer.MAX_VALUE, 175)); detailBody.add(facts);
             separator();
+            fact(detailBody, "Delivery point", order.getCheckoutDetails().getDeliveryPoint().getLabel());
+            fact(detailBody, "Delivery address", order.getCheckoutDetails().getAddress());
             detailBody.add(Ui.label("Order items / " + order.getItemCount() + " items", 15, Font.BOLD, Ui.INK));
             detailBody.add(Box.createVerticalStrut(10));
             for (CartItem item : order.getItems()) {
@@ -129,7 +133,7 @@ public final class OrderDetailsPanel extends JPanel {
                 row.setBorder(BorderFactory.createEmptyBorder(6, 0, 8, 0));
                 java.net.URL url = getClass().getResource(item.getProduct().getImagePath());
                 if (url != null) row.add(new JLabel(new ImageIcon(new ImageIcon(url).getImage().getScaledInstance(48, 55, Image.SCALE_SMOOTH))), BorderLayout.WEST);
-                row.add(text(item.getProduct().getName() + "\nQty " + item.getQuantity() + " / Unit " + String.format("₱%,.2f", item.getProduct().getPrice()), true));
+                row.add(text(item.getProduct().getDisplayName() + "\nQty " + item.getQuantity() + " / Unit " + String.format("₱%,.2f", item.getProduct().getPrice()), true));
                 row.add(Ui.label(String.format("₱%,.2f", item.getSubtotal()), 12, Font.BOLD, Ui.INK), BorderLayout.EAST);
                 row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 85)); detailBody.add(row);
             }
@@ -137,13 +141,13 @@ public final class OrderDetailsPanel extends JPanel {
             separator();
             fact(detailBody, "Preparation notes", order.getCheckoutDetails().getNotes() == null || order.getCheckoutDetails().getNotes().isBlank() ? "No notes provided." : order.getCheckoutDetails().getNotes());
             detailBody.add(Ui.label("Order status", 12, Font.BOLD, Ui.INK)); detailBody.add(Box.createVerticalStrut(10));
-            JPanel stages = new JPanel(new GridLayout(1, 5, 6, 0)); stages.setOpaque(false); stages.setAlignmentX(Component.LEFT_ALIGNMENT);
-            for (OrderStatus status : OrderStatus.values()) {
+            JPanel stages = new JPanel(new GridLayout(0, 2, 6, 0)); stages.setOpaque(false); stages.setAlignmentX(Component.LEFT_ALIGNMENT);
+            for (OrderStatus status : Fulfillment.stages(order)) {
                 JPanel stage = Ui.verticalBox(); boolean reached = status.ordinal() <= order.getStatus().ordinal();
                 stage.add(Ui.label(reached ? "●" : "○", 22, Font.BOLD, reached ? Ui.FOREST : Ui.MUTED));
-                stage.add(text(status.getLabel(), status == order.getStatus())); stages.add(stage);
+                stage.add(text(status == OrderStatus.READY_FOR_PICKUP && !order.getCheckoutDetails().isPickup() ? "Ready for dispatch" : status.getLabel(), status == order.getStatus())); stages.add(stage);
             }
-            stages.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90)); detailBody.add(stages);
+            stages.setMaximumSize(new Dimension(Integer.MAX_VALUE, stages.getPreferredSize().height)); detailBody.add(stages);
         }
         detailBody.revalidate(); detailBody.repaint();
     }
@@ -167,7 +171,7 @@ public final class OrderDetailsPanel extends JPanel {
     }
 
     public void refresh() {
-        String state = store.getActiveOrders().stream().map(o -> o.getId() + ":" + o.getStatus()).collect(java.util.stream.Collectors.joining("|"));
+        String state = store.getActiveOrders().stream().map(o -> o.getId() + ":" + o.getStatus() + ":" + o.getCheckoutDetails().getAddress()+":"+o.getDeliveryIssue()+":"+o.getDeliveryIssueStatus()+":"+o.getDeliveryIssueResponse()+":"+o.getPaymentStatus()+":"+o.getPaymentReference()+":"+o.getPaidAmount()).collect(java.util.stream.Collectors.joining("|"));
         if (state.equals(lastState) && !lastState.isEmpty()) return;
         lastState = state;
         refreshing = true;
@@ -180,9 +184,9 @@ public final class OrderDetailsPanel extends JPanel {
         for (Order order : active) {
             for (CartItem item : order.getItems()) {
                 rowOrders.add(order);
-                model.addRow(new Object[]{positions.get(order.getId()), "Q-" + String.format("%03d", order.getQueueNumber()), order.getCustomerName(),
-                        item.getProduct().getName(), item.getQuantity(), order.getCheckoutDetails().getPaymentMethod(),
-                        order.getStatus().getLabel()});
+                model.addRow(new Object[]{positions.get(order.getId()), order.getControlNumber(), order.getCustomerName(),
+                        item.getProduct().getDisplayName(), item.getQuantity(), order.getCheckoutDetails().getPaymentMethod(),
+                        order.getStatusLabel()});
             }
         }
         if (selected != null) {

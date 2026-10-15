@@ -61,14 +61,15 @@ public class RoundedButton extends JButton {
     protected void paintComponent(Graphics g) {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
         Color fill = isEnabled() && (hovered || getModel().isRollover()) ? hoverColor : bgColor;
         if (isEnabled() && getModel().isPressed()) fill = fill.darker();
-        if (!isEnabled()) g2.setComposite(AlphaComposite.SrcOver.derive(0.45f));
+        if (!isEnabled()) fill=new Color(218,224,217);
         g2.setColor(fill);
         g2.fillRoundRect(0, 0, getWidth(), getHeight(), getHeight(), getHeight());
 
-        g2.setColor(textColor);
+        g2.setColor(isEnabled()?textColor:new Color(83,94,83));
         g2.setFont(getFont());
         FontMetrics fm = g2.getFontMetrics();
         int x = (getWidth() - fm.stringWidth(getText())) / 2;

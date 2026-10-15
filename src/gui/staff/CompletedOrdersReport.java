@@ -15,7 +15,7 @@ import model.User;
 /** Immutable report snapshot. Preview and printer use the same paginated renderer. */
 public final class CompletedOrdersReport implements Printable {
     public static final int WIDTH = 515, HEIGHT = 742;
-    private static final int[] COLUMN_WIDTHS = {48, 127, 90, 105, 35, 110};
+    private static final int[] COLUMN_WIDTHS = {110, 90, 80, 120, 30, 85};
     private static final Font BODY = new Font("SansSerif", Font.PLAIN, 9);
     private final List<List<Row>> pages = new ArrayList<>();
     private final List<String> metadata = new ArrayList<>();
@@ -46,11 +46,12 @@ public final class CompletedOrdersReport implements Printable {
         for (Order order : orders) {
             if (order.getStatus() != OrderStatus.COMPLETED || order.getCompletedAt() == null)
                 throw new IllegalArgumentException("Reports can contain completed orders only.");
-            String[] cells = {String.format("Q-%03d", order.getQueueNumber()), order.getCustomerName(),
+            String[] cells = {"" + order.getControlNumber() + "", order.getCustomerName(),
                     order.getCompletedAt().format(DateTimeFormatter.ofPattern("dd MMM yyyy\nHH:mm")),
                     order.getCheckoutDetails().getFulfillmentMethod() + "\n" + order.getCheckoutDetails().getPaymentMethod(),
                     String.valueOf(order.getItemCount()), String.format(java.util.Locale.US, "%,.2f", order.getTotal())};
-            Row row = new Row(cells, fm);
+            cells[3]+="\n"+order.getItems().stream().map(i->i.getProduct().getDisplayName()+" x"+i.getQuantity()).collect(java.util.stream.Collectors.joining("\n"));
+            Row row = new Row(cells, fm,order);
             if (row.height > 682 - tableTop - 24) throw new IllegalArgumentException("An order has too much text for a report page.");
             if (used + row.height > 682) {
                 pages.add(page);
@@ -129,7 +130,7 @@ public final class CompletedOrdersReport implements Printable {
         g.fillRect(0, tableTop, WIDTH, 24);
         g.setColor(Color.WHITE);
         g.setFont(new Font("SansSerif", Font.BOLD, 8));
-        String[] headers = {"Queue", "Customer", "Completed", "Method / payment", "Items", "Amount (PHP)"};
+        String[] headers = {"Control no.", "Customer", "Completed", "Method / payment", "Items", "Amount (PHP)"};
         int x = 0;
         for (int i = 0; i < headers.length; i++) { g.drawString(headers[i], x + 5, tableTop + 15); x += COLUMN_WIDTHS[i]; }
         y = tableTop + 24;
@@ -149,6 +150,8 @@ public final class CompletedOrdersReport implements Printable {
                 }
                 x += COLUMN_WIDTHS[col];
             }
+            int pictureX=5,pictureY=y+row.textHeight;
+            for(javax.swing.ImageIcon image:row.images){if(pictureX+32>WIDTH){pictureX=5;pictureY+=36;}g.drawImage(image.getImage(),pictureX,pictureY,null);pictureX+=36;}
             y += row.height;
             g.setColor(StaffStyles.LINE);
             g.drawLine(0, y, WIDTH, y);
@@ -187,14 +190,18 @@ public final class CompletedOrdersReport implements Printable {
     private static final class Row {
         final List<List<String>> lines = new ArrayList<>();
         final int height;
-        Row(String[] cells, FontMetrics fm) {
+        final int textHeight;
+        final List<javax.swing.ImageIcon> images=new ArrayList<>();
+        Row(String[] cells, FontMetrics fm,Order order) {
             int count = 1;
             for (int i = 0; i < cells.length; i++) {
                 List<String> cell = wrap(cells[i], fm, COLUMN_WIDTHS[i] - 12);
                 lines.add(cell);
                 count = Math.max(count, cell.size());
             }
-            height = count * 12 + 12;
+            textHeight=count*12+12;
+            for(model.CartItem item:order.getItems()) { javax.swing.ImageIcon icon=gui.components.ProductImages.load(item.getProduct().getImagePath(),32,32);if(icon!=null)images.add(icon); }
+            height = textHeight + (images.size()+13)/14*36;
         }
     }
 }

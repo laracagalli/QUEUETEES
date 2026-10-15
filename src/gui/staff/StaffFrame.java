@@ -6,6 +6,7 @@ import service.AuthService;
 
 public class StaffFrame extends JFrame {
     public StaffFrame(AuthService authService, model.User user) {
+        service.ActivityLogger.setActor(user);
         setTitle("Staff Dashboard");
         gui.components.AppTheme.applyWindowIcon(this);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -14,5 +15,6 @@ public class StaffFrame extends JFrame {
         setLocationRelativeTo(null);
         setResizable(true);
         setContentPane(new StaffDashboardPanel(authService, user));
+        gui.components.AccountNotices.attach(this,authService,user);
     }
 }

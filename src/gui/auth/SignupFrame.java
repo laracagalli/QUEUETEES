@@ -44,6 +44,7 @@ public class SignupFrame extends JFrame implements ActionListener {
 
     private final AuthService authService;
     private final boolean staffRegistration;
+    private model.User registrationUser;
 
     private static final String[] SLIDE_IMAGES = {
         "/Gui_Images/model1.png",
@@ -63,6 +64,18 @@ public class SignupFrame extends JFrame implements ActionListener {
 
     public SignupFrame(AuthService authService) {
         this(authService, false);
+    }
+
+    public SignupFrame(AuthService authService,model.User user,char[] password) {
+        this(authService,user.getRole()==model.UserRole.STAFF);
+        registrationUser=user;
+        email.setText(user.getEmail());fullname.setText(user.getFullName());username.setText(user.getUsername());
+        address.setText(user.getAddress());contactnum.setText(user.getContactNumber());
+        if(user.getBirthday()!=null)birthday.setDate(java.util.Date.from(user.getBirthday().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()));
+        if("Female".equals(user.getGender()))female.setSelected(true);
+        else if("Male".equals(user.getGender()))male.setSelected(true);
+        else if("Other".equals(user.getGender()))other.setSelected(true);
+        pass.setText(new String(password));java.util.Arrays.fill(password,'\0');
     }
 
     public SignupFrame(AuthService authService, boolean staffRegistration) {
@@ -115,7 +128,7 @@ public class SignupFrame extends JFrame implements ActionListener {
         email.setFont(fieldFont);
         email.setBackground(fieldBg);
         email.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-        email.setDocument(new LimitedDocument(36, false, "Email", this::clearPassword));
+        email.setDocument(new LimitedDocument(254, false, "Email", this::clearPassword));
         leftPanel.add(email);
 
         emailError = new JLabel("");
@@ -201,11 +214,23 @@ public class SignupFrame extends JFrame implements ActionListener {
         addressError.setVisible(false);
         leftPanel.add(addressError);
 
-        address.setBounds(30, 280, 490, 36);
+        address.setBounds(30, 280, 365, 36);
         address.setFont(fieldFont);
         address.setBackground(fieldBg);
         address.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-        address.setDocument(new LimitedDocument(60, false, "Address", this::clearPassword));
+        address.setDocument(new LimitedDocument(400, false, "Address", this::clearPassword));
+        address.setEditable(false);
+        JButton selectAddress = new JButton("Set address");
+        selectAddress.setBounds(405,280,115,36);
+        selectAddress.addActionListener(e -> {
+            gui.components.DeliveryAddressPanel form = new gui.components.DeliveryAddressPanel(new JTextArea(2,20), () -> {});
+            form.setSavedAddress(address.getText());
+            while (JOptionPane.showConfirmDialog(this,form,"Full address",JOptionPane.OK_CANCEL_OPTION)==JOptionPane.OK_OPTION) {
+                try { address.setText(form.getAddress().format()); break; }
+                catch(IllegalArgumentException ex) { showWarning(ex.getMessage()); }
+            }
+        });
+        leftPanel.add(selectAddress);
         leftPanel.add(address);
 
         // --- ROW 4: Contact Number | Gender ---
@@ -245,6 +270,22 @@ public class SignupFrame extends JFrame implements ActionListener {
         contactError.setForeground(Color.RED);
         contactError.setVisible(false);
         leftPanel.add(contactError);
+        ((javax.swing.text.AbstractDocument)contactnum.getDocument()).setDocumentFilter(new javax.swing.text.DocumentFilter(){
+            @Override public void insertString(FilterBypass fb,int offset,String text,javax.swing.text.AttributeSet attrs)throws javax.swing.text.BadLocationException {
+                replace(fb,offset,0,text,attrs);
+            }
+            @Override public void replace(FilterBypass fb,int offset,int length,String text,javax.swing.text.AttributeSet attrs)throws javax.swing.text.BadLocationException {
+                String current=fb.getDocument().getText(0,fb.getDocument().getLength());
+                String candidate=current.substring(0,offset)+(text==null?"":text)+current.substring(offset+length);
+                if(candidate.length()>10 || !candidate.matches("(?:9[0-9]*)?")){
+                    contactError.setText("Use 10 digits starting with 9.");contactError.setVisible(true);return;
+                }
+                super.replace(fb,offset,length,text,attrs);
+            }
+            @Override public void remove(FilterBypass fb,int offset,int length)throws javax.swing.text.BadLocationException {
+                replace(fb,offset,length,"",null);
+            }
+        });
 
         JLabel genderLbl = new JLabel("Gender:");
         genderLbl.setBounds(290, 328, 100, 18);
@@ -286,6 +327,7 @@ public class SignupFrame extends JFrame implements ActionListener {
         birthday = new JDateChooser();
         birthday.setDateFormatString("MM/dd/yyyy");
         birthday.setMaxSelectableDate(maxCal.getTime());
+        birthday.setMinSelectableDate(java.sql.Date.valueOf(LocalDate.now().minusYears(121).plusDays(1)));
         birthday.setBounds(30, 418, 490, 36);
         birthday.setFont(fieldFont);
         birthday.setBackground(fieldBg);
@@ -299,7 +341,7 @@ public class SignupFrame extends JFrame implements ActionListener {
         birthdayError.setVisible(false);
         leftPanel.add(birthdayError);
 
-        JLabel ageHint = new JLabel("You must be at least 18 years old to register.");
+        JLabel ageHint = new JLabel("Registration age: 18–120 years. No ID upload is required.");
         ageHint.setBounds(30, 470, 490, 16);
         ageHint.setFont(new Font("Fira Code", Font.ITALIC, 10));
         ageHint.setForeground(Color.GRAY);
@@ -343,6 +385,7 @@ public class SignupFrame extends JFrame implements ActionListener {
         fullname.getDocument().addDocumentListener(liveValidation);
         pass.getDocument().addDocumentListener(liveValidation);
         contactnum.getDocument().addDocumentListener(liveValidation);
+        birthday.addPropertyChangeListener("date",e->checkSignupRealTime());
 
 
         // =========================
@@ -518,10 +561,9 @@ public class SignupFrame extends JFrame implements ActionListener {
         String passTxt = new String(pass.getPassword());
         String contactTxt = contactnum.getText().trim();
 
-        if (!addressTxt.isEmpty()
-        && !addressTxt.matches("^[a-zA-Z0-9\\s,.-]+$")) {
+        if (!addressTxt.isEmpty() && !service.RegistrationValidation.addressError(addressTxt).isEmpty()) {
 
-            addressError.setText("Invalid special characters");
+            addressError.setText(service.RegistrationValidation.addressError(addressTxt));
             addressError.setVisible(true);
 
         } else {
@@ -529,8 +571,8 @@ public class SignupFrame extends JFrame implements ActionListener {
             addressError.setVisible(false);
         }
 
-        if (!emailTxt.isEmpty() && !emailTxt.contains("@")) {
-            emailError.setText("Invalid email (missing @)");
+        if (!emailTxt.isEmpty() && !service.RegistrationValidation.validEmail(emailTxt)) {
+            emailError.setText("Invalid Email.");
             emailError.setVisible(true);
         } else { emailError.setVisible(false); }
 
@@ -555,12 +597,14 @@ public class SignupFrame extends JFrame implements ActionListener {
             passError.setVisible(false);
         }
 
-        if (contactTxt.length() > 0 && contactTxt.length() < 10) {
-            contactError.setText("Must be 10 digits");
+        if (contactTxt.length() > 0 && !service.RegistrationValidation.contactError(contactTxt).isEmpty()) {
+            contactError.setText("Use 10 digits starting with 9.");
             contactError.setVisible(true);
         } else { contactError.setVisible(false); }
 
-        birthdayError.setVisible(false); // JDateChooser handles this itself
+        String ageError = service.RegistrationValidation.birthdayError(birthday.getDate() == null ? null
+                : birthday.getDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate());
+        birthdayError.setText(ageError); birthdayError.setVisible(birthday.getDate()!=null && !ageError.isEmpty());
     }
 
 
@@ -569,6 +613,7 @@ public class SignupFrame extends JFrame implements ActionListener {
     // =========================
 
     private void handleRegistration() {
+        if (!service.RegistrationValidation.validEmail(email.getText().trim())) { showWarning("Invalid Email."); return; }
         if (birthday.getDate() == null) {
             showWarning("Please select your birthday.");
             return;
@@ -584,12 +629,14 @@ public class SignupFrame extends JFrame implements ActionListener {
                 .atZone(java.time.ZoneId.systemDefault())
                 .toLocalDate();
 
-        if (parsedBirthday.isAfter(LocalDate.of(2026, 12, 31))) {
-            showWarning("Birthday cannot be later than 12/31/2026.");
+        if (!service.RegistrationValidation.birthdayError(parsedBirthday).isEmpty()) {
+            showWarning(service.RegistrationValidation.birthdayError(parsedBirthday));
             return;
         }
 
-        RegistrationResult result = staffRegistration ? authService.registerStaff(
+        RegistrationResult result = registrationUser!=null ? authService.reviseRegistration(registrationUser,
+                email.getText(),fullname.getText(),username.getText(),pass.getPassword(),address.getText(),contactnum.getText(),selectedGender(),parsedBirthday)
+                : staffRegistration ? authService.registerStaff(
                 email.getText(), fullname.getText(), username.getText(), pass.getPassword(),
                 address.getText(), contactnum.getText(), selectedGender(), parsedBirthday)
                 : authService.registerCustomer(
@@ -607,23 +654,26 @@ public class SignupFrame extends JFrame implements ActionListener {
             return;
         }
 
+        registrationUser=result.getUser();
+
+        char[] returnPassword=pass.getPassword();
         clearPassword();
 
         if (staffRegistration) {
             dispose();
-            new EmailAuthFrame(authService, result.getUser(), () -> {
+            TermsFrame.proceed(authService,result.getUser(),()->new EmailAuthFrame(authService, result.getUser(), () -> {
                 JOptionPane.showMessageDialog(null,
-                        "Thank you for verifying your email!\n\n"
+                        result.getUser().getStatus()==model.AccountStatus.ACTIVE?"Your email is verified and your staff account is approved. Please sign in.":"Thank you for verifying your email!\n\n"
                         + "Your application is under review. We will notify you\n"
                         + "by email once the administrator has made a decision.",
                         "Application Submitted", JOptionPane.INFORMATION_MESSAGE);
                 new LoginFrame(authService).setVisible(true);
-            }).setVisible(true);
+            }).setVisible(true),returnPassword);
             return;
         }
 
         dispose();
-        new EmailAuthFrame(authService, result.getUser()).setVisible(true);
+        TermsFrame.proceed(authService,result.getUser(),()->new EmailAuthFrame(authService, result.getUser()).setVisible(true),returnPassword);
     }
 
 

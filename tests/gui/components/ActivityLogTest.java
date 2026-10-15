@@ -61,7 +61,8 @@ public class ActivityLogTest {
             role.setSelectedItem("STAFF"); action.setSelectedItem("Order updated"); search.setText("Q-001");
             check(table.getRowCount()==1,"Role, action and text filters combine");
             JPanel userCounts=(JPanel)field(panel,"userCounts");
-            check(((JLabel)userCounts.getComponent(0)).getText().equals("staff-audit (STAFF): 1 activity record(s)"),"Filtered per-user count");
+            check(((JPanel)userCounts.getComponent(0)).getClientProperty("activity.identity").equals("staff-audit (STAFF)")
+                    &&Integer.valueOf(1).equals(((JPanel)userCounts.getComponent(0)).getClientProperty("activity.count")),"Filtered per-user count");
             ActivityLogger.record(admin,"Stock adjusted","Test shirt: 4 → 8 (+4)"); panel.refresh();
             check(table.getRowCount()==1&&role.getSelectedItem().equals("STAFF"),"Refresh preserves filters");
             search.setText("missing"); check(table.getRowCount()==0,"Empty matches supported");
@@ -90,9 +91,8 @@ public class ActivityLogTest {
             overview.refresh();
             JPanel overviewCounts=(JPanel)field(overview,"userCounts");
             int counted=0;
-            for(Component component:overviewCounts.getComponents()) if(component instanceof JLabel label) {
-                String text=label.getText();
-                counted+=Integer.parseInt(text.substring(text.lastIndexOf(": ")+2,text.indexOf(" activity record(s)")));
+            for(Component component:overviewCounts.getComponents()) if(component instanceof JPanel card && card.getClientProperty("activity.count") instanceof Integer total) {
+                counted+=total;
             }
             check(counted==overviewTable.getRowCount(),"Individual counts sum to all matching records");
             check(ActivityLogger.getEntries().size()==count,"Overview filtering and navigation do not create activity");
@@ -123,6 +123,13 @@ public class ActivityLogTest {
             check(((BorderLayout)panel.getLayout()).getLayoutComponent(BorderLayout.NORTH)==originalHeader,"Back restores original header placement");
             check(table.getRowCount()==1&&search.getText().equals("Q-001"),"Back preserves activity filters");
             render(panel,"activity-print-return",1120,700);
+            User extraStaff=new User(703,"SampleStaff","sample@example.com","unused",UserRole.STAFF,true,AccountStatus.ACTIVE);
+            for(int i=0;i<25;i++)ActivityLogger.record(extraStaff,"Order updated","QT-EXAMPLE-"+i+": Ready for dispatch → Out for delivery");
+            search.setText("");role.setSelectedIndex(0);action.setSelectedIndex(0);panel.refresh();
+            int allCardCounts=0;
+            for(Component component:userCounts.getComponents())if(component instanceof JPanel card&&card.getClientProperty("activity.count") instanceof Integer total)allCardCounts+=total;
+            check(table.getRowCount()==10&&allCardCounts==TablePagination.matchingCount(table),"Account cards count all filtered pages, not only the visible page");
+            render(panel,"activity-account-cards",1440,820);overview.refresh();render(overview,"activity-overview-cards",1120,700);
             System.out.println("PASS: meaningful activity, ignored UI interactions, per-user counts, overview/log filters and footer layout");
         }catch(Exception ex){throw new RuntimeException(ex);}});
     }

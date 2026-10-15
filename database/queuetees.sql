@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS users (
     gender VARCHAR(50) NOT NULL DEFAULT '',
     birthday DATE NULL,
     profile_picture VARCHAR(1024) NOT NULL DEFAULT '',
+    terms_version VARCHAR(30) NOT NULL DEFAULT '',
+    terms_accepted_at DATETIME(6) NULL,
+    terms_required BOOLEAN NOT NULL DEFAULT FALSE,
     registered_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
     UNIQUE KEY uq_users_username (username),
@@ -39,6 +42,7 @@ CREATE TABLE IF NOT EXISTS products (
     price DECIMAL(12, 2) NOT NULL,
     stock INT NOT NULL DEFAULT 0,
     image_path VARCHAR(1024) NOT NULL DEFAULT '',
+    size VARCHAR(20) NOT NULL DEFAULT 'M',
     PRIMARY KEY (id),
     KEY idx_products_category (category, subcategory),
     KEY idx_products_stock (stock),
@@ -66,6 +70,15 @@ CREATE TABLE IF NOT EXISTS cart_items (
 CREATE TABLE IF NOT EXISTS orders (
     id INT NOT NULL AUTO_INCREMENT,
     queue_number INT NOT NULL,
+    control_number VARCHAR(20) NULL,
+    courier_reference VARCHAR(100) NULL,
+    courier_confirmed_at DATETIME(6) NULL,
+    delivered_by INT NULL,
+    received_by INT NULL,
+    delivery_issue VARCHAR(1000) NOT NULL DEFAULT '',
+    delivery_issue_status VARCHAR(30) NOT NULL DEFAULT '',
+    delivery_issue_response TEXT NULL,
+    delivery_issue_reviewer INT NULL,
     customer_id INT NOT NULL,
     customer_name VARCHAR(200) NOT NULL,
     checkout_full_name VARCHAR(200) NOT NULL,
@@ -73,9 +86,17 @@ CREATE TABLE IF NOT EXISTS orders (
     checkout_contact_number VARCHAR(30) NOT NULL,
     fulfillment_method VARCHAR(30) NOT NULL,
     delivery_address TEXT NOT NULL,
+    address_province VARCHAR(120) NULL,
+    address_city VARCHAR(120) NULL,
+    address_barangay VARCHAR(160) NULL,
+    address_street VARCHAR(100) NULL,
     payment_method VARCHAR(255) NOT NULL,
+    payment_status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    paid_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    payment_reference VARCHAR(100) NULL,
+    UNIQUE KEY uq_orders_payment_reference (payment_reference),
     notes TEXT NOT NULL,
-    status ENUM('CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'COMPLETED')
+    status ENUM('CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'TRANSFERRING', 'AT_DELIVERY_POINT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'LOST')
         NOT NULL DEFAULT 'CONFIRMED',
     placed_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     completed_at DATETIME(6) NULL,
@@ -103,6 +124,7 @@ CREATE TABLE IF NOT EXISTS order_items (
     product_category VARCHAR(100) NOT NULL,
     product_subcategory VARCHAR(100) NOT NULL,
     product_image_path VARCHAR(1024) NOT NULL DEFAULT '',
+    product_size VARCHAR(20) NOT NULL DEFAULT 'M',
     product_stock_at_purchase INT NOT NULL,
     unit_price DECIMAL(12, 2) NOT NULL,
     quantity INT NOT NULL,
@@ -158,6 +180,42 @@ CREATE TABLE IF NOT EXISTS verification_challenges (
         ON DELETE CASCADE,
     CONSTRAINT chk_verification_attempts CHECK (attempts BETWEEN 0 AND 5),
     CONSTRAINT chk_verification_expiry CHECK (expires_at > requested_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS return_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    customer_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    reason TEXT NOT NULL,
+    proof LONGBLOB NOT NULL,
+    proof_name VARCHAR(255) NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'SUBMITTED',
+    requested_at DATETIME(6) NOT NULL,
+    reviewed_at DATETIME(6) NULL,
+    reviewer_id INT NULL,
+    resolution TEXT NOT NULL,
+    refund_reference VARCHAR(100) NOT NULL DEFAULT '',
+    refund_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    FOREIGN KEY(order_id) REFERENCES orders(id),
+    FOREIGN KEY(customer_id) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS security_incidents (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NULL,
+    username VARCHAR(100) NOT NULL,
+    reason TEXT NOT NULL,
+    reported_at DATETIME(6) NOT NULL,
+    resolved BOOLEAN NOT NULL DEFAULT FALSE,
+    resolution TEXT NOT NULL,
+    reviewer_id INT NULL,
+    warning_sent BOOLEAN NOT NULL DEFAULT FALSE,
+    warning_read BOOLEAN NOT NULL DEFAULT FALSE,
+    warning_sent_at DATETIME(6) NULL,
+    warning_message TEXT NULL,
+    warning_popup_seen BOOLEAN NOT NULL DEFAULT FALSE
 ) ENGINE=InnoDB;
 
 SHOW TABLES;

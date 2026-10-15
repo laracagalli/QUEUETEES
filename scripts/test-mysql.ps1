@@ -10,10 +10,13 @@ if ($LASTEXITCODE -ne 0) { throw 'Could not initialize isolated MySQL test serve
 $taskProcess = $null
 try {
     $taskArgs = @('--no-defaults', "--datadir=`"$taskData`"", '--basedir="C:\Program Files\MySQL\MySQL Server 8.0"', '--port=3307', '--bind-address=127.0.0.1', '--mysqlx=OFF', "--log-error=`"$taskData\server.log`"")
-    $taskProcess = Start-Process -FilePath $taskServer -ArgumentList $taskArgs -WindowStyle Hidden -PassThru
+    $taskProcess = Start-Process -FilePath $taskServer -ArgumentList $taskArgs -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $taskData 'launcher.out.log') -RedirectStandardError (Join-Path $taskData 'launcher.err.log')
     $taskReady = $false
     for ($taskAttempt=0; $taskAttempt -lt 30; $taskAttempt++) {
-        if ($taskProcess.HasExited) { throw 'Isolated MySQL server stopped before accepting connections.' }
+        if ($taskProcess.HasExited) {
+            $taskLauncherError = Get-Content -LiteralPath (Join-Path $taskData 'launcher.err.log') -Raw -ErrorAction SilentlyContinue
+            throw "Isolated MySQL server stopped before accepting connections (exit $($taskProcess.ExitCode)). $taskLauncherError"
+        }
         try {
             $taskSocket = [Net.Sockets.TcpClient]::new()
             $taskSocket.Connect('127.0.0.1',3307)

@@ -7,6 +7,7 @@ import service.AuthService;
 
 public class CustomerFrame extends JFrame {
     public CustomerFrame(AuthService authService, User user) {
+        service.ActivityLogger.setActor(user);
         setTitle("Customer Dashboard");
         gui.components.AppTheme.applyWindowIcon(this);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -15,5 +16,6 @@ public class CustomerFrame extends JFrame {
         setLocationRelativeTo(null);
         setResizable(true);
         setContentPane(new CustomerDashboardPanel(authService, user));
+        gui.components.AccountNotices.attach(this,authService,user);
     }
 }

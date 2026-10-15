@@ -6,23 +6,25 @@ import javax.swing.*;
 import javax.swing.table.*;
 import model.Product;
 
-/** Row-specific minus / quantity / plus controls. Each click requests a confirmed adjustment. */
+/** Quantity selection is separate from the confirmed, positive replenishment action. */
 public final class StockAdjustmentCell extends AbstractCellEditor implements TableCellRenderer, TableCellEditor {
     private final java.util.function.IntFunction<Product> productAt;
     private final BiConsumer<Product, Integer> adjust;
     private final JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 7));
     private final JTextField amount = new JTextField("1");
-    private final JButton minus = button("−", "Decrease stock"), plus = button("+", "Increase stock");
+    private final JButton plus = button("+", "Increase selected replenishment quantity");
+    private final JButton replenish = new JButton("Replenish");
     private Product editingProduct;
     public StockAdjustmentCell(java.util.function.IntFunction<Product> productAt, BiConsumer<Product, Integer> adjust) {
         this.productAt = productAt; this.adjust = adjust;
         amount.setHorizontalAlignment(SwingConstants.CENTER);
-        amount.setToolTipText("Quantity to add or remove; click − or + to confirm the change");
+        amount.setToolTipText("Choose a positive quantity, then Replenish to confirm the stock change.");
         amount.setPreferredSize(new Dimension(42, 32));
         amount.getAccessibleContext().setAccessibleName("Stock adjustment quantity");
-        panel.add(minus); panel.add(amount); panel.add(plus);
-        minus.addActionListener(e -> submit(-1));
-        plus.addActionListener(e -> submit(1));
+        replenish.setPreferredSize(new Dimension(90,32));
+        panel.add(amount); panel.add(plus); panel.add(replenish);
+        plus.addActionListener(e -> { try { int current=Integer.parseInt(amount.getText().trim()); if(current>0&&current<Integer.MAX_VALUE)amount.setText(String.valueOf(current+1)); } catch(NumberFormatException ignored){} });
+        replenish.addActionListener(e -> submit(1));
     }
     private static JButton button(String symbol, String label) {
         JButton button = new JButton(symbol);
@@ -48,8 +50,8 @@ public final class StockAdjustmentCell extends AbstractCellEditor implements Tab
     }
     private Component configure(JTable table, int row, int column, boolean selected) {
         Product product = productAt.apply(table.convertRowIndexToModel(row));
-        minus.setEnabled(product.getStock() > 0);
         plus.setEnabled(product.getStock() < Integer.MAX_VALUE);
+        replenish.setEnabled(product.getStock() < Integer.MAX_VALUE);
         panel.setBackground(selected ? table.getSelectionBackground() : row % 2 == 0 ? AppTheme.PAPER : new Color(246,248,241));
         panel.setSize(table.getColumnModel().getColumn(column).getWidth(), table.getRowHeight(row));
         panel.doLayout();

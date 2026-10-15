@@ -32,6 +32,13 @@ public final class AdminDashboardPanel extends JPanel {
     private final JLabel pendingMetricLabel = Ui.label("—", 20, Font.BOLD, Ui.FOREST);
     private final JLabel staffMetricLabel = Ui.label("—", 20, Font.BOLD, Ui.FOREST);
     private final JLabel stockMetricLabel = Ui.label("—", 20, Font.BOLD, Ui.FOREST);
+    private final JLabel returnsMetricLabel = Ui.label("—",20,Font.BOLD,Ui.FOREST);
+    private final JLabel courierMetricLabel = Ui.label("—",20,Font.BOLD,Ui.FOREST);
+    private final JLabel warningsMetricLabel = Ui.label("—",20,Font.BOLD,new Color(180,45,35));
+    private final JLabel grossSalesLabel=Ui.label("—",22,Font.BOLD,Ui.FOREST);
+    private final JLabel salesRefundsLabel=Ui.label("—",22,Font.BOLD,Ui.FOREST);
+    private final JLabel netSalesLabel=Ui.label("—",22,Font.BOLD,Ui.FOREST);
+    private final JLabel salesOrderCountLabel=Ui.label("",11,Font.PLAIN,Ui.MUTED);
 
     // Dynamic Overview Containers
     private final JPanel lowStockContainer = new JPanel(new BorderLayout());
@@ -68,6 +75,7 @@ public final class AdminDashboardPanel extends JPanel {
         content.add(queuePanel, "queue");
         content.add(salesPanel, "reports");
         content.add(activityLogPanel, "activity");
+        content.add(new gui.components.ReturnsPanel(user),"returns");
         content.add(createProfilePanel(user), "profile");
 
         setOpaque(false);
@@ -97,13 +105,14 @@ public final class AdminDashboardPanel extends JPanel {
         sidebar.add(Box.createVerticalStrut(6));
         Ui.addLeft(sidebar, Ui.label("QUEUETEES: A Queuing Management System", 8, Font.BOLD, Color.WHITE));
         sidebar.add(Box.createVerticalStrut(20));
-        addNavigation(sidebar, "Overview", "overview");
+        addNavigation(sidebar, "Dashboard", "overview");
         addNavigation(sidebar, "Staff Approvals", "staff");
         addNavigation(sidebar, "Products & Stock", "products");
-        addNavigation(sidebar, "Customers", "customers");
+        addNavigation(sidebar, "User Management", "customers");
         addNavigation(sidebar, "Order Queue", "queue");
         addNavigation(sidebar, "Sales Reports", "reports");
         addNavigation(sidebar, "Activity Log", "activity");
+        addNavigation(sidebar,"Order Returns","returns");
         addNavigation(sidebar, "My Account", "profile");
         sidebar.add(Box.createVerticalGlue());
         Ui.addLeft(sidebar, Ui.label("ADMIN  •  ONLINE", 10, Font.BOLD, new Color(221, 230, 216)));
@@ -119,6 +128,7 @@ public final class AdminDashboardPanel extends JPanel {
 
     private void addNavigation(JPanel sidebar, String title, String key) {
         Ui.NavButton button = Ui.navButton(title);
+        button.setIcon(new gui.components.NavigationIcon(key));button.setIconTextGap(9);
         button.setPreferredSize(new Dimension(180, 32));
         button.setMinimumSize(new Dimension(180, 32));
         button.setMaximumSize(new Dimension(180, 32));
@@ -146,10 +156,12 @@ public final class AdminDashboardPanel extends JPanel {
             customerPanel.refresh();
         if ("queue".equals(key))
             queuePanel.refresh();
+        if("returns".equals(key))for(Component child:content.getComponents())if(child instanceof gui.components.ReturnsPanel panel)panel.refresh();
         navigation.forEach((name, button) -> button.setSelectedState(name.equals(key)));
     }
 
     private void refreshOverview() {
+        refreshSalesSummary();
         try {
             long pending = StoreService.getInstance().getOrders().stream()
                     .filter(o -> o.getStatus() == model.OrderStatus.CONFIRMED
@@ -179,7 +191,38 @@ public final class AdminDashboardPanel extends JPanel {
         }
 
         refreshLowStockItems();
+        returnsMetricLabel.setText(String.valueOf(currentUser==null?0:service.ReturnsService.requests(currentUser).stream().filter(r->!r.status().equals("REJECTED")&&!r.status().equals("REFUNDED")).count()+service.RefundService.records(currentUser).stream().filter(r->r.source().startsWith("ORDER:")&&r.status().equals("PENDING")).count()));
+        courierMetricLabel.setText(String.valueOf(StoreService.getInstance().getActiveOrders().stream().filter(o->o.getStatus()==model.OrderStatus.OUT_FOR_DELIVERY).count()));
+        warningsMetricLabel.setText(String.valueOf(service.SecurityIncidents.incidents().stream().filter(i->!i.resolved()).count()));
         refreshRecentActivity();
+    }
+
+    private void refreshSalesSummary(){
+        try{
+            model.SalesSummary totals=model.SalesSummary.from(StoreService.getInstance().getOrders(),currentUser==null?java.util.List.of():service.RefundService.records(currentUser));
+            grossSalesLabel.setText(String.format("₱%,.2f",totals.grossSales()));
+            salesRefundsLabel.setText(String.format("₱%,.2f",totals.recordedRefunds()));
+            netSalesLabel.setText(String.format("₱%,.2f",totals.netSales()));
+            salesOrderCountLabel.setText(totals.completedOrders()+" verified completed order"+(totals.completedOrders()==1?"":"s")+" • Cancellation and lost-parcel refunds are listed separately in Order refunds.");
+        }catch(RuntimeException ex){
+            grossSalesLabel.setText("—");salesRefundsLabel.setText("—");netSalesLabel.setText("—");
+            salesOrderCountLabel.setText("Sales data is unavailable. Select Refresh sales to try again.");
+        }
+    }
+
+    private JPanel createSalesSummary(){
+        JPanel card=Ui.card(Ui.PAPER,18,true);card.setLayout(new BorderLayout(0,12));card.setBorder(new EmptyBorder(14,16,14,16));
+        JPanel heading=new JPanel(new BorderLayout(12,0));heading.setOpaque(false);
+        JPanel copy=Ui.verticalBox();copy.add(Ui.label("Sales summary",17,Font.BOLD,Ui.FOREST));copy.add(Box.createVerticalStrut(4));
+        copy.add(Ui.label("All-time • Verified payments on completed orders",11,Font.PLAIN,Ui.MUTED));heading.add(copy);
+        JPanel actions=new JPanel(new FlowLayout(FlowLayout.RIGHT,8,0));actions.setOpaque(false);
+        JButton refresh=Ui.lightButton("Refresh sales"),reports=Ui.primaryButton("View sales reports");
+        refresh.addActionListener(e->refreshSalesSummary());reports.addActionListener(e->showPanel("reports"));actions.add(refresh);actions.add(reports);heading.add(actions,BorderLayout.EAST);
+        card.add(heading,BorderLayout.NORTH);
+        JPanel metrics=new JPanel(new GridLayout(1,3,12,0));metrics.setOpaque(false);
+        metrics.add(Ui.metricCard(grossSalesLabel,"Gross sales"));metrics.add(Ui.metricCard(salesRefundsLabel,"Recorded refunds"));metrics.add(Ui.metricCard(netSalesLabel,"Net sales"));
+        card.add(metrics);card.add(salesOrderCountLabel,BorderLayout.SOUTH);
+        card.setAlignmentX(Component.LEFT_ALIGNMENT);card.setPreferredSize(new Dimension(1000,200));card.setMaximumSize(new Dimension(Integer.MAX_VALUE,200));return card;
     }
 
     private void refreshLowStockItems() {
@@ -315,7 +358,7 @@ public final class AdminDashboardPanel extends JPanel {
         imgContainer.add(imgLabel);
 
         JPanel details = Ui.verticalBox();
-        details.add(Ui.label(p.getName(), 12, Font.BOLD, Ui.INK));
+        details.add(Ui.label(p.getDisplayName(), 12, Font.BOLD, Ui.INK));
         details.add(Box.createVerticalStrut(3));
 
         String stockText = p.getStock() == 0 ? "Out of stock (0)" : "Stock: " + p.getStock() + " remaining";
@@ -333,7 +376,7 @@ public final class AdminDashboardPanel extends JPanel {
         if (recentActivityPanel.getParent() == null) {
             JPanel card = Ui.card(Ui.PAPER, 22, true);
             card.setLayout(new BorderLayout());
-            card.setPreferredSize(new Dimension(1000, 380));
+            card.setPreferredSize(new Dimension(1000, Math.max(620,recentActivityPanel.getPreferredSize().height+32)));
             card.setBorder(new EmptyBorder(16, 16, 16, 16));
             card.add(recentActivityPanel);
             activityContainer.add(card, BorderLayout.CENTER);
@@ -343,7 +386,7 @@ public final class AdminDashboardPanel extends JPanel {
         activityContainer.repaint();
     }
     private JPanel createDashboardPanel() {
-        JPanel page = Ui.page("Good day!", "Administrator dashboard", "Monitor QueueTees operations from one place.");
+        JPanel page = Ui.page("Good day!", "Dashboard", "Monitor QueueTees operations from one place.");
 
         JPanel hero = Ui.card(Ui.FOREST, 16, false);
         hero.setLayout(new BorderLayout(12, 0));
@@ -372,19 +415,25 @@ public final class AdminDashboardPanel extends JPanel {
         page.add(hero);
         page.add(Box.createVerticalStrut(10));
 
-        JPanel metrics = new JPanel(new GridLayout(1, 3, 12, 0));
+        JPanel metrics = new JPanel(new GridLayout(2, 3, 12, 10));
         metrics.setOpaque(false);
         metrics.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         metrics.add(Ui.metricCard(pendingMetricLabel, "Pending orders"));
         metrics.add(Ui.metricCard(staffMetricLabel, "Staff approvals"));
         metrics.add(Ui.metricCard(stockMetricLabel, "Low-stock items"));
+        metrics.add(Ui.metricCard(returnsMetricLabel,"Returns / refunds needing action"));
+        metrics.add(Ui.metricCard(courierMetricLabel,"Awaiting courier confirmation"));
+        metrics.add(Ui.metricCard(warningsMetricLabel,"Usage warnings to review"));
 
-        metrics.setMaximumSize(new Dimension(Integer.MAX_VALUE, 78));
-        metrics.setPreferredSize(new Dimension(1000, 78));
+        metrics.setMaximumSize(new Dimension(Integer.MAX_VALUE, 168));
+        metrics.setPreferredSize(new Dimension(1000, 168));
         page.add(metrics);
+        JPanel shortcuts=new JPanel(new FlowLayout(FlowLayout.LEFT,8,6));shortcuts.setOpaque(false);shortcuts.setAlignmentX(Component.LEFT_ALIGNMENT);shortcuts.setMaximumSize(new Dimension(Integer.MAX_VALUE,48));
+        JButton returns=Ui.primaryButton("Review Returns"),users=Ui.primaryButton("Manage Users");returns.addActionListener(e->showPanel("returns"));users.addActionListener(e->showPanel("customers"));shortcuts.add(returns);shortcuts.add(users);page.add(shortcuts);
         page.add(Box.createVerticalStrut(10));
 
+        page.add(createSalesSummary());page.add(Box.createVerticalStrut(12));
         lowStockContainer.setOpaque(false);
         lowStockContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
         lowStockContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 150));
@@ -396,7 +445,7 @@ public final class AdminDashboardPanel extends JPanel {
         activityContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
         page.add(activityContainer);
 
-        return page;
+        JPanel wrapper=new JPanel(new BorderLayout());wrapper.setOpaque(false);wrapper.add(new gui.components.ModernScrollPane(new gui.components.ScrollableContent(page)));return wrapper;
     }
 
     //profile panel

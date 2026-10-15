@@ -9,6 +9,27 @@ public final class CheckoutDetails {
     private final String address;
     private final String paymentMethod;
     private final String notes;
+    private DeliveryAddress structuredAddress;
+
+    public static CheckoutDetails structured(String name, String email, String contact, String method,
+                                              DeliveryAddress address, String payment, String notes) {
+        CheckoutDetails details = new CheckoutDetails(name, email, contact, method,
+                address == null ? "" : address.format(), payment, notes);
+        details.structuredAddress = address;
+        details.validateFulfillment();
+        return details;
+    }
+    public DeliveryAddress getStructuredAddress() { return structuredAddress; }
+    public boolean isPickup() { return "Pickup".equals(fulfillmentMethod); }
+    public DeliveryPoint getDeliveryPoint() {
+        return isPickup() ? DeliveryPoint.CENTRAL : structuredAddress == null ? DeliveryPoint.UNASSIGNED : structuredAddress.getDeliveryPoint();
+    }
+    public void validateFulfillment() {
+        if (!isPickup() && !"Delivery".equals(fulfillmentMethod))
+            throw new IllegalArgumentException("Choose Delivery or Pickup.");
+        if (!isPickup() && structuredAddress == null)
+            throw new IllegalArgumentException("Select a structured delivery address before placing an order.");
+    }
 
     public CheckoutDetails(String fullName, String email, String contactNumber,
                            String fulfillmentMethod, String address,
@@ -28,5 +49,11 @@ public final class CheckoutDetails {
     public String getFulfillmentMethod() { return fulfillmentMethod; }
     public String getAddress() { return address; }
     public String getPaymentMethod() { return paymentMethod; }
+    /** Customer-supplied reference, separate from the verified payment record. */
+    public String getSubmittedPaymentReference() {
+        if(paymentMethod==null)return "";
+        var match=java.util.regex.Pattern.compile("^(?:GCash\\s+ref\\.\\s*|Card\\s+ending\\s+[0-9]{4}\\s*/\\s*ref\\.\\s*)(.+)$",java.util.regex.Pattern.CASE_INSENSITIVE).matcher(paymentMethod.trim());
+        return match.matches()?match.group(1).trim():"";
+    }
     public String getNotes() { return notes; }
 }

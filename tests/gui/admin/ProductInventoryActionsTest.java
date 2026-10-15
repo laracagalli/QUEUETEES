@@ -10,53 +10,37 @@ public class ProductInventoryActionsTest {
     static Object field(Object p,String name)throws Exception{Field f=p.getClass().getDeclaredField(name);f.setAccessible(true);return f.get(p);}
     static void reject(Runnable task){try{task.run();throw new AssertionError("Invalid adjustment accepted");}catch(IllegalArgumentException expected){}}
     public static void main(String[] args)throws Exception{
-        var admin=new User(940,"audit-admin","admin@example.com","unused",UserRole.ADMIN,true,AccountStatus.ACTIVE);
+        User admin=new User(940,"audit-admin","admin@example.com","unused",UserRole.ADMIN,true,AccountStatus.ACTIVE);
         StoreService store=StoreService.getInstance();
-        Product p=store.addProduct("Adjustment shirt","Test","Tops",99,5,"");
-        store.addToCart(940,p.getId());
-        Order order=store.checkout(940,new CheckoutDetails("Maria Cruz","test@example.com","+639123456789","Pickup","","GCash",""));
-        store.addToCart(941,p.getId());
-        store.adjustStock(p.getId(),7,admin);
-        check(p.getStock()==11,"Stock increase");
-        store.adjustStock(p.getId(),-11,admin);
-        check(p.getStock()==0&&!p.isAvailable(),"Stock can decrease to zero");
-        check(store.findProduct(p.getId()).isPresent()&&store.getCart(941).size()==1,"Minus never deletes products or cart entries");
-        check(order.getTotal()==99&&order.getItems().get(0).getProduct().getStock()==4,"Historical snapshot unchanged");
-        int logged=ActivityLogger.getEntries().size();
-        reject(()->store.adjustStock(p.getId(),-1,admin));
-        reject(()->store.adjustStock(p.getId(),0,admin));
-        store.adjustStock(p.getId(),Integer.MAX_VALUE,admin);
-        reject(()->store.adjustStock(p.getId(),1,admin));
-        check(ActivityLogger.getEntries().size()==logged+1,"Invalid changes do not create success logs");
-        store.adjustStock(p.getId(),-Integer.MAX_VALUE,admin);
-        Product duplicate=store.addProduct("Adjustment shirt","Test","Tops",99,20,"");
+        Product p=store.addProduct("Adjustment shirt","Test","Tops",99,5,"/Gui_Images/mentop1.png","M");
+        store.addToCart(940,p.getId());Order order=store.checkout(940,new CheckoutDetails("Maria Cruz","test@example.com","+639123456789","Pickup","","GCash",""));
+        store.addToCart(941,p.getId());store.adjustStock(p.getId(),7,admin);check(p.getStock()==11,"Replenishment adds stock");
+        int logged=ActivityLogger.getEntries().size();reject(()->store.adjustStock(p.getId(),-11,admin));reject(()->store.adjustStock(p.getId(),0,admin));
+        check(p.getStock()==11&&ActivityLogger.getEntries().size()==logged,"Manual decreases cannot change stock or produce success logs");
+        check(!SecurityIncidents.incidents().isEmpty(),"Prohibited changes create reviewable warnings");
+        check(store.getCart(941).size()==1&&order.getTotal()==99&&order.getItems().get(0).getProduct().getSize().equals("M"),"Cart and purchased size/price preserved");
+        Product limit=store.addProduct("Capacity shirt","Test","Tops",99,Integer.MAX_VALUE-1,"","M");store.adjustStock(limit.getId(),1,admin);reject(()->store.adjustStock(limit.getId(),1,admin));
+        reject(()->store.addProduct("Adjustment shirt","Test","Tops",99,20,"","M"));
+        store.addProduct("Adjustment shirt","Test","Tops",99,20,"/Gui_Images/mentop1.png","L");
         SwingUtilities.invokeAndWait(()->{try{
-            ProductManagementPanel panel=new ProductManagementPanel(admin);
-            JTable table=(JTable)field(panel,"table");
-            ((JComboBox<?>)field(panel,"categoryFilter")).setSelectedItem("Test");
-            int column=table.convertColumnIndexToView(7);
-            check(table.isCellEditable(0,column)&&!table.isCellEditable(0,0),"Only stock actions editable");
-            check(table.getColumnCount()==7,"Dedicated action column present");
-            JPanel rendered=(JPanel)table.prepareRenderer(table.getCellRenderer(0,column),0,column);
-            for(Component child:rendered.getComponents())check(child.getWidth()>0&&child.getHeight()>0,"Stock controls must render with visible bounds");
+            ProductManagementPanel panel=new ProductManagementPanel(admin);JTable table=(JTable)field(panel,"table");((JComboBox<?>)field(panel,"categoryFilter")).setSelectedItem("Test");
+            check(!table.isCellEditable(0,0)&&table.getColumnCount()==7,"Read-only inventory without repeated action cells");
             java.util.List<Product> rows=(java.util.List<Product>)field(panel,"rowProducts");
-            final int[] submitted={0,0};
-            var cell=new gui.components.StockAdjustmentCell(rows::get,(product,delta)->{submitted[0]=product.getId();submitted[1]=delta;});
-            JPanel editor=(JPanel)cell.getTableCellEditorComponent(table,"",true,0,column);
-            JButton minus=(JButton)editor.getComponent(0),plus=(JButton)editor.getComponent(2);
-            check(!minus.isEnabled(),"Minus disabled at zero stock");
-            ((JTextField)editor.getComponent(1)).setText("3");
-            plus.doClick();
-            check(submitted[0]==p.getId()&&submitted[1]==3,"Plus submits quantity for correct sorted product");
-            table.getRowSorter().toggleSortOrder(4);
-            editor=(JPanel)cell.getTableCellEditorComponent(table,"",true,0,column);
-            ((JTextField)editor.getComponent(1)).setText("2");
-            ((JButton)editor.getComponent(0)).doClick();
-            check(submitted[0]==duplicate.getId()&&submitted[1]==-2,"Minus targets correct product after reverse sort");
-            var report=new AdminTableReport(table,"Stock report",admin);
-            JTable snapshot=(JTable)field(report,"snapshot");
-            check(snapshot.getColumnCount()==6,"Report excludes action controls");
-            System.out.println("PASS: row stock controls, limits, sorted targeting, history, carts, audit and reports");
+            JButton replenish=(JButton)field(panel,"replenishButton");JSpinner quantity=(JSpinner)field(panel,"replenishQuantity");
+            check(!replenish.isEnabled()&&!quantity.isEnabled(),"Replenishment requires a selection");
+            table.setRowSelectionInterval(0,0);
+            check(replenish.isEnabled(),"Selected product can be replenished");
+            check(((JLabel)field(panel,"selectedStockLabel")).getText().equals(rows.get(table.convertRowIndexToModel(0)).getDisplayName()),"Selection targets sorted product and size");
+            quantity.setValue(4);check(p.getStock()==11,"Choosing quantity does not change stock");
+            table.clearSelection();check(!replenish.isEnabled(),"Cleared selection disables action");
+            ((JComboBox<?>)field(panel,"categoryFilter")).setSelectedIndex(0);
+            gui.components.AppTheme.apply(panel);panel.setSize(1200,780);for(int i=0;i<4;i++)layout(panel);
+            java.awt.image.BufferedImage imageOut=new java.awt.image.BufferedImage(1200,780,java.awt.image.BufferedImage.TYPE_INT_RGB);Graphics2D g=imageOut.createGraphics();g.setColor(new Color(231,235,222));g.fillRect(0,0,1200,780);panel.printAll(g);g.dispose();new java.io.File("bin/review").mkdirs();javax.imageio.ImageIO.write(imageOut,"png",new java.io.File("bin/review/inventory-stock-bar.png"));
+            AdminTableReport report=new AdminTableReport(table,"Stock report",admin);JTable snapshot=(JTable)field(report,"snapshot");check(snapshot.getColumnCount()==8,"Report includes sizes and hidden picture, excludes action controls");
+            boolean image=false;for(int r=0;r<snapshot.getRowCount();r++)for(int c=0;c<snapshot.getColumnCount();c++)image|=snapshot.getValueAt(r,c) instanceof Icon;
+            check(image,"Printed report includes product images");
         }catch(Exception ex){throw new RuntimeException(ex);}});
+        System.out.println("PASS: replenishment-only inventory, separate quantity control, sizing, warnings, historical stock, sorted targeting and print images");
     }
+    static void layout(Container root){root.doLayout();for(Component child:root.getComponents())if(child instanceof Container container)layout(container);}
 }

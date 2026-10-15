@@ -50,7 +50,7 @@ public final class StaffApprovalsPanel extends JPanel {
         unsuspendBtn.setEnabled(false);
         suspendBtn.addActionListener(e -> toggleSuspend(true));
         unsuspendBtn.addActionListener(e -> toggleSuspend(false));
-        actions.add(refresh);actions.add(unsuspendBtn);actions.add(suspendBtn);actions.add(review);footer.add(actions, BorderLayout.SOUTH);
+        actions.add(refresh);actions.add(review);footer.add(actions, BorderLayout.SOUTH);
         card.add(footer, BorderLayout.SOUTH);add(card);
         table.getSelectionModel().addListSelectionListener(e -> updateReview());
         refresh();

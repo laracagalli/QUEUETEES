@@ -12,6 +12,7 @@ public final class QueueStatusPanel extends JPanel {
     private final JPanel board = new JPanel(new GridLayout(1, 3, 16, 0));
     private final JLabel summary = StaffStyles.label("", 12, false, StaffStyles.MUTED);
     private String lastState;
+    private final javax.swing.table.DefaultTableModel deliveryModel=new javax.swing.table.DefaultTableModel(new String[]{"Priority","Control no.","Customer","Delivery point"},0){public boolean isCellEditable(int row,int column){return false;}};
 
     public QueueStatusPanel() {
         setOpaque(false);
@@ -21,42 +22,56 @@ public final class QueueStatusPanel extends JPanel {
         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
         heading.add(StaffStyles.label("LIVE OPERATIONS", 11, true, StaffStyles.FOREST));
         heading.add(Box.createVerticalStrut(5));
-        heading.add(StaffStyles.label("Queue status", 27, true, StaffStyles.FOREST));
+        heading.add(StaffStyles.label("Delivery points", 27, true, StaffStyles.FOREST));
         heading.add(Box.createVerticalStrut(8));
         JPanel notice = rounded(new Color(235, 241, 229), StaffStyles.LINE, 18);
         notice.setLayout(new BorderLayout(12,0));
         notice.setBorder(BorderFactory.createEmptyBorder(12,16,12,16));
         notice.add(summary);
-        notice.add(StaffStyles.label("Live queue",11,true,StaffStyles.FOREST),BorderLayout.EAST);
+        notice.add(StaffStyles.label("Live fulfillment",11,true,StaffStyles.FOREST),BorderLayout.EAST);
         notice.setAlignmentX(Component.LEFT_ALIGNMENT);
         notice.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
         heading.add(notice);
         add(heading, BorderLayout.NORTH);
         board.setOpaque(false);
-        board.setLayout(new GridLayout(1, 4, 16, 0));
+        board.setLayout(new GridLayout(1, 3, 16, 0));
         add(board);
+        JPanel deliveryCard=rounded(StaffStyles.PAPER,StaffStyles.LINE,18);
+        deliveryCard.setLayout(new BorderLayout(0,8));deliveryCard.setBorder(BorderFactory.createEmptyBorder(12,16,12,16));
+        JPanel deliveryHeading=new JPanel(new GridLayout(2,1,0,4));deliveryHeading.setOpaque(false);
+        deliveryHeading.add(StaffStyles.label("Dispatched delivery priority",16,true,StaffStyles.FOREST));
+        deliveryHeading.add(StaffStyles.label("Nearest to Pasay first (estimated city distance). Record actual arrivals independently.",12,false,StaffStyles.MUTED));
+        deliveryCard.add(deliveryHeading,BorderLayout.NORTH);
+        JTable deliveryTable=new JTable(deliveryModel);deliveryTable.setRowHeight(34);deliveryTable.setFont(new Font("Segoe UI",Font.PLAIN,13));
+        deliveryTable.setFillsViewportHeight(true);deliveryTable.getColumnModel().getColumn(0).setMaxWidth(85);
+        deliveryCard.add(new gui.components.ModernScrollPane(deliveryTable));
+        deliveryCard.setPreferredSize(new Dimension(1000,235));add(deliveryCard,BorderLayout.SOUTH);
         refresh();
     }
 
     public void refresh() {
         java.util.List<Order> orders = store.getActiveOrders();
-        String state = orders.stream().map(o -> o.getId() + ":" + o.getStatus())
+        String state = orders.stream().map(o -> o.getId() + ":" + o.getStatus() + ":" + o.getCheckoutDetails().getAddress()+":"+o.getDeliveryIssue()+":"+o.getDeliveryIssueStatus()+":"+o.getDeliveryIssueResponse()+":"+o.getPaymentStatus()+":"+o.getPaymentReference()+":"+o.getPaidAmount())
                 .collect(java.util.stream.Collectors.joining("|"));
         if (state.equals(lastState)) return;
         lastState = state;
         summary.setText(orders.isEmpty() ? "All caught up. New confirmed orders will appear here."
-                : orders.size() + " active orders  |  Preparation starts in arrival order  |  Updates automatically");
+                : orders.size() + " active orders | Fewer pieces packed first | Nearest to Pasay delivery priority");
+        deliveryModel.setRowCount(0);int rank=1;
+        for(Order order:store.getDeliveryQueue())deliveryModel.addRow(new Object[]{rank++,order.getControlNumber(),order.getCustomerName(),order.getCheckoutDetails().getDeliveryPoint().getLabel()+" • "+model.WarehouseDistance.label(order)});
         board.removeAll();
-        board.add(lane("01", "Waiting", OrderStatus.CONFIRMED, orders, new Color(150, 112, 43)));
-        board.add(lane("02", "Preparing", OrderStatus.PREPARING, orders, new Color(67, 104, 132)));
-        board.add(lane("03", "Ready for pickup", OrderStatus.READY_FOR_PICKUP, orders, StaffStyles.FOREST));
-        board.add(lane("04", "Out for delivery", OrderStatus.OUT_FOR_DELIVERY, orders, new Color(120, 80, 140)));
+        board.add(lane("01", "Pasay warehouse / Central zone", model.DeliveryPoint.CENTRAL, orders, StaffStyles.FOREST));
+        board.add(lane("02", "Northern Luzon", model.DeliveryPoint.NORTHERN, orders, new Color(67, 104, 132)));
+        board.add(lane("03", "Southern Luzon", model.DeliveryPoint.SOUTHERN, orders, new Color(120, 80, 140)));
+        if (orders.stream().anyMatch(o -> o.getCheckoutDetails().getDeliveryPoint() == model.DeliveryPoint.UNASSIGNED))
+            board.add(lane("04", "Address review", model.DeliveryPoint.UNASSIGNED, orders, new Color(150, 112, 43)));
         board.revalidate();
         board.repaint();
     }
 
-    private JPanel lane(String step, String title, OrderStatus status, java.util.List<Order> orders, Color accent) {
-        java.util.List<Order> matching = orders.stream().filter(o -> o.getStatus() == status)
+    private JPanel lane(String step, String title, model.DeliveryPoint point, java.util.List<Order> orders, Color accent) {
+
+        java.util.List<Order> matching = orders.stream().filter(o -> o.getCheckoutDetails().getDeliveryPoint() == point)
                 .collect(java.util.stream.Collectors.toList());
         matching.sort(java.util.Comparator.comparingInt(Order::getQueueNumber));
         JPanel lane = rounded(StaffStyles.PAPER, StaffStyles.LINE, 22);
@@ -66,7 +81,7 @@ public final class QueueStatusPanel extends JPanel {
         heading.setOpaque(false);
         JPanel titles = new JPanel(new GridLayout(2,1,0,5));titles.setOpaque(false);
         titles.add(StaffStyles.label(title,16,true,accent));
-        titles.add(StaffStyles.label(status == OrderStatus.CONFIRMED ? "In arrival order" : status == OrderStatus.PREPARING ? "Being prepared" : status == OrderStatus.READY_FOR_PICKUP ? "Awaiting collection" : "Awaiting customer receipt",11,false,StaffStyles.MUTED));
+        titles.add(StaffStyles.label("Independent dispatch / collection",11,false,StaffStyles.MUTED));
         heading.add(titles);
         JPanel badge = rounded(tint(accent),tint(accent),16);badge.setLayout(new GridBagLayout());badge.setPreferredSize(new Dimension(48,48));
         badge.add(StaffStyles.label(String.valueOf(matching.size()),22,true,accent));heading.add(badge,BorderLayout.EAST);
@@ -79,9 +94,9 @@ public final class QueueStatusPanel extends JPanel {
             JPanel empty = new JPanel(new GridBagLayout());empty.setOpaque(false);
             JPanel message = new JPanel();message.setOpaque(false);message.setLayout(new BoxLayout(message,BoxLayout.Y_AXIS));
             JPanel symbol = rounded(tint(accent),tint(accent),48);symbol.setLayout(new GridBagLayout());symbol.setMaximumSize(new Dimension(64,64));symbol.setPreferredSize(new Dimension(64,64));symbol.setAlignmentX(CENTER_ALIGNMENT);
-            symbol.add(StaffStyles.label(status == OrderStatus.CONFIRMED ? "1" : status == OrderStatus.PREPARING ? "2" : status == OrderStatus.READY_FOR_PICKUP ? "3" : "4",24,true,accent));message.add(symbol);message.add(Box.createVerticalStrut(18));
-            JLabel titleLabel=StaffStyles.label(status == OrderStatus.CONFIRMED ? "No waiting orders" : status == OrderStatus.PREPARING ? "Nothing in preparation" : status == OrderStatus.READY_FOR_PICKUP ? "No orders ready yet" : "No deliveries in progress",14,true,StaffStyles.FOREST);titleLabel.setAlignmentX(CENTER_ALIGNMENT);message.add(titleLabel);message.add(Box.createVerticalStrut(8));
-            JLabel hint=StaffStyles.label(status == OrderStatus.CONFIRMED ? "New orders will appear here." : status == OrderStatus.PREPARING ? "Started orders appear here." : status == OrderStatus.READY_FOR_PICKUP ? "Ready orders appear here." : "Dispatched orders appear here.",11,false,StaffStyles.MUTED);hint.setAlignmentX(CENTER_ALIGNMENT);message.add(hint);
+            symbol.add(StaffStyles.label(step,24,true,accent));message.add(symbol);message.add(Box.createVerticalStrut(18));
+            JLabel titleLabel=StaffStyles.label("No active orders here",14,true,StaffStyles.FOREST);titleLabel.setAlignmentX(CENTER_ALIGNMENT);message.add(titleLabel);message.add(Box.createVerticalStrut(8));
+            JLabel hint=StaffStyles.label("Orders assigned to this point appear here.",11,false,StaffStyles.MUTED);hint.setAlignmentX(CENTER_ALIGNMENT);message.add(hint);
             empty.add(message);lane.add(empty);return lane;
         }
         for (int i = 0; i < matching.size(); i++) {
@@ -91,9 +106,10 @@ public final class QueueStatusPanel extends JPanel {
             card.setBorder(BorderFactory.createEmptyBorder(16,16,16,16));
             card.setAlignmentX(Component.LEFT_ALIGNMENT);
             JPanel ticket = new JPanel(new BorderLayout(8,0));ticket.setOpaque(false);ticket.setAlignmentX(LEFT_ALIGNMENT);
-            ticket.add(StaffStyles.label(String.format("Q-%03d",order.getQueueNumber()),22,true,accent));
-            if(status==OrderStatus.CONFIRMED)ticket.add(StaffStyles.label("Waiting #"+(i+1),11,true,accent),BorderLayout.EAST);
+            ticket.add(StaffStyles.label("" + order.getControlNumber() + "",22,true,accent));
+            card.add(StaffStyles.label(order.getStatusLabel(), 11, true, accent));
             card.add(ticket);
+            if(java.util.Set.of("OPEN","REVIEWING").contains(order.getDeliveryIssueStatus()))card.add(StaffStyles.label("Non-receipt report needs review",12,true,new Color(170,45,35)));
             card.add(Box.createVerticalStrut(5));
             JLabel customer = StaffStyles.label(order.getCustomerName(), 13, true, StaffStyles.FOREST);
             customer.setToolTipText(order.getCustomerName());

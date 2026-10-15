@@ -49,8 +49,7 @@ public final class StaffWorkflowTest {
         store.advanceOrder(first.getId());
         check(first.getStatus() == OrderStatus.READY_FOR_PICKUP, "Preparation advances to ready");
         store.advanceOrder(first.getId());
-        check(first.getStatus() == OrderStatus.OUT_FOR_DELIVERY, "Ready advances to out for delivery");
-        store.completeOrder(first.getId());
+        check(first.getStatus() == OrderStatus.COMPLETED, "Ready pickup completes directly after collection");
         check(first.getCompletedAt() != null, "Completion records time");
         expectFailure(() -> store.completeOrder(first.getId()), "Cannot complete twice");
         check(store.getCompletedOrders().size() == 1 && store.getActiveOrders().size() == 1, "Completed order leaves active queue");
@@ -70,8 +69,10 @@ public final class StaffWorkflowTest {
 
     private static Order checkout(StoreService store, int customer, int product, String name, String method) {
         store.addToCart(customer, product);
-        return store.checkout(customer, new CheckoutDetails(name, "test@example.com", "09123456789",
-                method, "Test address", "Cash", "Test notes"));
+        String city = DeliveryAddress.cities("Pampanga")[0];
+        DeliveryAddress address = new DeliveryAddress("Pampanga", city, DeliveryAddress.barangays("Pampanga", city)[0], "123 Test Street");
+        return store.checkout(customer, CheckoutDetails.structured(name, "test@example.com", "09123456789",
+                method, method.equals("Pickup") ? null : address, "Cash", "Test notes"));
     }
     private static void check(boolean value, String label) {
         if (!value) throw new AssertionError(label);

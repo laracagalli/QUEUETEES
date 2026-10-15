@@ -14,13 +14,13 @@ import service.StoreService;
 public final class ProductManagementPanel extends JPanel {
     private final StoreService store = StoreService.getInstance();
     private final DefaultTableModel model = new DefaultTableModel(
-            new String[] { "Product", "Category", "Subcategory", "Price", "Stock", "Picture", "Status", "Adjust stock" }, 0) {
+            new String[] { "Product", "Category", "Subcategory", "Price", "Stock", "Picture", "Status", "Size" }, 0) {
         @Override public Class<?> getColumnClass(int column) {
             return column == 4 ? Integer.class : String.class;
         }
         @Override
         public boolean isCellEditable(int row, int column) {
-            return column == 7;
+            return false;
         }
     };
     private final JTable table = new JTable(model);
@@ -29,8 +29,13 @@ public final class ProductManagementPanel extends JPanel {
     private final JComboBox<String> categoryFilter = new gui.components.RoundedComboBox<>(new String[] {"All categories"});
     private final JComboBox<String> subcategoryFilter = new gui.components.RoundedComboBox<>(new String[] {"All subcategories"});
     private final JComboBox<String> statusFilter = new gui.components.RoundedComboBox<>(new String[] {"All statuses", "Available", "Out of stock"});
+    private final JComboBox<String> sizeFilter = new gui.components.RoundedComboBox<>(new String[]{"All sizes","XS","S","M","L","XL","XXL","One Size"});
     private boolean updatingFilters;
     private final List<Product> rowProducts = new java.util.ArrayList<>();
+    private final JLabel selectedStockLabel = Ui.label("Select a product to replenish its stock", 12, Font.BOLD, Ui.INK);
+    private final JLabel selectedStockDetails = Ui.label("Choose a row above, then enter the quantity to add.", 11, Font.PLAIN, Ui.MUTED);
+    private final JSpinner replenishQuantity = new JSpinner(new SpinnerNumberModel(1, 1, Integer.MAX_VALUE, 1));
+    private final JButton replenishButton = Ui.primaryButton("Replenish stock");
 
     private final model.User user;
 
@@ -102,6 +107,10 @@ public final class ProductManagementPanel extends JPanel {
         AdminUi.style(table);
         table.getRowSorter().setSortKeys(List.of(new RowSorter.SortKey(4, SortOrder.ASCENDING)));
         table.setRowHeight(48);
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) updateStockSelection();
+        });
         table.getColumnModel().getColumn(0).setPreferredWidth(260);
 
         // Custom Cell Renderer to render image icon on the left of the product name
@@ -124,27 +133,70 @@ public final class ProductManagementPanel extends JPanel {
             }
         });
 
-        javax.swing.table.TableColumn stockActions = table.getColumnModel().getColumn(7);
-        stockActions.setIdentifier("stockActions");
-        stockActions.setMinWidth(125);
-        stockActions.setPreferredWidth(135);
-        stockActions.setMaxWidth(150);
-        stockActions.setCellRenderer(new gui.components.StockAdjustmentCell(rowProducts::get, this::adjustStock));
-        stockActions.setCellEditor(new gui.components.StockAdjustmentCell(rowProducts::get, this::adjustStock));
-        ((javax.swing.table.TableRowSorter<?>) table.getRowSorter()).setSortable(7, false);
         table.removeColumn(table.getColumnModel().getColumn(5));
         JScrollPane scroll = new gui.components.ModernScrollPane(table);
         scroll.setColumnHeaderView(table.getTableHeader());
         scroll.setBorder(null);
         scroll.getViewport().setBackground(Ui.PAPER);
         card.add(scroll);
-        emptyLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        emptyLabel.setBorder(new javax.swing.border.EmptyBorder(12, 8, 12, 8));
+        emptyLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        emptyLabel.setBorder(new javax.swing.border.EmptyBorder(4, 2, 12, 2));
         card.add(emptyLabel, BorderLayout.NORTH);
+        card.add(createStockBar(), BorderLayout.SOUTH);
 
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         card.setPreferredSize(new Dimension(1000, 520));
         return card;
+    }
+
+    private JPanel createStockBar() {
+        JPanel bar = new JPanel(new BorderLayout(18, 0));
+        bar.setOpaque(false);
+        bar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, Ui.LINE),
+                BorderFactory.createEmptyBorder(14, 4, 2, 4)));
+        JPanel description = new JPanel(new GridLayout(2, 1, 0, 4));
+        description.setOpaque(false);
+        description.add(selectedStockLabel);
+        description.add(selectedStockDetails);
+        bar.add(description, BorderLayout.CENTER);
+        JPanel controls = new JPanel(new BorderLayout(10, 0));
+        controls.setOpaque(false);
+        JPanel quantity = new JPanel(new BorderLayout(8, 0));
+        quantity.setOpaque(false);
+        quantity.add(Ui.label("Quantity to add", 11, Font.PLAIN, Ui.MUTED), BorderLayout.WEST);
+        replenishQuantity.setPreferredSize(new Dimension(100, 38));
+        replenishQuantity.getAccessibleContext().setAccessibleName("Stock adjustment quantity");
+        quantity.add(replenishQuantity, BorderLayout.CENTER);
+        replenishButton.setPreferredSize(new Dimension(156, 38));
+        controls.add(quantity, BorderLayout.CENTER);
+        controls.add(replenishButton, BorderLayout.EAST);
+        bar.add(controls, BorderLayout.EAST);
+        replenishButton.addActionListener(e -> {
+            Product selected = selectedProduct();
+            if (selected == null) return;
+            try {
+                replenishQuantity.commitEdit();
+                adjustStock(selected, ((Number)replenishQuantity.getValue()).intValue());
+            } catch (java.text.ParseException ex) {
+                JOptionPane.showMessageDialog(this, "Enter a positive whole-number quantity.", "Invalid quantity", JOptionPane.WARNING_MESSAGE);
+                replenishQuantity.requestFocusInWindow();
+            }
+        });
+        updateStockSelection();
+        return bar;
+    }
+
+    private void updateStockSelection() {
+        Product selected = selectedProduct();
+        boolean available = selected != null && selected.getStock() < Integer.MAX_VALUE;
+        replenishQuantity.setEnabled(available);
+        replenishButton.setEnabled(available);
+        replenishQuantity.setValue(1);
+        selectedStockLabel.setText(selected == null ? "Select a product to replenish its stock" : selected.getDisplayName());
+        selectedStockLabel.setToolTipText(selected == null ? null : selected.getDisplayName());
+        selectedStockDetails.setText(selected == null ? "Choose a row above, then enter the quantity to add."
+                : "Current stock: " + selected.getStock() + "  •  Additions require confirmation.");
     }
 
     /**
@@ -197,6 +249,8 @@ public final class ProductManagementPanel extends JPanel {
         JTextField subcategory = new JTextField("Tops");
         JTextField price = new JTextField();
         JTextField stock = new JTextField();
+        JComboBox<String> size = new gui.components.RoundedComboBox<>(Product.SIZES);
+        category.addActionListener(e->size.setModel(new DefaultComboBoxModel<>("Accessories".equals(category.getSelectedItem())?new String[]{"One Size"}:Product.SIZES)));
         JTextField imagePath = new JTextField();
         JButton browse = new JButton("Browse picture...");
         browse.addActionListener(e -> {
@@ -221,6 +275,7 @@ public final class ProductManagementPanel extends JPanel {
         form.add(price);
         form.add(new JLabel("Stock"));
         form.add(stock);
+        form.add(new JLabel("Size (stock is specific to this size)"));form.add(size);
         form.add(new JLabel("Product picture"));
         form.add(picture);
         int result = JOptionPane.showConfirmDialog(this, form, "Add catalog product", JOptionPane.OK_CANCEL_OPTION,
@@ -230,12 +285,12 @@ public final class ProductManagementPanel extends JPanel {
         try {
             store.addProduct(name.getText(), String.valueOf(category.getSelectedItem()), subcategory.getText(),
                     Double.parseDouble(price.getText().trim()), Integer.parseInt(stock.getText().trim()),
-                    imagePath.getText());
+                    imagePath.getText(),String.valueOf(size.getSelectedItem()));
             refresh();
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Enter a valid numeric price and stock.", "Invalid product",
                     JOptionPane.WARNING_MESSAGE);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException | IllegalStateException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Invalid product", JOptionPane.WARNING_MESSAGE);
         }
     }
@@ -258,12 +313,12 @@ public final class ProductManagementPanel extends JPanel {
             if (!haystack.contains(query))
                 continue;
             if (!matches(categoryFilter, product.getCategory()) || !matches(subcategoryFilter, product.getSubcategory())
-                    || !matches(statusFilter, product.isAvailable() ? "Available" : "Out of stock")) continue;
+                    || !matches(statusFilter, product.isAvailable() ? "Available" : "Out of stock") || !matches(sizeFilter,product.getSize())) continue;
             String picture = product.getImagePath().isEmpty() ? "None" : product.getImagePath();
             rowProducts.add(product);
             model.addRow(new Object[] { product.getName(), product.getCategory(), product.getSubcategory(),
                     String.format("₱%,.2f", product.getPrice()), product.getStock(), picture,
-                    product.isAvailable() ? "Available" : "Out of stock", "" });
+                    product.isAvailable() ? "Available" : "Out of stock", product.getSize() });
         }
         emptyLabel.setText(model.getRowCount() == 0 ? "No matching products are available."
                 : model.getRowCount() + " product(s) in the catalog");
@@ -276,7 +331,7 @@ public final class ProductManagementPanel extends JPanel {
                 }
             }
         }
-
+        updateStockSelection();
     }
 
     private Product selectedProduct() {
@@ -292,7 +347,7 @@ public final class ProductManagementPanel extends JPanel {
             JOptionPane.showMessageDialog(this, "Stock cannot go below zero or exceed the stock limit.", "Invalid stock adjustment", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        String message = product.getName() + "\nCurrent stock: " + product.getStock()
+        String message = product.getDisplayName() + "\nCurrent stock: " + product.getStock()
                 + "\n" + (delta > 0 ? "Add: " : "Remove: ") + Math.abs((long) delta)
                 + "\nNew stock: " + next;
         if (JOptionPane.showConfirmDialog(this, message, "Confirm stock adjustment", JOptionPane.OK_CANCEL_OPTION,
@@ -300,17 +355,17 @@ public final class ProductManagementPanel extends JPanel {
         try {
             store.adjustStock(product.getId(), delta, user);
             refresh();
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException | IllegalStateException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Unable to adjust stock", JOptionPane.WARNING_MESSAGE);
         }
     }
     private JPanel createFilters() {
-        JPanel row = new JPanel(new GridLayout(1, 3, 12, 0));
+        JPanel row = new JPanel(new GridLayout(1, 4, 12, 0));
         row.setOpaque(false);
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 62));
-        JComboBox<?>[] filters = {categoryFilter, subcategoryFilter, statusFilter};
-        String[] labels = {"Category", "Subcategory", "Status"};
+        JComboBox<?>[] filters = {categoryFilter, subcategoryFilter, statusFilter,sizeFilter};
+        String[] labels = {"Category", "Subcategory", "Status","Size"};
         for (int i = 0; i < filters.length; i++) {
             JComboBox<?> filter = filters[i];
             filter.getAccessibleContext().setAccessibleName("Filter by " + labels[i]);

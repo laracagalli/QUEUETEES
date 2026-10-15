@@ -33,6 +33,13 @@ public class EmailAuthFrame extends JFrame {
     // Timer variables
     private JLabel timerLabel;
     private Timer countdownTimer;
+    private Timer resendCooldownTimer;
+    @Override public void dispose(){if(countdownTimer!=null)countdownTimer.stop();if(resendCooldownTimer!=null)resendCooldownTimer.stop();super.dispose();}
+    private void startResendCooldown(){
+        resendCode.setEnabled(false);
+        if(resendCooldownTimer!=null)resendCooldownTimer.stop();
+        resendCooldownTimer=new Timer(1000,e->{if(authService.canResendEmail(user) && !sendingCode){resendCode.setEnabled(true);resendCooldownTimer.stop();}});resendCooldownTimer.start();
+    }
     private int timeLeft = 300; // 5 minutes in seconds
 
     public EmailAuthFrame(AuthService authService, User user) {
@@ -341,6 +348,7 @@ public class EmailAuthFrame extends JFrame {
 
     private void generateTemporaryCode() {
         if (sendingCode) return;
+        if(!authService.canResendEmail(user)){deliveryHint.setText("Please wait one minute between verification-code requests.");startResendCooldown();return;}
         sendingCode = true;
         currentOtp = null;
         if (countdownTimer != null) countdownTimer.stop();
@@ -361,7 +369,7 @@ public class EmailAuthFrame extends JFrame {
                 if (!isDisplayable()) return;
                 resendCode.setEnabled(true);
                 try {
-                    get(); currentOtp = candidate; startCountdown();
+                    get();authService.emailCodeSent(user);currentOtp = candidate;startCountdown();startResendCooldown();
                     setCodeEntryEnabled(true);
                     resendCode.setText("Resend verification code");
                     deliveryHint.setText("Your code is valid for five minutes. Check your spam folder if it has not arrived.");
@@ -401,9 +409,11 @@ public class EmailAuthFrame extends JFrame {
         }
 
         if (!enteredCode.equals(currentOtp)) {
+            boolean exhausted=authService.emailCodeFailed(user);
+            if(exhausted){currentOtp=null;setCodeEntryEnabled(false);if(countdownTimer!=null)countdownTimer.stop();}
             JOptionPane.showMessageDialog(
                     this,
-                    "Incorrect verification code.",
+                    exhausted?"Too many incorrect attempts. Request a new verification code after the cooldown.":"Incorrect verification code.",
                     "Verification",
                     JOptionPane.ERROR_MESSAGE);
             clearCodeFields();
@@ -411,11 +421,8 @@ public class EmailAuthFrame extends JFrame {
             return;
         }
 
-        // Stop timer on success
-        if (countdownTimer != null)
-            countdownTimer.stop();
-
-        authService.verifyEmail(user);
+        try{authService.verifyEmail(user);}catch(RuntimeException ex){JOptionPane.showMessageDialog(this,ex.getMessage(),"Unable to verify account",JOptionPane.WARNING_MESSAGE);return;}
+        if(countdownTimer!=null)countdownTimer.stop();
         dispose();
         onVerified.run();
     }

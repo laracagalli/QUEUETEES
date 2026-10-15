@@ -20,7 +20,7 @@ public final class ShopPanel extends JPanel {
     private final ButtonGroup typeGroup = new ButtonGroup();
     private final StoreService store = StoreService.getInstance();
     private final User user;
-    private final JPanel products = new JPanel(new GridLayout(0, 3, 16, 16));
+    private final JPanel products = new CatalogGrid();
     private final JTextField searchField = new JTextField();
     private final SlidingShowcasePanel showcase = new SlidingShowcasePanel();
     private final ModelShowcasePanel modelShowcase = new ModelShowcasePanel();
@@ -30,42 +30,43 @@ public final class ShopPanel extends JPanel {
     public ShopPanel(User user, Runnable openCart) {
         this.user = user;
         setOpaque(false);
-        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        setLayout(new BorderLayout(0, 14));
+        JPanel heading = Ui.verticalBox();
         JPanel hero = Ui.card(Ui.FOREST, 26, false);
         hero.setLayout(new BorderLayout(14, 0));
-        hero.setBorder(new EmptyBorder(16, 26, 16, 18));
+        hero.setBorder(new EmptyBorder(14, 22, 14, 14));
         JPanel copy = Ui.verticalBox();
-        copy.add(Ui.label("<html>Everyday pieces,<br>ordered with ease.</html>", 21, Font.BOLD, Color.WHITE));
+        copy.add(Ui.label("Everyday style, made easy.", 19, Font.BOLD, Color.WHITE));
         copy.add(Box.createVerticalStrut(5));
-        copy.add(Ui.label("Confirmed orders keep their place in the QueueTees line.", 11, Font.PLAIN, new Color(221, 228, 216)));
+        copy.add(Ui.label("Find your fit. Make it yours.", 12, Font.PLAIN, new Color(221, 228, 216)));
         copy.add(Box.createVerticalGlue());
         RoundedButton cart = Ui.lightButton("View My Cart");
-        cart.setPreferredSize(new Dimension(140, 40));
-        cart.setMaximumSize(new Dimension(140, 40));
+        cart.setPreferredSize(new Dimension(140, 34));
+        cart.setMaximumSize(new Dimension(140, 34));
         cart.setAlignmentX(Component.LEFT_ALIGNMENT);
         cart.addActionListener(e -> openCart.run());
         copy.add(cart);
-        copy.setPreferredSize(new Dimension(330, 228));
+        copy.setPreferredSize(new Dimension(330, 116));
         hero.add(copy, BorderLayout.WEST);
         hero.add(showcase, BorderLayout.CENTER);
         hero.add(modelShowcase, BorderLayout.EAST);
-        hero.setMaximumSize(new Dimension(Integer.MAX_VALUE, 260));
-        hero.setPreferredSize(new Dimension(1000, 260));
-        add(hero);
-        add(Box.createVerticalStrut(14));
-        add(createCatalogFilters());
-        add(Box.createVerticalStrut(14));
-        add(createCatalogSearch());
-        add(Box.createVerticalStrut(10));
+        hero.setMaximumSize(new Dimension(Integer.MAX_VALUE, 124));
+        hero.setPreferredSize(new Dimension(1000, 124));
+        hero.setAlignmentX(Component.LEFT_ALIGNMENT);
+        heading.add(hero);
+        heading.add(Box.createVerticalStrut(14));
+        heading.add(createCatalogFilters());
+        heading.add(Box.createVerticalStrut(10));
+        heading.add(createCatalogSearch());
+        add(heading, BorderLayout.NORTH);
         products.setOpaque(false);
         JScrollPane catalog = new gui.components.ModernScrollPane(products);
         catalog.setBorder(null);
         catalog.setOpaque(false);
         catalog.getViewport().setOpaque(false);
         catalog.setAlignmentX(Component.LEFT_ALIGNMENT);
-        catalog.setMaximumSize(new Dimension(Integer.MAX_VALUE, 310));
-        catalog.setPreferredSize(new Dimension(1000, 310));
-        add(catalog);
+        catalog.getVerticalScrollBar().setUnitIncrement(24);
+        add(catalog, BorderLayout.CENTER);
         refresh();
     }
 
@@ -77,7 +78,7 @@ public final class ShopPanel extends JPanel {
         filters.setPreferredSize(new Dimension(1000, 48));
         JPanel categories = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         categories.setOpaque(false);
-        categories.add(Ui.label("Shop:", 10, Font.BOLD, Ui.MUTED));
+        categories.add(Ui.label("Collections", 11, Font.BOLD, Ui.MUTED));
         addFilter(categories, categoryGroup, "Women", true, true);
         addFilter(categories, categoryGroup, "Men", false, true);
         addFilter(categories, categoryGroup, "Kids", false, true);
@@ -99,7 +100,7 @@ public final class ShopPanel extends JPanel {
         search.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
         search.setPreferredSize(new Dimension(1000, 36));
         search.add(Ui.label("Search products", 12, Font.BOLD, Ui.INK), BorderLayout.WEST);
-        searchField.setFont(Ui.font(10, Font.PLAIN));
+        searchField.setFont(Ui.font(12, Font.PLAIN));
         searchField.setForeground(Ui.INK);
         searchField.setBackground(Color.WHITE);
         searchField.setPreferredSize(new Dimension(500, 34));
@@ -201,6 +202,7 @@ public final class ShopPanel extends JPanel {
         List<Product> catalog = store.getProducts();
         showcase.setProducts(catalog);
         String query = searchField.getText().trim().toLowerCase();
+        java.util.Set<String> shown=new java.util.HashSet<>();
         for (Product product : catalog) {
             if (!product.getCategory().equalsIgnoreCase(selectedCategory)) continue;
             if (!"Accessories".equalsIgnoreCase(selectedCategory)
@@ -210,7 +212,7 @@ public final class ShopPanel extends JPanel {
                     && !product.getName().toLowerCase().contains(query)
                     && !product.getCategory().toLowerCase().contains(query)
                     && !product.getSubcategory().toLowerCase().contains(query)) continue;
-            products.add(createProductCard(product));
+            if(shown.add(product.getCategory()+"|"+product.getName()))products.add(createProductCard(product));
         }
         if (products.getComponentCount() == 0) {
             JLabel empty = Ui.label("No products in this category yet. Add one from the admin catalog.", 11, Font.PLAIN, Ui.MUTED);
@@ -225,50 +227,99 @@ public final class ShopPanel extends JPanel {
         JPanel card = Ui.card(Ui.PAPER, 22, true);
         card.setLayout(new BorderLayout());
         JLabel image = new JLabel("No picture", SwingConstants.CENTER);
-        image.setPreferredSize(new Dimension(260, 205));
+        image.setPreferredSize(new Dimension(240, 146));
         image.setOpaque(true);
         image.setBackground(new Color(229, 230, 220));
-        ImageIcon icon = loadImage(product.getImagePath(), 260, 205);
+        ImageIcon icon = loadImage(product.getImagePath(), 220, 130);
         if (icon != null) { image.setText(""); image.setIcon(icon); }
-        card.add(image);
+        card.add(image, BorderLayout.NORTH);
         JPanel details = Ui.verticalBox();
         details.setBorder(new EmptyBorder(11, 14, 12, 14));
-        details.add(Ui.label(product.getName(), 13, Font.BOLD, Ui.INK));
-        details.add(Box.createVerticalStrut(3));
-        details.add(Ui.label(String.format("₱%,.2f  •  %d in stock", product.getPrice(), product.getStock()), 10, Font.PLAIN, Ui.MUTED));
-        details.add(Box.createVerticalStrut(10));
+        JLabel name = Ui.label(product.getName(), 14, Font.BOLD, Ui.INK);
+        name.setAlignmentX(Component.LEFT_ALIGNMENT);
+        details.add(name);
+        details.add(Box.createVerticalStrut(7));
+        JPanel pricing = new JPanel(new BorderLayout(8, 0));
+        pricing.setOpaque(false);
+        pricing.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pricing.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        JLabel price = Ui.label(String.format("₱%,.2f", product.getPrice()), 16, Font.BOLD, Ui.FOREST);
+        JLabel availability=Ui.label(product.getStock()+" in stock", 11, Font.PLAIN, Ui.MUTED);
+        pricing.add(price, BorderLayout.WEST);
+        pricing.add(availability, BorderLayout.EAST);
+        details.add(pricing);
+        details.add(Box.createVerticalStrut(12));
+        JComboBox<String> size=new gui.components.RoundedComboBox<>("Accessories".equals(product.getCategory()) ? new String[]{"One Size"} : Product.SIZES);
+        size.setSelectedItem(product.getSize());size.getAccessibleContext().setAccessibleName("Size for "+product.getName());
+        size.setPreferredSize(new Dimension(100,36));
         RoundedButton add = Ui.primaryButton(product.isAvailable() ? "Add to Cart" : "Out of Stock");
         add.setPreferredSize(new Dimension(116, 36));
         add.setEnabled(product.isAvailable());
         QuantitySelector amount = new QuantitySelector(Math.max(1, product.getStock()), product.isAvailable());
+        Product[] selected={product};
+        size.addActionListener(e->{
+            selected[0]=store.getProducts().stream().filter(p->p.getName().equals(product.getName())&&p.getCategory().equals(product.getCategory())&&p.getSize().equals(size.getSelectedItem())).findFirst().orElse(null);
+            Product variant=selected[0];int stock=variant==null?0:variant.getStock();
+            price.setText(String.format("₱%,.2f",variant==null?product.getPrice():variant.getPrice()));
+            availability.setText(stock+" in stock");
+            add.setEnabled(stock>0);add.setText(stock>0?"Add to Cart":"Out of Stock");amount.maximum=Math.max(1,stock);amount.setEnabledState(stock>0);amount.setAmount(1);
+        });
         add.addActionListener(e -> {
             try {
                 int quantity = amount.getAmount();
-                store.addToCart(user.getId(), product.getId(), quantity);
-                JOptionPane.showMessageDialog(this, quantity + " × " + product.getName() + " added to your cart.");
+                if(selected[0]==null)throw new IllegalStateException("This size is not stocked.");
+                store.addToCart(user.getId(), selected[0].getId(), quantity);
+                JOptionPane.showMessageDialog(this, quantity + " × " + selected[0].getDisplayName() + " added to your cart.");
             } catch (RuntimeException ex) {
                 JOptionPane.showMessageDialog(this, ex.getMessage(), "Cart", JOptionPane.WARNING_MESSAGE);
             }
         });
-        JPanel purchase = new JPanel(new BorderLayout(10, 0));
+        JPanel purchase = new JPanel(new BorderLayout(14, 0));
         purchase.setOpaque(false);
         purchase.setAlignmentX(Component.LEFT_ALIGNMENT);
-        purchase.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
-        JPanel quantityGroup = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        purchase.setMaximumSize(new Dimension(Integer.MAX_VALUE, 56));
+        JPanel quantityGroup = new JPanel(new BorderLayout(0, 4));
         quantityGroup.setOpaque(false);
-        quantityGroup.add(Ui.label("Qty", 10, Font.BOLD, Ui.MUTED));
-        quantityGroup.add(amount);
-        purchase.add(quantityGroup, BorderLayout.WEST);
-        purchase.add(add, BorderLayout.EAST);
+        quantityGroup.add(Ui.label("Quantity", 10, Font.BOLD, Ui.MUTED), BorderLayout.NORTH);
+        quantityGroup.add(amount, BorderLayout.CENTER);
+        JPanel sizeGroup = new JPanel(new BorderLayout(0, 4));
+        sizeGroup.setOpaque(false);
+        sizeGroup.add(Ui.label("Size", 10, Font.BOLD, Ui.MUTED), BorderLayout.NORTH);
+        sizeGroup.add(size, BorderLayout.CENTER);
+        purchase.add(sizeGroup, BorderLayout.CENTER);
+        purchase.add(quantityGroup, BorderLayout.EAST);
         details.add(purchase);
-        card.add(details, BorderLayout.SOUTH);
-        card.setPreferredSize(new Dimension(280, 330));
+        details.add(Box.createVerticalStrut(12));
+        add.setAlignmentX(Component.LEFT_ALIGNMENT);
+        add.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        details.add(add);
+        card.add(details, BorderLayout.CENTER);
+        card.setPreferredSize(new Dimension(280, 342));
         return card;
+    }
+
+    /** Fit columns to the viewport while keeping complete, evenly sized cards. */
+    private static final class CatalogGrid extends JPanel implements Scrollable {
+        CatalogGrid() { super(new GridLayout(0, 3, 16, 16)); }
+        private int columns() { return Math.max(1, Math.min(3, getWidth() / 290)); }
+        @Override public void doLayout() {
+            ((GridLayout)getLayout()).setColumns(columns());
+            super.doLayout();
+        }
+        @Override public Dimension getPreferredSize() {
+            int rows = (getComponentCount() + columns() - 1) / columns();
+            return new Dimension(880, rows * 342 + Math.max(0, rows - 1) * 16);
+        }
+        @Override public Dimension getPreferredScrollableViewportSize() { return new Dimension(880,342); }
+        @Override public int getScrollableUnitIncrement(Rectangle visible, int orientation, int direction) { return 24; }
+        @Override public int getScrollableBlockIncrement(Rectangle visible, int orientation, int direction) { return Math.max(24,visible.height-24); }
+        @Override public boolean getScrollableTracksViewportWidth() { return true; }
+        @Override public boolean getScrollableTracksViewportHeight() { return false; }
     }
 
     /** Compact quantity stepper styled to match the storefront cards. */
     private static final class QuantitySelector extends JPanel {
-        private final int maximum;
+        private int maximum;
         private final JLabel valueLabel;
         private final JButton minus;
         private final JButton plus;
@@ -354,7 +405,11 @@ public final class ShopPanel extends JPanel {
             if (!file.isFile()) return null;
             original = new ImageIcon(path);
         }
-        return new ImageIcon(original.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH));
+        if (original.getIconWidth() <= 0 || original.getIconHeight() <= 0) return null;
+        double scale = Math.min((double)width / original.getIconWidth(), (double)height / original.getIconHeight());
+        return new ImageIcon(original.getImage().getScaledInstance(
+                Math.max(1,(int)(original.getIconWidth()*scale)),
+                Math.max(1,(int)(original.getIconHeight()*scale)), Image.SCALE_SMOOTH));
     }
 
     /** Auto-advancing storefront banner backed by the live product catalog. */
@@ -461,22 +516,26 @@ public final class ShopPanel extends JPanel {
 
         private void drawSlide(Graphics2D g2, Product product, int x, int width, int height) {
             Image image = imageFor(product);
-            int imageWidth = 160;
-            int imageHeight = 128;
+            int imageWidth = 100;
+            int imageHeight = 90;
             int imageX = x + 16;
             int imageY = (height - imageHeight) / 2;
-            if (image != null) g2.drawImage(image, imageX, imageY, imageWidth, imageHeight, this);
+            if (image != null) {
+                double scale = Math.min((double)imageWidth/image.getWidth(this), (double)imageHeight/image.getHeight(this));
+                int w=(int)(image.getWidth(this)*scale), h=(int)(image.getHeight(this)*scale);
+                g2.drawImage(image,imageX+(imageWidth-w)/2,imageY+(imageHeight-h)/2,w,h,this);
+            }
 
-            int textX = x + 194;
+            int textX = x + 132;
             g2.setColor(new Color(220, 228, 216));
             g2.setFont(Ui.font(9, Font.BOLD));
-            g2.drawString(product.getCategory().toUpperCase() + "  /  " + product.getSubcategory().toUpperCase(), textX, 53);
+            drawClippedString(g2,product.getCategory().toUpperCase() + "  /  " + product.getSubcategory().toUpperCase(), textX, height/2-22, width-148);
             g2.setColor(Color.WHITE);
             g2.setFont(Ui.font(15, Font.BOLD));
-            drawClippedString(g2, product.getName(), textX, 81, width - 210);
+            drawClippedString(g2, product.getName(), textX, height/2+4, width - 148);
             g2.setColor(new Color(236, 238, 226));
             g2.setFont(Ui.font(12, Font.BOLD));
-            g2.drawString(String.format("₱%,.2f", product.getPrice()), textX, 111);
+            g2.drawString(String.format("₱%,.2f", product.getPrice()), textX, height/2+29);
         }
 
         private Image imageFor(Product product) {
@@ -523,7 +582,7 @@ public final class ShopPanel extends JPanel {
 
         ModelShowcasePanel() {
             setOpaque(false);
-            setPreferredSize(new Dimension(320, 228));
+            setPreferredSize(new Dimension(160, 116));
             pauseTimer = new Timer(3900, e -> startSlide());
             pauseTimer.setRepeats(false);
             animationTimer = new Timer(20, e -> advanceAnimation());

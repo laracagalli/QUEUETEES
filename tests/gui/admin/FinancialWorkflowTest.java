@@ -1,0 +1,38 @@
+package gui.admin;
+import model.*;import service.*;import java.util.*;import javax.swing.*;
+public final class FinancialWorkflowTest {
+    static void check(boolean ok,String m){if(!ok)throw new AssertionError(m);}
+    static void fails(Runnable r){try{r.run();throw new AssertionError("Invalid action accepted");}catch(IllegalArgumentException|IllegalStateException expected){}}
+    static Object field(Object target,String name){try{var f=target.getClass().getDeclaredField(name);f.setAccessible(true);return f.get(target);}catch(Exception e){throw new RuntimeException(e);}}
+    static String label(Object target,String name){return ((JLabel)field(target,name)).getText();}
+    static JButton button(java.awt.Container root,String text){for(java.awt.Component child:root.getComponents()){if(child instanceof JButton b&&text.equals(b.getText()))return b;if(child instanceof java.awt.Container c){JButton found=button(c,text);if(found!=null)return found;}}return null;}
+    static final User customer=new User(700,"c","c@example.com","x",UserRole.CUSTOMER,true,AccountStatus.ACTIVE),staff=new User(701,"s","s@example.com","x",UserRole.STAFF,true,AccountStatus.ACTIVE),admin=new User(702,"a","a@example.com","x",UserRole.ADMIN,true,AccountStatus.ACTIVE);
+    static Order place(StoreService store,int product,String payment){store.addToCart(customer.getId(),product);String city=DeliveryAddress.cities("Pampanga")[0];Order order=store.checkoutDelivery(customer.getId(),CheckoutDetails.structured("Customer","c@example.com","09123456789","Delivery",new DeliveryAddress("Pampanga",city,DeliveryAddress.barangays("Pampanga",city)[0],"123 Street"),payment,""));if(!payment.equals("Cash"))support.TestFlow.verify(store,order);return order;}
+    public static void main(String[] args)throws Exception {
+        StoreService s=StoreService.getInstance();Product p=s.addProduct("Refund test","Men","Tops",100,10,"","M");
+        Order cancelled=place(s,p.getId(),"GCash ref. 123456");s.cancelOrder(cancelled.getId(),"Changed my order",customer);check(p.getStock()==10&&cancelled.getStatus()==OrderStatus.CANCELLED,"Cancellation restores stock");fails(()->s.cancelOrder(cancelled.getId(),"Try cancelling again",customer));check(p.getStock()==10,"Stock restored only once");
+        RefundRecord cancellation=RefundService.records(admin).get(0);check(cancellation.amount()==100&&cancellation.status().equals("PENDING"),"Recorded prepaid amount becomes pending refund");RefundService.recordOrderRefund(cancellation.source(),"CANCEL-PAY-001","GCash refund recorded for customer",admin);fails(()->RefundService.recordOrderRefund(cancellation.source(),"CANCEL-PAY-002","Paid again to customer",admin));
+        Order lost=place(s,p.getId(),"GCash ref. 234567");s.advanceOrder(lost.getId());fails(()->s.cancelOrder(lost.getId(),"Too late to cancel",customer));support.TestFlow.advanceTo(s,lost.getId(),OrderStatus.PREPARING,OrderStatus.OUT_FOR_DELIVERY);s.confirmCourierDelivery(lost.getId(),"DEL-LOST",staff);s.reportDeliveryIssue(lost.getId(),"The package is missing",customer);s.reviewDeliveryIssue(lost.getId(),"LOST","Courier confirmed the parcel is lost",staff);check(lost.getStatus()==OrderStatus.LOST&&p.getStock()==9,"Lost merchandise is not restocked");fails(()->s.completeOrder(lost.getId()));
+        RefundService.recordOrderRefund("ORDER:"+lost.getId(),"LOST-PAY-001","GCash refund paid to customer",admin);check(RefundService.outcome(lost,RefundService.records(customer)).equals("Refunded"),"Lost order can be refunded without physical return");
+        Order completed=place(s,p.getId(),"GCash ref. 345678");support.TestFlow.advanceTo(s,completed.getId(),OrderStatus.CONFIRMED,OrderStatus.OUT_FOR_DELIVERY);s.confirmCourierDelivery(completed.getId(),"DEL-COMPLETE",staff);ActivityLogger.setActor(customer);s.completeOrder(completed.getId());ActivityLogger.setActor(null);
+        byte[] proof;try(var out=new java.io.ByteArrayOutputStream()){javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(2,2,1),"png",out);proof=out.toByteArray();}
+        ReturnRequest r=ReturnsService.submit(customer,completed.getId(),p.getId(),1,"Item is damaged on arrival",proof,"proof.png");ReturnsService.review(staff,r.id(),"APPROVED","Send the item to our main hub","");ReturnsService.review(staff,r.id(),"RECEIVED","Item received and inspected","");fails(()->ReturnsService.review(admin,r.id(),"REFUNDED","GCash refund payment recorded","CANCEL-PAY-001"));ReturnsService.review(admin,r.id(),"REFUNDED","GCash refund payment recorded","RETURN-PAY-001");
+        check(RefundService.totalPaid(completed.getId(),RefundService.records(admin))==100,"Returned item uses shared ledger");
+        Order unpaid=place(s,p.getId(),"Cash");s.cancelOrder(unpaid.getId(),"No longer required",customer);check(RefundService.records(admin).stream().noneMatch(v->v.orderId()==unpaid.getId()),"Unpaid cancellation has no fabricated refund");
+        Order cashCompleted=place(s,p.getId(),"Cash");s.advanceOrder(cashCompleted.getId());s.advanceOrder(cashCompleted.getId());s.advanceOrder(cashCompleted.getId());s.confirmCourierDelivery(cashCompleted.getId(),"CASH-PROOF",staff);ActivityLogger.setActor(customer);s.completeOrder(cashCompleted.getId());ActivityLogger.setActor(null);
+        SwingUtilities.invokeAndWait(()->{gui.components.AppTheme.install();SalesReportsPanel report=new SalesReportsPanel(admin);check(report.model.getRowCount()==1,"Only verified completed payments enter sales; unverified cash completion is excluded");check(report.model.getValueAt(0,4).equals("₱100.00")&&report.model.getValueAt(0,5).equals("₱100.00")&&report.model.getValueAt(0,6).equals("₱0.00"),"Gross/refund/net report uses same order cohort");try{gui.components.AppTheme.apply(report);AdminPresentationTest.render(report,"sales-refunds");gui.components.OrderRefundPanel refunds=new gui.components.OrderRefundPanel(admin);gui.components.AppTheme.apply(refunds);AdminPresentationTest.render(refunds,"order-refunds");}catch(Exception ex){throw new RuntimeException(ex);}});
+        SwingUtilities.invokeAndWait(()->{try{
+            var users=new repository.InMemoryUserRepository();users.save(admin);users.save(staff);users.save(customer);
+            AdminDashboardPanel dashboard=new AdminDashboardPanel(new AuthService(users),admin);
+            check(label(dashboard,"grossSalesLabel").equals("₱100.00")&&label(dashboard,"salesRefundsLabel").equals("₱100.00")&&label(dashboard,"netSalesLabel").equals("₱0.00"),"Dashboard sales match the report and exclude cancellation/lost/unverified orders");
+            button(dashboard,"View sales reports").doClick();
+            check(((SalesReportsPanel)field(dashboard,"salesPanel")).isVisible(),"Dashboard shortcut opens full sales report");
+            s.verifyPayment(cashCompleted.getId(),cashCompleted.getTotal(),"CASH-COLLECTION-001",staff);
+            button(dashboard,"Refresh sales").doClick();
+            check(label(dashboard,"grossSalesLabel").equals("₱200.00")&&label(dashboard,"salesRefundsLabel").equals("₱100.00")&&label(dashboard,"netSalesLabel").equals("₱100.00"),"Dashboard refresh includes newly verified completed payments");
+            java.util.Map<?,?> navigation=(java.util.Map<?,?>)field(dashboard,"navigation");((JButton)navigation.get("overview")).doClick();
+            gui.components.AppTheme.apply(dashboard);AdminPresentationTest.render(dashboard,"dashboard-sales-summary");
+        }catch(Exception ex){throw new RuntimeException(ex);}});
+        System.out.println("PASS: cancellation eligibility and stock, lost refunds, duplicate references, unpaid closure, refund-aware sales and matching dashboard summary");
+    }
+}

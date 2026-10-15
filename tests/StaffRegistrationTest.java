@@ -13,7 +13,7 @@ public class StaffRegistrationTest {
     }
     static RegistrationResult register(AuthService auth, String username) {
         return auth.registerStaff(username + "@example.com", "Lara Staff", username,
-                "Staff123!".toCharArray(), "Manila", "9123456789", "Female", LocalDate.of(2000, 1, 1));
+                "Staff123!".toCharArray(), "123 Test Street, Barangay One, Manila, Metro Manila", "9123456789", "Female", LocalDate.of(2000, 1, 1));
     }
     static <T> T find(Container root, Class<T> type) {
         for (Component child : root.getComponents()) {
@@ -35,11 +35,21 @@ public class StaffRegistrationTest {
         AuthService auth = new AuthService(repo);
         User admin = new User(1,"admin","admin@example.com",PasswordUtil.hashPassword("Admin123!"),UserRole.ADMIN,true,AccountStatus.ACTIVE);
         repo.save(admin);
+        for(int first=0;first<=8;first++) {
+            String contact=first+"123456789";
+            check(!auth.registerCustomer("badcustomer@example.com","Customer Name","badcustomer","Customer123!".toCharArray(),
+                    "123 Street, Barangay One, Pasay City, Metro Manila",contact,"Female",LocalDate.of(2000,1,1)).isSuccess(),"Customer contact prefix must be 9");
+            check(!auth.registerStaff("badstaff@example.com","Staff Name","badstaff","Staff123!".toCharArray(),
+                    "123 Street, Barangay One, Pasay City, Metro Manila",contact,"Female",LocalDate.of(2000,1,1)).isSuccess(),"Staff contact prefix must be 9");
+        }
         RegistrationResult result = register(auth,"newstaff");
         check(result.isSuccess(),result.getMessage());
         User staff = result.getUser();
         check(staff.getRole()==UserRole.STAFF && staff.getStatus()==AccountStatus.PENDING_APPROVAL,"Pending staff role");
-        check(staff.getFullName().equals("Lara Staff") && staff.getAddress().equals("Manila") && staff.getContactNumber().equals("9123456789") && staff.getBirthday().equals(LocalDate.of(2000,1,1)),"Application details retained");
+        check(staff.getFullName().equals("Lara Staff") && staff.getAddress().contains("123 Test Street") && staff.getContactNumber().equals("9123456789") && staff.getBirthday().equals(LocalDate.of(2000,1,1)),"Application details retained");
+        check(auth.login("newstaff","Staff123!".toCharArray()).getStatus()==AuthStatus.REGISTRATION_INCOMPLETE,"Staff terms required before verification");
+        auth.acceptTerms(staff,true);
+        auth.verifyEmail(staff);
         check(auth.login("newstaff","Staff123!".toCharArray()).getStatus()==AuthStatus.STAFF_NOT_APPROVED,"Pending login blocked");
         check(!register(auth,"newstaff").isSuccess(),"Duplicate rejected");
         blocked(()->auth.reviewStaff(staff,staff.getId(),true));
@@ -48,9 +58,9 @@ public class StaffRegistrationTest {
         auth.reviewStaff(admin,rejected.getId(),false);
         check(auth.login(rejected.getEmail(),"Staff123!".toCharArray()).getStatus()==AuthStatus.ACCOUNT_REJECTED,"Rejected login blocked");
         blocked(()->auth.reviewStaff(admin,rejected.getId(),true));
-        User customer=auth.registerCustomer("customer@example.com","Customer Name","customer","Customer123!".toCharArray(),"Manila","9123456789","Female",LocalDate.of(2000,1,1)).getUser();
+        User customer=auth.registerCustomer("customer@example.com","Customer Name","customer","Customer123!".toCharArray(),"123 Test Street, Barangay One, Manila, Metro Manila","9123456789","Female",LocalDate.of(2000,1,1)).getUser();
         check(customer.getRole()==UserRole.CUSTOMER && !customer.isEmailVerified(),"Customer registration unchanged");
-        check(auth.login("customer","Customer123!".toCharArray()).getStatus()==AuthStatus.EMAIL_NOT_VERIFIED,"Customer verification required");
+        check(auth.login("customer","Customer123!".toCharArray()).getStatus()==AuthStatus.REGISTRATION_INCOMPLETE,"Customer terms required before verification");
         blocked(()->auth.reviewStaff(admin,customer.getId(),true));
         SwingUtilities.invokeAndWait(()->{try {
             gui.admin.StaffApprovalsPanel panel=new gui.admin.StaffApprovalsPanel(auth,admin);

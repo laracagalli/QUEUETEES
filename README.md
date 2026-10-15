@@ -1,3 +1,15 @@
+## Delivery issues and refund progress
+
+Customers report non-receipt for staff investigation or redelivery and see the response in tracking. Returns display expected and paid refund amounts, return instructions and full or partial outcomes in Order History. See [the workflow](docs/RETURNS_AND_DELIVERY_ISSUES.md).
+
+## Defense consultation changes
+
+Registration validates email before OTP and enforces ages 18–120 without ID approval. Customers track active orders using random control numbers, select product sizes, view completed order details, and submit evidence-backed returns. Staff record courier delivery confirmations and process returns. Admin uses User Management, replenishes stock by size, reviews usage warnings, and records refund references. Tables show ten rows per page while reports include all filtered records and product images. See [the consultation changes and verification notes](docs/DEFENSE_CONSULTATION_CHANGES.md) for the complete behavior and prototype limits.
+
+## Regional delivery
+
+The warehouse is based in Pasay. Verified orders with fewer total pieces enter packing first, with arrival order breaking ties. Ready deliveries are dispatched by estimated city distance from Pasay; city-level estimates are not road distance or travel time. Regional transfers and actual delivery evidence remain independent. The storefront offers delivery only and validates structured addresses. See [the current flow and queue rules](docs/SYSTEM_FLOW_AND_PRIORITY.md).
+
 ## MySQL storage
 
 Run `database/queuetees.sql`, then `database/seed-defense-users.sql` in MySQL Workbench.
@@ -29,7 +41,7 @@ Check: `java -Djava.awt.headless=true -cp "bin;src;lib/*" StaffRegistrationTest`
 - Sign in with an approved staff account to view its username, email and account status.
 - Overview shows waiting orders, orders being prepared or ready, today's completions and recent orders.
 - Search Order Queue, Order Details or Completed Orders, select a row and choose **View details** to review contact information, fulfillment, payment method, notes and line items.
-- Use **Start preparing**, **Mark ready**, then **Complete order**. Preparation starts with the earliest waiting order. Orders already being prepared or awaiting collection can progress independently.
+- Use **Start preparing**, **Mark ready**, then the action appropriate to the order: confirm pickup collected, dispatch Central delivery, or transfer to a Northern/Southern delivery point. Confirm arrival before local dispatch. Customers confirm receipt. Preparation starts with the earliest waiting order; fulfillment proceeds independently.
 - Queue Status shows preparation, the next waiting queue number and ready orders. Staff pages refresh every two seconds while open.
 - Completed Orders records completion time. Staff updates are shared with customer order tracking in the same application process.
 
@@ -45,7 +57,7 @@ Reports include the centered Hiraya logo, print date/time, signed-in staff usern
 
 See [the staff requirements review](docs/STAFF_REQUIREMENTS_REVIEW.md) for paper coverage, remaining registration/approval/database work, and the status terminology mismatch.
 
-Orders and accounts currently use in-memory storage; restarting the application clears session data. Payment information is simulated, and the existing ready-for-pickup status is also used for delivery orders awaiting fulfillment.
+Default MySQL mode persists orders and accounts. Explicit memory demonstration mode resets session data on restart. Payment information is simulated. The stored READY_FOR_PICKUP stage displays as Ready for dispatch for delivery orders.
 
 ### Build and verify (PowerShell, JDK 21)
 
@@ -81,7 +93,7 @@ The `JAVA PROJECTS` view allows you to manage your dependencies. More details ca
 
 ## Customer queue dashboard
 
-Track Order uses green and cream summary cards, a four-stage progress display, product thumbnails, order updates and receipt information. The order selector includes only the signed-in customer's orders and retains the selected ticket as it completes. Waiting orders ahead counts earlier confirmed orders waiting to start preparation; no unmeasured time estimate is shown. The page refreshes every two seconds while visible and stops its timer when removed. Copy queue number copies only the selected ticket.
+Track Order uses green and cream summary cards, a fulfillment-specific progress display, product thumbnails, order updates and receipt information. The order selector includes only the signed-in customer's orders and retains the selected ticket as it completes. Waiting orders ahead counts earlier confirmed orders waiting to start preparation; no unmeasured time estimate is shown. The page refreshes every two seconds while visible and stops its timer when removed. Copy queue number copies only the selected ticket.
 
 Run the customer tracking checks with:
 

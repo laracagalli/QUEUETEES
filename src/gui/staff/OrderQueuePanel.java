@@ -1,4 +1,5 @@
 package gui.staff;
+import model.PackingPriority;
 
 import java.awt.*;
 import java.time.format.DateTimeFormatter;
@@ -13,7 +14,7 @@ import service.StoreService;
 public final class OrderQueuePanel extends JPanel {
     private final StoreService store = StoreService.getInstance();
     private final DefaultTableModel model = new DefaultTableModel(
-            new String[] { "Waiting #", "Queue no.", "Customer", "Placed", "Items", "Total", "Status" }, 0) {
+            new String[] { "Waiting #", "Control no.", "Customer", "Placed", "Items", "Total", "Status", "Delivery point", "Method" }, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return false;
@@ -44,7 +45,7 @@ public final class OrderQueuePanel extends JPanel {
         JPanel top = Ui.verticalBox();
         top.add(Ui.label("Order queue", 26, Font.BOLD, Ui.INK));
         top.add(Box.createVerticalStrut(5));
-        top.add(Ui.label("First come, first served / Live order fulfillment", 12, Font.PLAIN, Ui.MUTED));
+        top.add(Ui.label("Fewer total pieces packed first / Nearest to Pasay delivery priority / Earlier orders break ties", 12, Font.PLAIN, Ui.MUTED));
         top.add(Box.createVerticalStrut(18));
         metrics.setOpaque(false);
         metrics.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -96,9 +97,11 @@ public final class OrderQueuePanel extends JPanel {
         Ui.styleTable(table);
         StaffQueuePresentation.style(table, 6, true);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
-        int[] widths = { 85, 80, 135, 120, 45, 95, 145 };
+        int[] widths = { 85, 165, 120, 100, 45, 95, 205, 210, 90 };
+        table.getColumnModel().getColumn(1).setMinWidth(150);
         for (int i = 0; i < widths.length; i++)
             table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+        table.getColumnModel().getColumn(7).setMinWidth(185);
         table.removeColumn(table.getColumnModel().getColumn(5)); // Total remains in the selected-order summary.
         JScrollPane scroll = new gui.components.ModernScrollPane(table);
         scroll.setColumnHeaderView(table.getTableHeader());
@@ -121,25 +124,36 @@ public final class OrderQueuePanel extends JPanel {
         actions.setOpaque(false);
         advance.addActionListener(e -> advanceSelected());
         actions.add(advance);
+        actions.add(StaffOrderActions.shortcutButton(this,this::selectedOrder,this::refresh));
         actions.add(selectNext);
+        JButton nextDelivery=StaffStyles.lightButton("Select next delivery");
+        nextDelivery.addActionListener(e->{
+            List<Order> queue=store.getDeliveryQueue();
+            if(queue.isEmpty()){StaffStyles.showMessage(this,"No deliveries are currently out for delivery.","Delivery priority",JOptionPane.INFORMATION_MESSAGE);return;}
+            clearSearch(this);
+            ((javax.swing.table.TableRowSorter<?>)table.getRowSorter()).setRowFilter(null);
+            restoreSelection(queue.get(0));updateDetails();
+        });
+        nextDelivery.setToolTipText("Select the dispatched destination nearest to Pasay by estimated city distance.");
+        actions.add(nextDelivery);
         footer.add(actions, BorderLayout.EAST);
         card.add(footer, BorderLayout.SOUTH);
         return card;
     }
 
     private Order nextWaiting() {
-        return store.getActiveOrders().stream().filter(o -> o.getStatus() == OrderStatus.CONFIRMED)
-                .min(java.util.Comparator.comparingInt(Order::getQueueNumber)).orElse(null);
+        return store.getActiveOrders().stream().filter(o -> o.getStatus() == OrderStatus.CONFIRMED && o.canStartPacking())
+                .min(PackingPriority.ORDER).orElse(null);
     }
 
     private void updateDetails() {
         Order order = selectedOrder();
-        boolean eligible = order != null && (order.getStatus() != OrderStatus.CONFIRMED
+        boolean eligible = order != null && order.getStatus()!=OrderStatus.DELIVERED && (order.getStatus() != OrderStatus.CONFIRMED
                 || Integer.valueOf(1)
                         .equals(StaffQueuePresentation.waitingPositions(store.getActiveOrders()).get(order.getId())));
         advance.setEnabled(eligible);
         advance.setText(order == null ? "Select an order" : StaffOrderActions.nextAction(order));
-        advance.setToolTipText(order != null && !eligible ? "Start Waiting #1 first." : "Update this order's status");
+        advance.setToolTipText(order != null && order.getStatus()==OrderStatus.DELIVERED ? "The customer must acknowledge receipt." : order != null && !eligible ? "Start Waiting #1 first." : "Update this order's status");
     }
 
     private void updateCount() {
@@ -148,7 +162,7 @@ public final class OrderQueuePanel extends JPanel {
 
     public void refresh() {
         List<Order> active = store.getActiveOrders();
-        String state = store.getOrders().stream().map(o -> o.getId() + ":" + o.getStatus())
+        String state = store.getOrders().stream().map(o -> o.getId() + ":" + o.getStatus() + ":" + o.getCheckoutDetails().getAddress()+":"+o.getDeliveryIssue()+":"+o.getDeliveryIssueStatus()+":"+o.getDeliveryIssueResponse()+":"+o.getPaymentStatus()+":"+o.getPaymentReference()+":"+o.getPaidAmount())
                 .collect(java.util.stream.Collectors.joining("|")) + java.time.LocalDate.now();
         if (state.equals(lastState))
             return;
@@ -160,9 +174,9 @@ public final class OrderQueuePanel extends JPanel {
         java.util.Map<Integer, Integer> positions = StaffQueuePresentation.waitingPositions(visibleOrders);
         for (Order order : visibleOrders) {
             model.addRow(new Object[] { positions.get(order.getId()),
-                    "Q-" + String.format("%03d", order.getQueueNumber()), order.getCustomerName(),
+                    order.getControlNumber(), order.getCustomerName(),
                     order.getPlacedAt().format(DateTimeFormatter.ofPattern("MMM d, h:mm a")), order.getItemCount(),
-                    String.format("₱%,.2f", order.getTotal()), order.getStatus().getLabel() });
+                    String.format("₱%,.2f", order.getTotal()), order.getStatusLabel(), order.getCheckoutDetails().getDeliveryPoint().getLabel(), order.getCheckoutDetails().getFulfillmentMethod() });
         }
         restoreSelection(selected);
         Order next = nextWaiting();
@@ -171,7 +185,7 @@ public final class OrderQueuePanel extends JPanel {
         refreshing = false;
         selectNext.setEnabled(next != null);
         startNext.setEnabled(next != null);
-        featuredTicket.setText(next == null ? "No orders waiting" : String.format("Q-%03d", next.getQueueNumber()));
+        featuredTicket.setText(next == null ? "No orders waiting" : "" + next.getControlNumber() + "");
         featuredInfo.setText(next == null ? "Continue working on active orders below."
                 : next.getCustomerName() + " / " + next.getItemCount() + " items");
         featuredInfo.setToolTipText(featuredInfo.getText());
@@ -190,8 +204,10 @@ public final class OrderQueuePanel extends JPanel {
     private void selectNextWaiting() {
         clearSearch(this);
         refresh();
+        Order next=nextWaiting();if(next==null)return;
         for (int i = 0; i < visibleOrders.size(); i++) {
-            if (visibleOrders.get(i).getStatus() == OrderStatus.CONFIRMED) {
+            if (visibleOrders.get(i).getId()==next.getId()) {
+                gui.components.TablePagination.showModelRow(table,i);
                 int row = table.convertRowIndexToView(i);
                 if (row >= 0) {
                     table.setRowSelectionInterval(row, row);
@@ -226,6 +242,7 @@ public final class OrderQueuePanel extends JPanel {
             return;
         for (int i = 0; i < visibleOrders.size(); i++) {
             if (visibleOrders.get(i).getId() == selected.getId()) {
+                gui.components.TablePagination.showModelRow(table,i);
                 int view = table.convertRowIndexToView(i);
                 if (view >= 0)
                     table.setRowSelectionInterval(view, view);

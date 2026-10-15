@@ -3,6 +3,7 @@ $taskRoot = Split-Path -Parent $PSScriptRoot
 $taskJava = 'C:\Program Files\Java\jdk-24\bin\java.exe'
 $taskReport = Join-Path $taskRoot 'bin\defense-checks'
 New-Item -ItemType Directory -Path $taskReport -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $taskRoot 'bin\review') -Force | Out-Null
 $taskResults = @()
 foreach ($taskFile in (Get-ChildItem (Join-Path $taskRoot 'tests') -Recurse -Filter '*.java')) {
     if ($taskFile.BaseName -eq 'MySqlIntegrationTest') { continue }
@@ -10,10 +11,10 @@ foreach ($taskFile in (Get-ChildItem (Join-Path $taskRoot 'tests') -Recurse -Fil
     if ($taskSource -notmatch 'public static void main') { continue }
     $taskPackage = [regex]::Match($taskSource,'(?m)^package\s+([\w.]+);')
     $taskClass = if ($taskPackage.Success) { $taskPackage.Groups[1].Value + '.' + $taskFile.BaseName } else { $taskFile.BaseName }
-    $taskMode = if ($taskClass -eq 'gui.auth.EmailAuthPresentationTest') { 'false' } else { 'true' }
+    $taskMode = if ($taskClass -in @('gui.auth.EmailAuthPresentationTest','gui.auth.TermsNavigationTest','gui.components.PaymentDialogSizingTest','gui.staff.StaffStageActionTest')) { 'false' } else { 'true' }
     $taskOut = Join-Path $taskReport ($taskClass + '.out.log')
     $taskErr = Join-Path $taskReport ($taskClass + '.err.log')
-    $taskProcess = Start-Process -FilePath $taskJava -ArgumentList @("-Djava.awt.headless=$taskMode",'-cp','"bin;src;lib/*"',$taskClass) -WorkingDirectory $taskRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput $taskOut -RedirectStandardError $taskErr
+    $taskProcess = Start-Process -FilePath $taskJava -ArgumentList @("-Djava.awt.headless=$taskMode",'-Dqueuetees.suppressNotifications=true','-cp','"bin;src;lib/*"',$taskClass) -WorkingDirectory $taskRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput $taskOut -RedirectStandardError $taskErr
     if (-not $taskProcess.WaitForExit(30000)) {
         Stop-Process -Id $taskProcess.Id
         $taskState = 'TIMEOUT'

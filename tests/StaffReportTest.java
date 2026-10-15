@@ -59,7 +59,6 @@ public final class StaffReportTest {
             if (i < 2) store.advanceOrder(o.getId());
             if (i == 0) {
                 store.advanceOrder(o.getId());
-                store.completeOrder(o.getId());
             }
         }
         SwingUtilities.invokeAndWait(() -> {

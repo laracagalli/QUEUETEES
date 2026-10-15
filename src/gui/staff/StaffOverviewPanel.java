@@ -9,7 +9,7 @@ import javax.swing.border.EmptyBorder;
 public final class StaffOverviewPanel extends JPanel {
     private final JPanel metrics = new JPanel(new GridLayout(1, 4, 15, 0));
     private final javax.swing.table.DefaultTableModel recentModel = new javax.swing.table.DefaultTableModel(
-            new String[]{"Queue no.", "Customer", "Placed", "Status"}, 0) {
+            new String[]{"Control no.", "Customer", "Placed", "Status"}, 0) {
         @Override public boolean isCellEditable(int row, int column) { return false; }
     };
     private final JTable activity = StaffQueuePresentation.table(recentModel, "Your orders will appear here",
@@ -22,9 +22,9 @@ public final class StaffOverviewPanel extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         Ui.addLeft(this, Ui.label("Good day!", 10, Font.BOLD, Ui.FOREST));
         add(Box.createVerticalStrut(4));
-        Ui.addLeft(this, Ui.label("Staff dashboard", 25, Font.BOLD, Ui.INK));
+        Ui.addLeft(this, Ui.label("Dashboard", 25, Font.BOLD, Ui.INK));
         add(Box.createVerticalStrut(5));
-        Ui.addLeft(this, Ui.label("Keep customer orders moving in first-come, first-served order.", 11, Font.PLAIN, Ui.MUTED));
+        Ui.addLeft(this, Ui.label("Fewer pieces packed first; nearest to Pasay delivery priority.", 11, Font.PLAIN, Ui.MUTED));
         add(Box.createVerticalStrut(18));
         JPanel hero = Ui.card(Ui.FOREST, 24, false);
         hero.setLayout(new BorderLayout(20, 0));
@@ -91,24 +91,24 @@ public final class StaffOverviewPanel extends JPanel {
         metrics.removeAll();
         metrics.add(Ui.metricCard(String.valueOf(waiting), "Waiting"));
         metrics.add(Ui.metricCard(String.valueOf(processing), "Preparing"));
-        metrics.add(Ui.metricCard(String.valueOf(ready), "Ready for pickup"));
+        metrics.add(Ui.metricCard(String.valueOf(ready), "Ready for pickup / dispatch"));
         metrics.add(Ui.metricCard(String.valueOf(completed), "Completed today"));
         metrics.revalidate();
         metrics.repaint();
-        model.Order next = orders.stream().filter(o -> o.getStatus() == model.OrderStatus.CONFIRMED)
-                .min(java.util.Comparator.comparingInt(model.Order::getQueueNumber)).orElse(null);
-        nextOrder.setText(next == null ? "No orders waiting to start" : String.format("Next to prepare: Q-%03d  /  Waiting #1", next.getQueueNumber()));
+        model.Order next = orders.stream().filter(o -> o.getStatus() == model.OrderStatus.CONFIRMED && o.canStartPacking())
+                .min(model.PackingPriority.ORDER).orElse(null);
+        nextOrder.setText(next == null ? "No orders eligible to start packing" : "Next to prepare: " + next.getControlNumber() + "  /  Waiting #1");
         int selected = activity.getSelectedRow();
-        Integer selectedId = selected < 0 ? null : recentOrders.get(selected).getId();
+        Integer selectedId = selected < 0 ? null : recentOrders.get(activity.convertRowIndexToModel(selected)).getId();
         recentModel.setRowCount(0);
         recentOrders = orders.stream().sorted(java.util.Comparator.comparingInt(model.Order::getQueueNumber).reversed())
                 .limit(10).collect(java.util.stream.Collectors.toList());
         for (model.Order order : recentOrders) {
-            recentModel.addRow(new Object[]{String.format("Q-%03d", order.getQueueNumber()), order.getCustomerName(),
-                    order.getPlacedAt().format(java.time.format.DateTimeFormatter.ofPattern("MMM d, h:mm a")), order.getStatus().getLabel()});
+            recentModel.addRow(new Object[]{"" + order.getControlNumber() + "", order.getCustomerName(),
+                    order.getPlacedAt().format(java.time.format.DateTimeFormatter.ofPattern("MMM d, h:mm a")), order.getStatusLabel()});
         }
         if (selectedId != null) for (int i = 0; i < recentOrders.size(); i++) {
-            if (recentOrders.get(i).getId() == selectedId) { activity.setRowSelectionInterval(i, i); break; }
+            if (recentOrders.get(i).getId() == selectedId) { int view=activity.convertRowIndexToView(i);if(view>=0)activity.setRowSelectionInterval(view, view); break; }
         }
     }
 

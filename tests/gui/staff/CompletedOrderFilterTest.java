@@ -30,12 +30,13 @@ public class CompletedOrderFilterTest {
     private static void complete(int customer, String name, String payment, String fulfillment) {
         StoreService store = StoreService.getInstance();
         store.addToCart(customer, store.getProducts().get(0).getId());
-        Order order = store.checkout(customer, new CheckoutDetails(name, "test@example.com", "+639123456789",
-                fulfillment, "123 Test Street", payment, ""));
+        String city = DeliveryAddress.cities("Pampanga")[0];
+        Order order = store.checkout(customer, CheckoutDetails.structured(name, "test@example.com", "+639123456789",
+                fulfillment, "Pickup".equals(fulfillment) ? null : new DeliveryAddress("Pampanga",city,DeliveryAddress.barangays("Pampanga",city)[0],"123 Test Street"), payment, ""));
+        support.TestFlow.verify(store,order);store.advanceOrder(order.getId());
         store.advanceOrder(order.getId());
         store.advanceOrder(order.getId());
-        store.advanceOrder(order.getId());
-        store.completeOrder(order.getId());
+        if (order.getStatus() != OrderStatus.COMPLETED) {store.confirmCourierDelivery(order.getId(),"PROOF-"+order.getId(),new User(999,"staff","staff@example.com","unused",UserRole.STAFF,true,AccountStatus.ACTIVE));service.ActivityLogger.setActor(new User(customer,name,"test@example.com","unused",UserRole.CUSTOMER,true,AccountStatus.ACTIVE));store.completeOrder(order.getId());service.ActivityLogger.setActor(null);}
     }
     private static void layout(Container container) {
         container.doLayout();

@@ -42,6 +42,11 @@ public final class CheckoutValidationTest {
                 contact.setText("0912345678");
                 check(contact.getText().isEmpty(), "Leading zero is rejected when pasted");
                 check(!CheckoutValidation.contactError("0912345678").isEmpty(), "Leading zero is rejected at submission");
+                for(int first=1;first<=8;first++) {
+                    contact.setText(first+"123456789");
+                    check(contact.getText().isEmpty(),"Contact prefixes 1–8 are rejected while entering");
+                    check(!CheckoutValidation.contactError(first+"123456789").isEmpty(),"Contact prefixes 1–8 are rejected at submission");
+                }
                 contact.setText("9123456789");
                 contact.selectAll(); contact.replaceSelection("+639123456789");
                 check(contact.getText().equals("9123456789"), "Country code is not typed into contact");

@@ -79,7 +79,7 @@ public class LoginFrame extends JFrame implements ActionListener {
         username.setFont(new Font("Fira Code", Font.PLAIN, 14));
         username.setBackground(new Color(225, 225, 225));
         username.setBorder(BorderFactory.createEmptyBorder(5, 12, 5, 12));
-        username.setDocument(new LimitedDocument(36, false, "Username or email", this::clearPassword));
+        username.setDocument(new LimitedDocument(254, false, "Username or email", this::clearPassword));
         leftPanel.add(username);
 
         // Password label
@@ -354,8 +354,15 @@ public class LoginFrame extends JFrame implements ActionListener {
             return;
         }
 
+        char[] returnPassword=pass.getPassword();
         LoginResult result = authService.login(username.getText(), pass.getPassword());
         clearPassword();
+
+        if(result.getStatus()==AuthStatus.REGISTRATION_INCOMPLETE && result.getUser()!=null){
+            User pending=result.getUser();dispose();
+            new TermsFrame(authService,pending,()->new EmailAuthFrame(authService,pending,()->new LoginFrame(authService).setVisible(true)).setVisible(true),returnPassword).setVisible(true);return;
+        }
+        java.util.Arrays.fill(returnPassword,'\0');
 
         if (result.getStatus() == AuthStatus.EMAIL_NOT_VERIFIED && result.getUser() != null) {
             User u = result.getUser();
@@ -363,7 +370,7 @@ public class LoginFrame extends JFrame implements ActionListener {
             if (u.getRole() == model.UserRole.STAFF) {
                 onVerified = () -> {
                     JOptionPane.showMessageDialog(null,
-                            "Thank you for verifying your email!\n\n"
+                            u.getStatus()==model.AccountStatus.ACTIVE?"Your email is verified and your staff account is approved. Please sign in.":"Thank you for verifying your email!\n\n"
                             + "Your application is under review. We will notify you\n"
                             + "by email once the administrator has made a decision.",
                             "Application Submitted", JOptionPane.INFORMATION_MESSAGE);
@@ -380,7 +387,7 @@ public class LoginFrame extends JFrame implements ActionListener {
         if (!result.isSuccess()) {
             Toolkit.getDefaultToolkit().beep();
             errorLabel.setVisible(true);
-            JOptionPane.showMessageDialog(this, result.getMessage(), "Login Warning",
+            JOptionPane.showMessageDialog(this, result.getMessage(), result.getStatus()==AuthStatus.ACCOUNT_BANNED ? "Account permanently suspended" : "Login Warning",
                     JOptionPane.WARNING_MESSAGE);
             return;
         }

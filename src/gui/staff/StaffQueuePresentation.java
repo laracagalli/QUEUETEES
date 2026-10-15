@@ -15,28 +15,26 @@ final class StaffQueuePresentation {
     static Color statusColor(String label) {
         if (OrderStatus.CONFIRMED.getLabel().equals(label)) return new Color(139, 91, 15);
         if (OrderStatus.PREPARING.getLabel().equals(label)) return new Color(34, 91, 157);
-        if (OrderStatus.READY_FOR_PICKUP.getLabel().equals(label)) return new Color(29, 113, 75);
+        if (OrderStatus.READY_FOR_PICKUP.getLabel().equals(label) || "Ready for dispatch".equals(label)) return new Color(29, 113, 75);
         return new Color(100, 78, 138);
     }
     static Map<Integer, Integer> waitingPositions(List<Order> orders) {
         Map<Integer, Integer> positions = new LinkedHashMap<>();
-        orders.stream().filter(o -> o.getStatus() == OrderStatus.CONFIRMED)
-                .sorted(java.util.Comparator.comparingInt(Order::getQueueNumber))
+        model.PackingPriority.queue(orders).stream()
                 .forEach(o -> positions.put(o.getId(), positions.size() + 1));
         return positions;
     }
     static String nextMessage(List<Order> orders) {
-        return orders.stream().filter(o -> o.getStatus() == OrderStatus.CONFIRMED)
-                .min(java.util.Comparator.comparingInt(Order::getQueueNumber))
-                .map(o -> String.format("Next to prepare: Q-%03d  |  Waiting #1", o.getQueueNumber()))
-                .orElse(orders.isEmpty() ? "No active orders. New orders will appear here." : "No orders waiting to start. Continue preparing or completing active orders.");
+        return model.PackingPriority.queue(orders).stream().findFirst()
+                .map(o -> "Next to prepare: " + o.getControlNumber() + "  |  Waiting #1")
+                .orElse(orders.isEmpty() ? "No active orders. New orders will appear here." : "No verified orders waiting to pack. Verify pending payments or continue active orders.");
     }
     static JPanel legend() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 8));
         panel.setOpaque(false);
         for (OrderStatus status : OrderStatus.values()) {
-            String label = status.getLabel();
-            panel.add(StaffStyles.label("● " + label, 11, true, statusColor(label)));
+            String label = status == OrderStatus.READY_FOR_PICKUP ? "Ready (pickup / dispatch)" : status.getLabel();
+            panel.add(StaffStyles.label("● " + label, 11, true, statusColor(status.getLabel())));
         }
         return panel;
     }
@@ -94,7 +92,7 @@ final class StaffQueuePresentation {
         if (positions) {
             table.getColumnModel().getColumn(0).setMinWidth(85);
             table.getColumnModel().getColumn(0).setMaxWidth(100);
-            table.getTableHeader().setToolTipText("Waiting # is preparation order. Q-number is the permanent order ticket. Sorting does not change priority.");
+            table.getTableHeader().setToolTipText("Waiting # is preparation priority. The random control number identifies an order. Sorting does not change production priority.");
         }
     }
 }

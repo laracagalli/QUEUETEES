@@ -28,8 +28,8 @@ public final class DatabaseStartup {
         connect(properties,secret.toCharArray(),ready,defaults);
     }
     private static void connect(Properties properties,char[] password,java.util.function.Consumer<AuthService> ready,java.util.function.Supplier<java.util.List<User>> defaults) {
-        new SwingWorker<AuthService,Void>() {
-            protected AuthService doInBackground() {
+        // A non-daemon worker keeps startup alive until the login event is queued.
+        Thread connection = new Thread(() -> {
                 try {
                     Database db=new Database(properties.getProperty("url"),properties.getProperty("username"),password);
                     db.verifySchema();
@@ -44,16 +44,19 @@ public final class DatabaseStartup {
                         }
                     }
                     StoreService.getInstance().useDatabase(db);ActivityLogger.useDatabase(db);
-                    return new AuthService(users);
-                } finally { Arrays.fill(password,'\0'); }
-            }
-            protected void done() {
-                try { ready.accept(get()); }
-                catch(Exception ex) {
+                    AuthService auth = new AuthService(users);
+                    SwingUtilities.invokeLater(() -> {
+                        try { ready.accept(auth); }
+                        catch (Exception ex) {
+                            JOptionPane.showMessageDialog(null,ex.getMessage(),"Startup failed",JOptionPane.ERROR_MESSAGE);
+                        }
+                    });
+                } catch(Exception ex) {
                     Throwable cause=ex.getCause()==null?ex:ex.getCause();
-                    JOptionPane.showMessageDialog(null,cause.getMessage(),"MySQL connection failed",JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        }.execute();
+                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,cause.getMessage(),"MySQL connection failed",JOptionPane.ERROR_MESSAGE));
+                } finally { Arrays.fill(password,'\0'); }
+        }, "queuetees-database-startup");
+        connection.setDaemon(false);
+        connection.start();
     }
 }
